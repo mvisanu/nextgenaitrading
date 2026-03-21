@@ -4,35 +4,59 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 95%;
+    --background: 222 31% 10%;      /* #131722 */
+    --foreground: 223 8% 82%;       /* #d1d4dc */
 
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 95%;
+    --card: 222 22% 15%;            /* #1e222d */
+    --card-foreground: 223 8% 82%;  /* #d1d4dc */
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 222 22% 15%;         /* #1e222d */
+    --popover-foreground: 223 8% 82%;
 
-    --primary: 142 71% 45%;
-    --primary-foreground: 0 0% 4%;
+    --primary: 224 100% 58%;        /* #2962ff - TradingView blue */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 222 16% 19%;       /* #2a2e39 */
+    --secondary-foreground: 223 8% 82%;
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 53%;
+    --muted: 222 16% 19%;           /* #2a2e39 */
+    --muted-foreground: 223 6% 47%; /* #787b86 */
 
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 222 16% 19%;
+    --accent-foreground: 223 8% 82%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive: 1 83% 63%;       /* #ef5350 */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
-    --ring: 142 71% 45%;
+    --border: 222 11% 24%;          /* #363a45 */
+    --input: 222 16% 19%;           /* #2a2e39 */
+    --ring: 224 100% 58%;           /* #2962ff */
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;              /* Tight radius like TradingView */
+  }
+
+  /* Light mode overrides — applied via .light class on <html> */
+  .light {
+    --background: 0 0% 97%;           /* #f8f8f8 - light gray */
+    --foreground: 222 31% 10%;        /* dark text */
+    --card: 0 0% 100%;                /* white */
+    --card-foreground: 222 31% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 31% 10%;
+    --primary: 224 100% 58%;          /* keep TradingView blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 13% 91%;         /* light toolbar */
+    --secondary-foreground: 222 31% 10%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 222 6% 47%;
+    --accent: 220 13% 91%;
+    --accent-foreground: 222 31% 10%;
+    --destructive: 1 83% 63%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 87%;            /* light borders */
+    --input: 220 13% 91%;
+    --ring: 224 100% 58%;
+    --radius: 0.25rem;
   }
 }
 
@@ -42,21 +66,36 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
+    font-size: 14px;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  @media (min-width: 640px) {
+    body {
+      font-size: 15px;
+    }
+  }
+
+  /* Mobile touch target minimum */
+  @media (max-width: 640px) {
+    button, a, [role="tab"], [role="button"] {
+      min-height: 40px;
+    }
   }
 }
 
-/* Scrollbar styling for dark theme */
+/* Scrollbar styling — thin TradingView style */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: hsl(var(--background));
 }
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
-  border-radius: 3px;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));

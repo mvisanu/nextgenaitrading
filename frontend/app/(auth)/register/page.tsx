@@ -49,14 +49,16 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
   });
 
-  const { mutate: doRegister, isPending } = useMutation({
+  const { mutate: doRegister, isPending, error: registerError } = useMutation({
     mutationFn: (values: { email: string; password: string }) =>
       authApi.register(values),
     onSuccess: () => {
-      toast.success("Account created! Please sign in.");
-      router.push("/login");
+      toast.success("Account created! Welcome to NextGenStock.");
+      router.push("/dashboard");
     },
     onError: (err: Error) => {
+      // getErrorMessage returns err.message, which apiFetch sets to the
+      // backend's detail string (e.g. "An account with this email already exists.")
       toast.error(getErrorMessage(err, "Registration failed. Please try again."));
     },
   });
@@ -133,6 +135,12 @@ export default function RegisterPage() {
                   </p>
                 )}
               </div>
+
+              {registerError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {getErrorMessage(registerError, "Registration failed. Please try again.")}
+                </p>
+              )}
 
               <Button type="submit" className="w-full" disabled={isPending}>
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" />}

@@ -52,12 +52,12 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Trading signal colors
-        bull: "#22c55e",
-        bear: "#ef4444",
-        "signal-buy": "#22c55e",
-        "signal-sell": "#ef4444",
-        "signal-hold": "#888888",
+        // Trading signal colors — TradingView palette
+        bull: "#26a69a",
+        bear: "#ef5350",
+        "signal-buy": "#26a69a",
+        "signal-sell": "#ef5350",
+        "signal-hold": "#787b86",
       },
       borderRadius: {
         lg: "var(--radius)",

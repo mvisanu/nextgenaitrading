@@ -4,17 +4,17 @@
   "description": "Playwright E2E test suite for NextGenStock",
   "private": true,
   "scripts": {
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report",
-    "test:e2e:chromium": "playwright test --project=chromium",
-    "test:e2e:headed": "playwright test --headed --project=chromium",
-    "test:e2e:auth": "playwright test specs/auth.spec.ts",
-    "test:e2e:security": "playwright test specs/security.spec.ts",
-    "test:e2e:multi-tenancy": "playwright test specs/multi-tenancy.spec.ts",
-    "test:e2e:fast": "playwright test specs/auth.spec.ts specs/security.spec.ts specs/dashboard.spec.ts specs/profile.spec.ts specs/broker-credentials.spec.ts",
-    "test:e2e:slow": "playwright test specs/strategies.spec.ts specs/backtests.spec.ts specs/artifacts.spec.ts --timeout=300000",
-    "test:e2e:ci": "playwright test --reporter=github"
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "test:e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui",
+    "test:e2e:report": "playwright show-report e2e/playwright-report",
+    "test:e2e:chromium": "playwright test --config=e2e/playwright.config.ts --project=chromium",
+    "test:e2e:headed": "playwright test --config=e2e/playwright.config.ts --headed --project=chromium",
+    "test:e2e:auth": "playwright test --config=e2e/playwright.config.ts specs/auth.spec.ts",
+    "test:e2e:security": "playwright test --config=e2e/playwright.config.ts specs/security.spec.ts",
+    "test:e2e:multi-tenancy": "playwright test --config=e2e/playwright.config.ts specs/multi-tenancy.spec.ts",
+    "test:e2e:fast": "playwright test --config=e2e/playwright.config.ts specs/auth.spec.ts specs/security.spec.ts specs/dashboard.spec.ts specs/profile.spec.ts specs/broker-credentials.spec.ts",
+    "test:e2e:slow": "playwright test --config=e2e/playwright.config.ts specs/strategies.spec.ts specs/backtests.spec.ts specs/artifacts.spec.ts --timeout=300000",
+    "test:e2e:ci": "playwright test --config=e2e/playwright.config.ts --reporter=github"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",

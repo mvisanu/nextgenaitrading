@@ -74,24 +74,24 @@ interface AppShellProps {
 export function AppShell({ children, title, actions }: AppShellProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
+      {/* Desktop sidebar — 48px collapsed rail, expands to 200px on hover */}
+      <div className="hidden lg:block lg:fixed lg:inset-y-0 lg:z-40">
         <Sidebar />
       </div>
 
-      {/* Main content */}
-      <div className="flex flex-col flex-1 lg:pl-64 min-w-0">
-        {/* Top nav with mobile hamburger */}
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6">
+      {/* Main content — offset by 48px (sidebar collapsed width) */}
+      <div className="flex flex-col flex-1 lg:pl-12 min-w-0">
+        {/* Top toolbar */}
+        <header className="sticky top-0 z-30 flex h-[38px] shrink-0 items-center gap-2 border-b border-border bg-secondary px-3">
           {/* Mobile menu */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="lg:hidden h-7 w-7">
+                <Menu className="h-4 w-4" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
+            <SheetContent side="left" className="w-[200px] p-0">
               <Sidebar />
             </SheetContent>
           </Sheet>
@@ -99,7 +99,20 @@ export function AppShell({ children, title, actions }: AppShellProps) {
           <TopNav title={title} actions={actions} />
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">{children}</main>
+
+        {/* Bottom status bar */}
+        <div className="shrink-0 flex items-center h-6 px-3 border-t border-border bg-secondary text-[11px] text-muted-foreground gap-3">
+          <span>NextGenStock v1.0</span>
+          <span className="text-border">|</span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-bull" />
+            Connected
+          </span>
+          <span className="text-border">|</span>
+          <span>dev@nextgenstock.local</span>
+        </div>
       </div>
     </div>
   );

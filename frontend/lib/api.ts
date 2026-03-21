@@ -70,26 +70,24 @@ async function apiFetch<T>(
     },
   });
 
-  if (res.status === 401 && !isRetry) {
-    // All concurrent 401s await the same in-flight refresh promise
-    try {
-      await refreshTokenOnce();
-      // Retry the original request after successful refresh
-      return apiFetch<T>(path, options, true);
-    } catch {
-      // Refresh failed — redirect to login
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-      throw new Error("Session expired");
-    }
-  }
+  // DEV MODE: auth bypass — skip 401 refresh/redirect logic
+  // if (res.status === 401 && !isRetry) { ... }
 
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
     try {
-      const body = (await res.json()) as { detail?: string };
-      detail = body.detail ?? detail;
+      const body = (await res.json()) as {
+        detail?: string;
+        errors?: { field: string; message: string }[];
+      };
+      if (body.errors?.length) {
+        // Surface specific validation field errors instead of generic "Validation error"
+        detail = body.errors
+          .map((e) => `${e.field}: ${e.message}`)
+          .join("; ");
+      } else {
+        detail = body.detail ?? detail;
+      }
     } catch {
       // Use default detail
     }

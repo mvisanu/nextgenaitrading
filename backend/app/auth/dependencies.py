@@ -1,68 +1,52 @@
 """
 FastAPI dependencies for authenticated routes.
+
+DEV MODE: Authentication is bypassed. A dev user is auto-created on first
+request and returned for all routes. Remove this shortcut before deploying.
 """
 from __future__ import annotations
 
 import logging
 from typing import Annotated, Optional
 
-from fastapi import Cookie, Depends, HTTPException, status
-from jose import JWTError
+from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_token
 from app.db.session import get_db
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
+DEV_EMAIL = "dev@nextgenstock.local"
+
+
+async def _get_or_create_dev_user(db: AsyncSession) -> User:
+    """Return the dev user, creating it on first call."""
+    result = await db.execute(select(User).where(User.email == DEV_EMAIL))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(
+            email=DEV_EMAIL,
+            password_hash="dev-no-auth",
+            is_active=True,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        logger.info("Created dev user: %s (id=%d)", DEV_EMAIL, user.id)
+    return user
+
 
 async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
-    access_token: Annotated[Optional[str], Cookie()] = None,
 ) -> User:
-    """
-    Read the access_token cookie, validate the JWT, and return the User ORM object.
-    Raises HTTP 401 on any failure.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Not authenticated",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    if not access_token:
-        raise credentials_exception
-
-    try:
-        payload = decode_token(access_token)
-        if payload.get("type") != "access":
-            raise credentials_exception
-        user_id_str: str | None = payload.get("sub")
-        if not user_id_str:
-            raise credentials_exception
-        user_id = int(user_id_str)
-    except (JWTError, ValueError):
-        logger.warning("Invalid access token presented")
-        raise credentials_exception
-
-    result = await db.execute(select(User).where(User.id == user_id, User.is_active.is_(True)))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise credentials_exception
-
-    return user
+    """DEV MODE: Always returns the dev user — no JWT required."""
+    return await _get_or_create_dev_user(db)
 
 
 async def optional_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
-    access_token: Annotated[Optional[str], Cookie()] = None,
 ) -> User | None:
-    """Like get_current_user but returns None instead of raising 401."""
-    if not access_token:
-        return None
-    try:
-        return await get_current_user(db=db, access_token=access_token)
-    except HTTPException:
-        return None
+    """DEV MODE: Always returns the dev user."""
+    return await _get_or_create_dev_user(db)

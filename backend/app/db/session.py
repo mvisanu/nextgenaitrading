@@ -19,6 +19,8 @@ async_engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=settings.pool_size,
     max_overflow=settings.max_overflow,
+    pool_recycle=3600,    # recycle connections older than 1 h — prevents stale-socket hangs
+    pool_timeout=30,      # raise after 30 s if no connection is available
 )
 
 AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
@@ -36,5 +38,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         try:
             yield session
+        except Exception:
+            await session.rollback()
+            raise
         finally:
             await session.close()

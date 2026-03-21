@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { StrategyModeSelector } from "@/components/strategy/StrategyModeSelector";
 import { StrategyForm } from "@/components/strategy/StrategyForm";
 import { ResultsPanel } from "@/components/strategy/ResultsPanel";
+import { AiStrategyBuilder } from "@/components/strategy/AiStrategyBuilder";
 import { backtestApi, strategyApi } from "@/lib/api";
 import { getQueryClient } from "@/lib/queryClient";
 import type {
@@ -23,6 +24,7 @@ interface RunResult {
   trades: BacktestTrade[];
   variants: VariantBacktestResult[];
   artifactId?: number;
+  investmentAmount?: number;
 }
 
 export default function StrategiesPage() {
@@ -32,35 +34,77 @@ export default function StrategiesPage() {
     mutationFn: async (params: {
       mode: StrategyMode;
       request: Parameters<typeof backtestApi.run>[0];
+      investmentAmount?: number;
     }) => {
-      const { mode, request } = params;
-      let summary: BacktestSummary;
+      const { mode, request, investmentAmount } = params;
 
+      // API returns flat BacktestOut { id, user_id, mode_name, ... }
+      let raw: any;
       if (mode === "ai-pick") {
-        summary = await strategyApi.runAiPick(request);
+        raw = await strategyApi.runAiPick(request);
       } else if (mode === "buy-low-sell-high") {
-        summary = await strategyApi.runBuyLowSellHigh(request);
+        raw = await strategyApi.runBuyLowSellHigh(request);
       } else {
-        summary = await backtestApi.run(request);
+        raw = await backtestApi.run(request);
       }
 
-      const runId = summary.run.id;
+      // The response is flat — extract runId directly
+      const runId: number = raw.id ?? raw.run?.id;
 
       // Fetch supplementary data in parallel
       const [chartData, trades, variants] = await Promise.all([
         backtestApi.chartData(runId).catch(() => undefined),
-        backtestApi.trades(runId).catch(() => []),
+        backtestApi.trades(runId).catch(() => [] as BacktestTrade[]),
         (mode === "ai-pick" || mode === "buy-low-sell-high")
           ? backtestApi.leaderboard(runId).catch(() => [])
           : Promise.resolve([]),
       ]);
 
-      return { mode, summary, chartData, trades, variants };
+      // Build BacktestSummary shape that ResultsPanel expects
+      const totalReturnPct = trades.reduce((s, t) => s + (t.leveraged_return_pct ?? t.return_pct), 0);
+      const maxDrawdownPct = trades.length > 0
+        ? Math.min(...trades.map((t) => t.leveraged_return_pct ?? t.return_pct))
+        : 0;
+      const wins = trades.filter((t) => t.return_pct >= 0).length;
+      const avgRet = trades.length > 0 ? totalReturnPct / trades.length : 0;
+      const stdDev = trades.length > 1
+        ? Math.sqrt(trades.reduce((s, t) => s + Math.pow((t.leveraged_return_pct ?? t.return_pct) - avgRet, 2), 0) / (trades.length - 1))
+        : 1;
+
+      const summary: BacktestSummary = {
+        run: {
+          id: runId,
+          user_id: raw.user_id,
+          created_at: raw.created_at,
+          run_type: raw.run_type ?? "backtest",
+          mode_name: raw.mode_name,
+          strategy_family: raw.strategy_family ?? null,
+          symbol: raw.symbol,
+          timeframe: raw.timeframe,
+          leverage: raw.leverage,
+          min_confirmations: raw.min_confirmations ?? null,
+          trailing_stop_pct: raw.trailing_stop_pct ?? null,
+          current_regime: raw.current_regime ?? null,
+          current_signal: raw.current_signal ?? null,
+          confirmation_count: raw.confirmation_count ?? null,
+          selected_variant_name: raw.selected_variant_name ?? null,
+          selected_variant_score: raw.selected_variant_score ?? null,
+          notes: raw.notes ?? null,
+          error_message: raw.error_message ?? null,
+        },
+        total_return_pct: totalReturnPct,
+        max_drawdown_pct: maxDrawdownPct,
+        sharpe_like: stdDev > 0 ? avgRet / stdDev : 0,
+        trade_count: trades.length,
+        win_rate: trades.length > 0 ? wins / trades.length : 0,
+      };
+
+      return { mode, summary, chartData, trades, variants, investmentAmount };
     },
-    onSuccess: ({ mode, summary, chartData, trades, variants }) => {
+    onSuccess: ({ mode, summary, chartData, trades, variants, investmentAmount }) => {
       setResults((prev) => ({
         ...prev,
-        [mode]: { summary, chartData, trades, variants },
+        [mode]: { summary, chartData, trades, variants, investmentAmount },
       }));
       getQueryClient().invalidateQueries({ queryKey: ["strategies", "runs"] });
       getQueryClient().invalidateQueries({ queryKey: ["backtests"] });
@@ -73,7 +117,7 @@ export default function StrategiesPage() {
 
   return (
     <AppShell title="Strategies">
-      <StrategyModeSelector>
+      <StrategyModeSelector aiBuilderContent={<AiStrategyBuilder />}>
         {(mode) => {
           const result = results[mode];
           return (
@@ -81,7 +125,11 @@ export default function StrategiesPage() {
               <StrategyForm
                 mode={mode}
                 onSubmit={(values) =>
-                  runStrategy({ mode, request: values })
+                  runStrategy({
+                    mode,
+                    request: values,
+                    investmentAmount: values.investment_amount,
+                  })
                 }
                 isLoading={isRunning}
               />
@@ -93,6 +141,7 @@ export default function StrategiesPage() {
                   trades={result.trades}
                   variants={result.variants}
                   artifactId={result.artifactId}
+                  investmentAmount={result.investmentAmount}
                 />
               )}
             </div>

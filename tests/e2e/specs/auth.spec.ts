@@ -59,7 +59,7 @@ test.describe("Registration — POST /auth/register", () => {
   test("AUTH-01-02: returns 409 or 422 when registering a duplicate email", async ({
     request,
   }) => {
-    const email = uniqueEmail("duplicate@nextgenstock.test");
+    const email = uniqueEmail("duplicate@nextgenstock.io");
     // First registration — must succeed
     await registerUser(request, email, USER_A.password);
     // Second registration with same email
@@ -82,7 +82,7 @@ test.describe("Registration — POST /auth/register", () => {
   test("AUTH-01-05: UI register form → redirects to dashboard on success", async ({
     page,
   }) => {
-    const email = uniqueEmail("ui-register@nextgenstock.test");
+    const email = uniqueEmail("ui-register@nextgenstock.io");
 
     await page.goto(ROUTES.register);
     await page.waitForLoadState("networkidle");
@@ -105,7 +105,7 @@ test.describe("Registration — POST /auth/register", () => {
     request,
   }) => {
     // Pre-create the user via API
-    const email = uniqueEmail("dup-ui@nextgenstock.test");
+    const email = uniqueEmail("dup-ui@nextgenstock.io");
     await registerUser(request, email, USER_A.password);
 
     await page.goto(ROUTES.register);

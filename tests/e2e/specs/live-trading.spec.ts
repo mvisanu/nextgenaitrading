@@ -271,7 +271,7 @@ test.describe("Live Trading API", () => {
 
     // Switch to USER_B
     await request.post(`${API_URL}/auth/logout`);
-    const otherEmail = `live-cross-${Date.now()}@nextgenstock.test`;
+    const otherEmail = `live-cross-${Date.now()}@nextgenstock.io`;
     await request.post(`${API_URL}/auth/register`, {
       data: { email: otherEmail, password: "OtherUser123!" },
     });

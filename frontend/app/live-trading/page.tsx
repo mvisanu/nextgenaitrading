@@ -92,7 +92,7 @@ export default function LiveTradingPage() {
 
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["live", "orders"],
-    queryFn: liveApi.orders,
+    queryFn: () => liveApi.orders(),
   });
 
   const { data: chartData } = useQuery({

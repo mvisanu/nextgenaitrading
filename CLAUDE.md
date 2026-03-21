@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Database (Docker)
 ```bash
-# From repo root — start Postgres on host port 5433
+# From repo root — start Postgres on host port 5432
 docker compose up -d
 ```
 
@@ -63,7 +63,7 @@ backend/app/
 frontend/
   app/                  # Next.js App Router pages
     (auth)/login, (auth)/register
-    dashboard, strategies, backtests, live-trading, artifacts, profile
+    dashboard, strategies, backtests, live-trading, artifacts, strategy-samples, profile
   components/
     ui/                 # shadcn/ui primitives
     charts/             # PriceChart (Lightweight Charts), EquityCurve (Recharts), OptimizationScatter (Plotly)
@@ -107,7 +107,7 @@ Optimizers backtest multiple variants, rank by risk-adjusted score, save winner 
 
 **Backend (`.env`)** — file exists with local dev values:
 ```
-DATABASE_URL=postgresql+asyncpg://nextgen:nextgen@localhost:5433/nextgenstock
+DATABASE_URL=postgresql+asyncpg://nextgen:nextgen@localhost:5432/nextgenstock
 SECRET_KEY=<generated>
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
@@ -120,7 +120,7 @@ ALPACA_BASE_URL=https://api.alpaca.markets
 ALPACA_PAPER_URL=https://paper-api.alpaca.markets
 ```
 
-Docker Postgres: `nextgen:nextgen@localhost:5433/nextgenstock` (host port 5433 avoids conflict with any local Postgres on 5432).
+Docker Postgres: `nextgen:nextgen@localhost:5432/nextgenstock` (host port 5432).
 
 **Frontend (`.env.local`):**
 ```
@@ -141,8 +141,16 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 | Backend (FastAPI, 60 files) | Complete |
 | Alembic migrations | Written; run `alembic upgrade head` after DB is up |
 | Docker Compose (Postgres) | Complete |
-| Frontend (Next.js pages/components) | Not yet implemented |
+| Frontend (Next.js pages/components) | Partially implemented (auth, artifacts, strategies, strategy-samples pages done) |
 | E2E tests (Playwright, 159 cases) | Written in `tests/e2e/` |
+
+### Running E2E Tests
+```bash
+cd tests
+npm install                           # First time only
+npx playwright test --config=e2e/playwright.config.ts
+```
+Tests require both backend (`uvicorn`) and frontend (`npm run dev`) running.
 
 ### Known Spec Deviations (see BACKEND.md for full list)
 - Refresh token stored as SHA-256 (not bcrypt) — speed, not security compromise
@@ -150,3 +158,9 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - `GET /live/positions` returns DB snapshot, not live broker poll
 - Robinhood client is a stub — all methods raise `NotImplementedError` except `ping()`
 - 4h timeframe is resampled from 1h (yfinance limitation)
+
+### Bug Fixes Applied
+- `db/session.py`: Added `pool_recycle=3600` and `pool_timeout=30` to prevent connection pool exhaustion
+- `register/page.tsx`: Redirects to `/dashboard` after registration (not `/login`); added inline error alert for duplicate emails
+- `tests/package.json`: All npm scripts now use `--config=e2e/playwright.config.ts` to enforce `workers: 1`
+- `artifacts.spec.ts`: ART-07 test authenticates before testing 404 response

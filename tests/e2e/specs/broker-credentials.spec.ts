@@ -140,7 +140,7 @@ test.describe("Broker Credential API", () => {
 
     // Logout and login as a different user
     await request.post(`${API_URL}/auth/logout`);
-    const otherEmail = `other-cred-test-${Date.now()}@nextgenstock.test`;
+    const otherEmail = `other-cred-test-${Date.now()}@nextgenstock.io`;
     await request.post(`${API_URL}/auth/register`, {
       data: { email: otherEmail, password: "OtherUser123!" },
     });

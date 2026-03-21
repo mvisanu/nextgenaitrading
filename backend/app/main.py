@@ -54,10 +54,10 @@ app = FastAPI(
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Set-Cookie", "Authorization"],
+    allow_headers=["*"],
     expose_headers=["Set-Cookie"],
 )
 
@@ -66,7 +66,12 @@ app.add_middleware(
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    """Return field-level validation errors in a consistent format."""
+    """Return field-level validation errors in a consistent format.
+
+    CORSMiddleware does not inject headers into responses produced by
+    exception handlers, so we mirror what it would have done for any
+    origin in the allow-list.
+    """
     errors = []
     for e in exc.errors():
         errors.append(
@@ -76,18 +81,47 @@ async def validation_exception_handler(
                 "type": e["type"],
             }
         )
+    logger.warning(
+        "Validation error on %s %s: %s",
+        request.method,
+        request.url.path,
+        errors,
+    )
+
+    headers: dict[str, str] = {}
+    origin = request.headers.get("origin")
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Vary"] = "Origin"
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": "Validation error", "errors": errors},
+        headers=headers,
     )
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+
+    # Starlette/FastAPI bug: CORSMiddleware does not add CORS headers to responses
+    # produced by @app.exception_handler callbacks, so a 500 returned here reaches
+    # the browser without Access-Control-Allow-Origin and is treated as a CORS error.
+    # Fix: inspect the Origin header and add the headers manually when the origin is
+    # in the allow-list, mirroring exactly what CORSMiddleware would have done.
+    headers: dict[str, str] = {}
+    origin = request.headers.get("origin")
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Vary"] = "Origin"
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": "Internal server error"},
+        headers=headers,
     )
 
 

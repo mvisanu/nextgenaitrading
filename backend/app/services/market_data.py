@@ -67,30 +67,52 @@ def load_ohlcv_for_strategy(symbol: str, timeframe: str) -> pd.DataFrame:
     Maps timeframe parameter to yfinance interval.
     """
     interval_map = {
-        "1d": "1d",
+        "1m": "1m",
+        "2m": "2m",
+        "5m": "5m",
+        "15m": "15m",
+        "30m": "30m",
         "1h": "1h",
-        "4h": "1h",   # yfinance does not support 4h natively; use 1h and resample downstream
+        "2h": "1h",   # yfinance does not support 2h natively; resample from 1h
+        "3h": "1h",   # yfinance does not support 3h natively; resample from 1h
+        "4h": "1h",   # yfinance does not support 4h natively; resample from 1h
+        "1d": "1d",
         "1wk": "1wk",
+        "1mo": "1mo",
     }
     yf_interval = interval_map.get(timeframe, "1d")
 
-    # yfinance 1h data only available for ~730 days on some symbols
-    period = "730d" if timeframe in ("1d", "1wk") else "60d"
+    # yfinance intraday data availability:
+    #   1m  → max ~7 days
+    #   2m  → max ~60 days
+    #   5m  → max ~60 days
+    #   15m → max ~60 days
+    #   30m → max ~60 days
+    #   1h  → max ~730 days
+    #   1d+ → max ~730 days
+    if timeframe == "1m":
+        period = "7d"
+    elif timeframe in ("2m", "5m", "15m", "30m"):
+        period = "60d"
+    elif timeframe in ("1h", "2h", "3h", "4h"):
+        period = "60d"
+    else:
+        period = "730d"
 
     df = load_ohlcv(symbol, interval=yf_interval, period=period)
 
-    # Resample 1h -> 4h if timeframe is "4h"
-    if timeframe == "4h" and yf_interval == "1h":
-        df = _resample_to_4h(df)
+    # Resample 1h -> Nh if timeframe is 2h/3h/4h
+    if timeframe in ("2h", "3h", "4h") and yf_interval == "1h":
+        df = _resample_hours(df, int(timeframe[0]))
 
     return df
 
 
-def _resample_to_4h(df: pd.DataFrame) -> pd.DataFrame:
-    """Resample 1h OHLCV to 4h bars."""
+def _resample_hours(df: pd.DataFrame, hours: int) -> pd.DataFrame:
+    """Resample 1h OHLCV to Nh bars."""
     df = df.copy()
     df.index = pd.to_datetime(df.index, utc=True)
-    resampled = df.resample("4h").agg(
+    resampled = df.resample(f"{hours}h").agg(
         {
             "Open": "first",
             "High": "max",

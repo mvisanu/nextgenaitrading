@@ -40,7 +40,7 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  const { mutate: login, isPending } = useMutation({
+  const { mutate: login, isPending, error: loginError } = useMutation({
     mutationFn: authApi.login,
     onSuccess: () => {
       router.push("/dashboard");
@@ -72,7 +72,7 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -105,6 +105,12 @@ export default function LoginPage() {
                   </p>
                 )}
               </div>
+
+              {loginError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {getErrorMessage(loginError, "Login failed. Please try again.")}
+                </p>
+              )}
 
               <Button type="submit" className="w-full" disabled={isPending}>
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" />}

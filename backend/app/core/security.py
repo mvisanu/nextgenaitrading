@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -62,6 +63,7 @@ def create_refresh_token(user_id: int) -> str:
         "type": "refresh",
         "exp": expire,
         "iat": _utcnow(),
+        "jti": secrets.token_hex(16),
     }
     return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
 

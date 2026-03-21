@@ -252,7 +252,7 @@ test.describe("Security — 403 on cross-user resource access", () => {
     const runId = (run as { id: number }).id;
 
     // Login as USER_B
-    const otherEmail = `sec-cross-${Date.now()}@nextgenstock.test`;
+    const otherEmail = `sec-cross-${Date.now()}@nextgenstock.io`;
     await request.post(`${API_URL}/auth/logout`);
     await request.post(`${API_URL}/auth/register`, {
       data: { email: otherEmail, password: "SecurePass1234!" },
@@ -274,7 +274,7 @@ test.describe("Security — 403 on cross-user resource access", () => {
     const { body: cred } = await createCredential(request, ALPACA_CRED);
     const credId = (cred as { id: number }).id;
 
-    const otherEmail = `sec-cred-${Date.now()}@nextgenstock.test`;
+    const otherEmail = `sec-cred-${Date.now()}@nextgenstock.io`;
     await request.post(`${API_URL}/auth/logout`);
     await request.post(`${API_URL}/auth/register`, {
       data: { email: otherEmail, password: "SecurePass1234!" },

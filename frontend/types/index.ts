@@ -80,7 +80,7 @@ export type StrategyMode =
   | "ai-pick"
   | "buy-low-sell-high";
 
-export type Timeframe = "1d" | "1h" | "4h" | "1wk";
+export type Timeframe = "5m" | "15m" | "30m" | "1h" | "4h" | "1d" | "1wk" | "1mo";
 
 export interface RunStrategyRequest {
   symbol: string;

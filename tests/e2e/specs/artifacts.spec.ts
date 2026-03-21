@@ -137,6 +137,12 @@ test.describe("Artifacts API", () => {
   test("ART-07: GET /artifacts/{id} returns 404 for non-existent artifact", async ({
     request,
   }) => {
+    // Must be authenticated — the route checks auth before resource lookup,
+    // so an unauthenticated request returns 401, not 404.
+    const uniqueArt07Email = `art07-${Date.now()}@nextgenstock.io`;
+    await request.post(`${API_URL}/auth/register`, {
+      data: { email: uniqueArt07Email, password: "TestPass1234!" },
+    });
     const res = await request.get(`${API_URL}/artifacts/999999999`);
     expect(res.status()).toBe(404);
   });
@@ -217,7 +223,7 @@ test.describe("Artifacts API", () => {
 
     // Switch to another user
     await request.post(`${API_URL}/auth/logout`);
-    const otherEmail = `art-cross-${Date.now()}@nextgenstock.test`;
+    const otherEmail = `art-cross-${Date.now()}@nextgenstock.io`;
     await request.post(`${API_URL}/auth/register`, {
       data: { email: otherEmail, password: "OtherUser123!" },
     });

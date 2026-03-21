@@ -14,21 +14,21 @@ export const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:300
 // ── User credentials ───────────────────────────────────────────────────────
 /** Primary test user.  Created fresh in global-setup if missing. */
 export const USER_A = {
-  email: "e2e-user-a@nextgenstock.test",
+  email: "e2e-user-a@nextgenstock.io",
   password: "TestPass1234!",
   displayName: "Test User A",
 };
 
 /** Secondary test user — used for multi-tenancy tests. */
 export const USER_B = {
-  email: "e2e-user-b@nextgenstock.test",
+  email: "e2e-user-b@nextgenstock.io",
   password: "TestPass5678!",
   displayName: "Test User B",
 };
 
 /** Invalid credentials — should never succeed. */
 export const INVALID_USER = {
-  email: "nobody@nextgenstock.test",
+  email: "nobody@nextgenstock.io",
   password: "WrongPassword99!",
 };
 
