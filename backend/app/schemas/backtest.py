@@ -5,12 +5,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.schemas.strategy import TimeframeEnum
+# Backtest-specific timeframe: excludes intraday sub-hour intervals (5m, 15m, 30m)
+# because yfinance only provides 60 days of intraday history, making backtests unreliable.
+BacktestTimeframeEnum = Literal["1h", "4h", "1d", "1wk", "1mo"]
 
 
 class BacktestRunRequest(BaseModel):
     symbol: str = Field(description="Valid yfinance ticker")
-    timeframe: TimeframeEnum = Field(default="1d")
+    timeframe: BacktestTimeframeEnum = Field(default="1d")
     mode: Literal["conservative", "aggressive", "ai-pick", "buy-low-sell-high"] = Field(
         description="Strategy mode to backtest"
     )

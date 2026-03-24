@@ -196,6 +196,7 @@ export interface OptimizationChartData {
 export interface SignalCheckRequest {
   symbol: string;
   timeframe: Timeframe;
+  mode: "conservative" | "aggressive";
   credential_id: number;
 }
 

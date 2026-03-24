@@ -73,7 +73,10 @@ export default function LiveTradingPage() {
     number | null
   >(null);
   const [symbol, setSymbol] = useState("AAPL");
+  // committedSymbol is only updated on blur or Enter — prevents API calls on every keystroke
+  const [committedSymbol, setCommittedSymbol] = useState("AAPL");
   const [timeframe, setTimeframe] = useState<Timeframe>("1d");
+  const [mode, setMode] = useState<"conservative" | "aggressive">("conservative");
   const [dryRun, setDryRun] = useState(true);
   const [showLiveConfirm, setShowLiveConfirm] = useState(false);
   const [signalResult, setSignalResult] = useState<SignalCheckResult | null>(
@@ -96,17 +99,19 @@ export default function LiveTradingPage() {
   });
 
   const { data: chartData } = useQuery({
-    queryKey: ["live", "chart-data", symbol, timeframe],
-    queryFn: () => liveApi.chartData(symbol, timeframe),
-    enabled: !!symbol,
+    queryKey: ["live", "chart-data", committedSymbol, timeframe],
+    queryFn: () => liveApi.chartData(committedSymbol, timeframe),
+    // Only fetch when we have a plausible symbol (at least 1 letter, min 2 chars)
+    enabled: committedSymbol.length >= 2 && /[A-Z]/.test(committedSymbol),
   });
 
   const { mutate: runSignalCheck, isPending: isSignalChecking } = useMutation({
     mutationFn: () => {
       if (!selectedCredentialId) throw new Error("Select a broker credential");
       return liveApi.signalCheck({
-        symbol,
+        symbol: committedSymbol,
         timeframe,
+        mode,
         credential_id: selectedCredentialId,
       });
     },
@@ -134,7 +139,7 @@ export default function LiveTradingPage() {
       if (!selectedCredentialId)
         throw new Error("Select a broker credential");
       return liveApi.execute({
-        symbol,
+        symbol: committedSymbol,
         side: values.side,
         quantity: values.quantity,
         credential_id: selectedCredentialId,
@@ -254,6 +259,13 @@ export default function LiveTradingPage() {
                 <Input
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                  onBlur={() => setCommittedSymbol(symbol.trim())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      setCommittedSymbol(symbol.trim());
+                    }
+                  }}
                   placeholder="AAPL"
                 />
               </div>
@@ -274,6 +286,23 @@ export default function LiveTradingPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Strategy Mode */}
+            <div className="space-y-1.5">
+              <Label>Strategy Mode</Label>
+              <Select
+                value={mode}
+                onValueChange={(v) => setMode(v as "conservative" | "aggressive")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="conservative">Conservative</SelectItem>
+                  <SelectItem value="aggressive">Aggressive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Dry Run Toggle */}
@@ -310,7 +339,7 @@ export default function LiveTradingPage() {
                   </Badge>
                   <span className="text-xs text-muted-foreground">Signal:</span>
                   <Badge variant={getSignalVariant(signalResult.signal)}>
-                    {signalResult.signal.toUpperCase()}
+                    {signalResult.signal?.toUpperCase() ?? '—'}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {signalResult.confirmation_count} confirmations
@@ -456,9 +485,9 @@ export default function LiveTradingPage() {
       </Card>
 
       {/* Orders Table */}
-      <Card className="mt-6">
+      <Card className="mt-6" data-testid="orders">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm">Recent Orders</CardTitle>
+          <CardTitle className="text-sm">Order History</CardTitle>
         </CardHeader>
         <CardContent>
           {ordersLoading ? (

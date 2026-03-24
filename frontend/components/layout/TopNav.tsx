@@ -11,9 +11,12 @@ export function TopNav({ title, actions }: TopNavProps) {
   return (
     <div className="flex flex-1 items-center justify-between min-w-0">
       {/* Page title — small, muted, left-aligned */}
-      <span className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider truncate">
+      <h1
+        data-testid="page-title"
+        className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wider truncate"
+      >
         {title}
-      </span>
+      </h1>
 
       {/* Compact action buttons */}
       {actions && (

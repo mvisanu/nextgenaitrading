@@ -1,10 +1,48 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 /**
- * DEV MODE: Authentication bypass — all routes are accessible without login.
- * Remove this shortcut before deploying.
+ * Routes that require authentication.
+ * Unauthenticated access redirects to /login with a callbackUrl query param.
  */
-export function middleware() {
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/strategies",
+  "/backtests",
+  "/live-trading",
+  "/artifacts",
+  "/profile",
+];
+
+/**
+ * Auth routes: authenticated users should be redirected to /dashboard.
+ */
+const AUTH_ROUTES = ["/login", "/register"];
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  const hasToken = request.cookies.has("access_token");
+
+  // Redirect authenticated users away from auth pages
+  if (hasToken && AUTH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Redirect unauthenticated users away from protected routes
+  if (!hasToken && PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Root redirect: / → /dashboard (authenticated) or /login (unauthenticated)
+  if (pathname === "/") {
+    return NextResponse.redirect(
+      new URL(hasToken ? "/dashboard" : "/login", request.url)
+    );
+  }
+
   return NextResponse.next();
 }
 

@@ -19,18 +19,19 @@ from app.schemas.backtest import (
     ChartDataResponse,
     LeaderboardEntry,
 )
+from app.schemas.strategy import StrategyRunOut
 from app.services.market_data import df_to_candles, load_ohlcv_for_strategy
 from app.services.strategy_run_service import run_strategy
 
 router = APIRouter(prefix="/backtests", tags=["backtests"])
 
 
-@router.post("/run", response_model=BacktestOut, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/run", response_model=StrategyRunOut, status_code=status.HTTP_202_ACCEPTED)
 async def run_backtest_endpoint(
     payload: BacktestRunRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> BacktestOut:
+) -> StrategyRunOut:
     run = await run_strategy(
         symbol=payload.symbol,
         timeframe=payload.timeframe,
@@ -40,7 +41,7 @@ async def run_backtest_endpoint(
         current_user=current_user,
         run_type="backtest",
     )
-    return BacktestOut.model_validate(run)
+    return StrategyRunOut.model_validate(run)
 
 
 @router.get("", response_model=list[BacktestOut])

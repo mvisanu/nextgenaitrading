@@ -50,7 +50,7 @@ test.describe("Live Trading API", () => {
   });
 
   // ── Signal check ────────────────────────────────────────────────────────────
-  test("LIVE-01: POST /live/run-signal-check returns StrategyRunOut with signal fields", async ({
+  test("LIVE-01: POST /live/run-signal-check returns SignalCheckOut with signal fields", async ({
     request,
   }) => {
     const { ok, status, body } = await runSignalCheck(request, {
@@ -62,9 +62,9 @@ test.describe("Live Trading API", () => {
     });
     expect([200, 202]).toContain(status);
     expect(ok).toBe(true);
-    expect(body).toHaveProperty("id");
-    expect(body).toHaveProperty("current_signal");
-    expect(body).toHaveProperty("current_regime");
+    expect(body).toHaveProperty("strategy_run_id");
+    expect(body).toHaveProperty("signal");
+    expect(body).toHaveProperty("regime");
     expect(body).toHaveProperty("confirmation_count");
   });
 

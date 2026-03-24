@@ -70,8 +70,20 @@ async function apiFetch<T>(
     },
   });
 
-  // DEV MODE: auth bypass — skip 401 refresh/redirect logic
-  // if (res.status === 401 && !isRetry) { ... }
+  // On 401, attempt a silent token refresh once, then retry the original request.
+  // If the refresh also fails, redirect to /login.
+  if (res.status === 401 && !isRetry) {
+    try {
+      await refreshTokenOnce();
+      return apiFetch<T>(path, options, true);
+    } catch {
+      // Refresh failed — redirect to login
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+      throw new Error("Session expired. Please log in again.");
+    }
+  }
 
   if (!res.ok) {
     let detail = `HTTP ${res.status}`;
@@ -229,5 +241,9 @@ export const artifactApi = {
   get: (id: number) => get<Artifact>(`/artifacts/${id}`),
 
   pineScript: (id: number) =>
-    get<{ code: string }>(`/artifacts/${id}/pine-script`),
+    get<{ id: number; variant_name: string; symbol: string; pine_script_version: string; pine_script_code: string; code?: string }>(`/artifacts/${id}/pine-script`).then((r) => ({
+      ...r,
+      // Normalize field name: backend returns pine_script_code, client expects code
+      code: r.pine_script_code ?? r.code ?? "",
+    })),
 };

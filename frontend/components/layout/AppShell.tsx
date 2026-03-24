@@ -72,6 +72,8 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, title, actions }: AppShellProps) {
+  const { user } = useAuth();
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop sidebar — 48px collapsed rail, expands to 200px on hover */}
@@ -111,7 +113,7 @@ export function AppShell({ children, title, actions }: AppShellProps) {
             Connected
           </span>
           <span className="text-border">|</span>
-          <span>dev@nextgenstock.local</span>
+          <span>{user?.email ?? ""}</span>
         </div>
       </div>
     </div>

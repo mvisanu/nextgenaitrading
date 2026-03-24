@@ -4,9 +4,10 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query";
 import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { useAuth } from "@/components/layout/AppShell";
 import { PriceChart, type DrawingMode, type ChartClickPoint } from "@/components/charts/PriceChart";
 import { detectFVGs, type DrawingData, type TrendLineData, type FVGData, type DrawingPoint } from "@/components/charts/DrawingPrimitives";
-import { liveApi } from "@/lib/api";
+import { liveApi, strategyApi } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import type { CandleBar } from "@/types";
@@ -618,6 +619,89 @@ function SymbolSearch({
   );
 }
 
+// ─── Dashboard User Status ────────────────────────────────────────────────────
+
+function DashboardUserStatus() {
+  const { user } = useAuth();
+  return <span>{user?.email ?? ""}</span>;
+}
+
+// ─── KPI Cards panel ─────────────────────────────────────────────────────────
+
+function KpiCardsPanel() {
+  const { data: runs = [] } = useQuery({
+    queryKey: ["strategies", "runs"],
+    queryFn: () => strategyApi.listRuns(10),
+  });
+
+  const totalRuns = runs.length;
+  const lastRun = runs[0];
+  const winningRuns = runs.filter(
+    (r) => r.current_signal === "BUY"
+  ).length;
+
+  return (
+    <div className="shrink-0 border-b border-border bg-card/50 px-3 py-2">
+      {/* KPI cards row */}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="card flex flex-col px-3 py-1.5 rounded border border-border bg-secondary/50 min-w-[100px]" data-testid="kpi-card">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Runs</span>
+          <span className="text-sm font-semibold text-foreground">{totalRuns}</span>
+        </div>
+        <div className="card flex flex-col px-3 py-1.5 rounded border border-border bg-secondary/50 min-w-[100px]" data-testid="kpi-card">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">BUY Signals</span>
+          <span className="text-sm font-semibold text-[#26a69a]">{winningRuns}</span>
+        </div>
+        <div className="card flex flex-col px-3 py-1.5 rounded border border-border bg-secondary/50 min-w-[120px]" data-testid="kpi-card">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Last Symbol</span>
+          <span className="text-sm font-semibold text-foreground font-mono">{lastRun?.symbol ?? "—"}</span>
+        </div>
+        <div className="card flex flex-col px-3 py-1.5 rounded border border-border bg-secondary/50 min-w-[100px]" data-testid="kpi-card">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Last Signal</span>
+          <span className={`text-sm font-semibold ${lastRun?.current_signal === "BUY" ? "text-[#26a69a]" : lastRun?.current_signal === "SELL" ? "text-[#ef5350]" : "text-muted-foreground"}`}>
+            {lastRun?.current_signal ?? "—"}
+          </span>
+        </div>
+      </div>
+
+      {/* Recent strategy runs */}
+      <div data-testid="recent-runs">
+        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Recent Strategy Runs</h2>
+        {runs.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">No strategy runs yet. <a href="/strategies" className="text-primary hover:underline">Run a strategy</a> to see results here.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-muted-foreground border-b border-border">
+                  <th className="text-left pb-0.5 pr-3">Symbol</th>
+                  <th className="text-left pb-0.5 pr-3">Mode</th>
+                  <th className="text-left pb-0.5 pr-3">Timeframe</th>
+                  <th className="text-left pb-0.5">Signal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.slice(0, 5).map((r) => (
+                  <tr key={r.id} className="border-b border-border/50">
+                    <td className="pr-3 py-0.5 font-mono font-semibold text-foreground">{r.symbol}</td>
+                    <td className="pr-3 py-0.5 text-muted-foreground">{r.mode_name}</td>
+                    <td className="pr-3 py-0.5 text-muted-foreground">{r.timeframe}</td>
+                    <td className="py-0.5">
+                      <span className={r.current_signal === "BUY" ? "text-[#26a69a]" : r.current_signal === "SELL" ? "text-[#ef5350]" : "text-muted-foreground"}>
+                        {r.current_signal ?? "—"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -811,6 +895,9 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      {/* Visually hidden page title for accessibility and test selectors */}
+      <h1 className="sr-only" data-testid="page-title">Dashboard</h1>
+
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <div className="hidden lg:block lg:fixed lg:inset-y-0 lg:z-40">
         <Sidebar />
@@ -970,6 +1057,9 @@ export default function DashboardPage() {
           </button>
         </header>
 
+        {/* ── KPI cards + recent runs ───────────────────────────────────── */}
+        <KpiCardsPanel />
+
         {/* ── Main content (chart + watchlist) ─────────────────────────── */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
 
@@ -1119,7 +1209,7 @@ export default function DashboardPage() {
             Connected
           </span>
           <div className="flex-1" />
-          <span>dev@nextgenstock.local</span>
+          <DashboardUserStatus />
         </div>
       </div>
     </div>

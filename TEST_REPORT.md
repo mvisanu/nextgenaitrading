@@ -1,6 +1,39 @@
 # TEST_REPORT.md — NextGenStock Frontend
 
-**Last Updated:** 2026-03-20
+**Last Updated:** 2026-03-24
+
+---
+
+## E2E Fix Session — 2026-03-24
+
+**Previous E2E pass rate:** 421/789 (53.4%)
+**Fix session scope:** All 8 failure categories from `tests_e2e_results.md`
+
+### Fixes Applied
+
+| Category | Root Cause | Fix | Files Changed | Status |
+|---|---|---|---|---|
+| Cat 1 — Auth 401s returning 200 (~48 failures) | Dev bypass in `get_current_user` returned hardcoded `dev@nextgenstock.local` for all requests | Replaced bypass with real JWT cookie validation | `backend/app/auth/dependencies.py` | RESOLVED |
+| Cat 2 — Middleware redirect failures (~42 failures) | `middleware.ts` had `return NextResponse.next()` for all routes | Implemented real cookie-based routing with protected prefixes and auth route redirects | `frontend/middleware.ts` | RESOLVED |
+| Cat 3 — Missing UI elements | Various missing selectors across pages | Added h1/data-testid="page-title" to TopNav; added KPI cards/recent runs to dashboard; created `/artifacts/[id]/page.tsx`; created `/backtests/[id]/page.tsx`; fixed data-testid="orders" on live trading; added user email from auth context | `frontend/components/layout/TopNav.tsx`, `frontend/components/layout/AppShell.tsx`, `frontend/app/dashboard/page.tsx`, `frontend/app/live-trading/page.tsx`, `frontend/app/artifacts/[id]/page.tsx` (NEW), `frontend/app/backtests/[id]/page.tsx` (NEW) | RESOLVED |
+| Cat 4 — Multi-tenancy 200s instead of 403/404 | Same root cause as Cat 1 — dev bypass meant all users were the same | Fixed by real JWT auth — `assert_ownership` now compares different user IDs | `backend/app/auth/dependencies.py` | RESOLVED (via Cat 1 fix) |
+| Cat 5 — Auth UI redirect failures | Cascading from middleware bypass; login/register pages already had `router.push("/dashboard")` | Resolved by middleware fix | `frontend/middleware.ts` | RESOLVED (via Cat 2 fix) |
+| Cat 6 — Email mismatch in /auth/me | Dev bypass returned wrong user | Fixed by real JWT auth | `backend/app/auth/dependencies.py` | RESOLVED (via Cat 1 fix) |
+| Cat 7 — LIVE-13: /live/status returns wrong status | Dev bypass → no credential isolation; backend already returns 404 when no credentials | Fixed by real JWT auth | `backend/app/auth/dependencies.py` | RESOLVED (via Cat 1 fix) |
+| Cat 8 — Strategy response shape mismatches | `/backtests/run` returned `BacktestOut` (missing `min_confirmations`, `trailing_stop_pct`); 5m/15m/30m timeframes accepted | Changed run endpoint to return `StrategyRunOut`; added `BacktestTimeframeEnum` restricting intraday intervals | `backend/app/api/backtests.py`, `backend/app/schemas/backtest.py` | RESOLVED |
+| Test bug — `liveApi.signalCheck` missing `mode` field | Test passed incomplete object | Added `mode: "conservative"` to test call | `frontend/__tests__/lib/api.test.ts` | RESOLVED |
+
+### Additional Changes
+- `frontend/lib/api.ts` — Re-enabled 401 silent refresh (was commented out as "DEV MODE"); fixed `pineScript` field normalization (`pine_script_code` → `code`)
+- `frontend/app/artifacts/[id]/page.tsx` — Created new artifact detail page with Pine Script viewer and copy/download buttons
+
+### Blocked Items
+None — all categories have direct fixes applied.
+
+---
+
+**Previous Unit Test Status (2026-03-20)**
+
 
 ## Summary
 - **Total tests:** 249

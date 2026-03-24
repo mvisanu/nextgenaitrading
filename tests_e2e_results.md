@@ -1,919 +1,639 @@
-# NextGenStock — E2E Test Suite Documentation
+# E2E Test Results Report
 
-**Version:** 1.0
-**Date:** 2026-03-19
-**Framework:** Playwright 1.44+ with TypeScript
-**Test directory:** `tests/e2e/`
-
----
-
-## Table of Contents
-
-1. [Prerequisites](#prerequisites)
-2. [Installation](#installation)
-3. [Environment Setup](#environment-setup)
-4. [Running the Tests](#running-the-tests)
-5. [Test Suites and Test Cases](#test-suites-and-test-cases)
-6. [Test Coverage Matrix](#test-coverage-matrix)
-7. [CI/CD Integration](#cicd-integration)
-8. [Test Data Management](#test-data-management)
-9. [Known Limitations and Gaps](#known-limitations-and-gaps)
-10. [Adding New Tests](#adding-new-tests)
+**Date:** 2026-03-24
+**Environment:** All services running (Docker PostgreSQL on :5432, FastAPI backend on :8000, Next.js frontend on :3000)
+**Runner:** Playwright with 1 worker, 3 browsers (chromium, firefox, webkit)
+**Duration:** ~1.1 hours
 
 ---
 
-## Prerequisites
+## Summary
 
-| Requirement | Version | Notes |
-|---|---|---|
-| Node.js | 20+ | Required for Playwright |
-| Python | 3.12+ | Backend runtime |
-| PostgreSQL | 15+ | Or Supabase connection string |
-| FastAPI backend | Running on :8000 | `uvicorn app.main:app --port 8000` |
-| Next.js frontend | Running on :3000 | `npm run dev` from `frontend/` |
+| Metric | Count |
+|--------|-------|
+| **Total tests** | 789 |
+| **Passed** | 421 |
+| **Failed** | 358 |
+| **Skipped** | 10 |
+| **Pass rate** | **53.4%** |
+
+### Per-Browser Breakdown
+
+| Browser | Total | Passed | Failed | Skipped |
+|---------|-------|--------|--------|---------|
+| Chromium | 263 | 141 | 118 | 4 |
+| Firefox | 263 | 139 | 120 | 4 |
+| WebKit | 263 | 141 | 120 | 2 |
 
 ---
 
-## Installation
+## Failure Categories
+
+### Category 1: Auth 401 Tests Returning 200 (~48 failures)
+
+Tests expect unauthenticated requests to return HTTP 401, but receive 200 instead. The test creates a fresh request context (or logs out first) expecting no valid session, but the backend still serves a successful response.
+
+**Affected endpoints and test IDs:**
+- `GET /auth/me` -- AUTH-03-02, API-13
+- `POST /auth/logout` then `GET /auth/me` -- AUTH-04-01, API-15
+- `GET /backtests` -- BT-03
+- `GET /backtests/{id}` -- BT-06
+- `GET /backtests/{id}/trades` -- BT-08
+- `GET /broker/credentials` -- CRED-08
+- `POST /live/run-signal-check` -- LIVE-03
+- `POST /live/execute` -- LIVE-07
+- `GET /live/orders` -- LIVE-09
+- `GET /live/positions` -- LIVE-11
+- `GET /live/status` -- LIVE-14
+- `GET /artifacts` -- ART-11
+- `GET /auth/me` (unauthenticated) -- AUTH-07-03
+- SEC-09 (8 of 16 endpoints): `GET /auth/me`, `GET /profile`, `PATCH /profile`, `GET /broker/credentials`, `GET /backtests`, `GET /strategies/runs`, `GET /live/orders`, `GET /live/positions`, `GET /live/status`, `GET /artifacts`
+- API-18 (protected endpoints batch test)
+- STRAT-07, STRAT-12, PROF-07, PROF-08
+
+**Root cause:** The Playwright `request` context shares cookies across calls within the same test fixture. When a prior test logs in using the same `request` fixture, cookies persist. Additionally, some endpoints (GET list endpoints) may be returning 200 with empty arrays instead of 401 when the auth dependency resolves a stale/default session. The `dev@nextgenstock.local` user session from DB seeding may also be interfering.
+
+**Impact:** ~48 unique test cases failing across all browsers.
+
+---
+
+### Category 2: Middleware Redirect Failures (~42 failures)
+
+Tests expect unauthenticated browser access to protected routes (`/dashboard`, `/strategies`, `/backtests`, `/live-trading`, `/artifacts`, `/profile`) to redirect to `/login`, but the page stays on the protected route.
+
+**Affected test IDs:**
+- AUTH-06: 6 routes x 3 browsers = 18 failures
+- MW-01: 6 routes x 3 browsers = 18 failures
+- MW-02: `/login` redirect should include `callbackUrl` query param (3 failures, times out at 1 min)
+- MW-03: Root path `/` should redirect to `/login` (3 failures)
+- DASH-02: Unauthenticated access to `/dashboard` should redirect (3 failures)
+
+**Root cause:** The Next.js middleware (`frontend/middleware.ts`) is either not checking the `access_token` cookie properly, not intercepting the routes, or there is a timing/rendering issue where the page loads before the redirect fires. All these tests timeout at ~11 seconds waiting for the URL to change.
+
+**Impact:** ~42 failures (14 unique test cases x 3 browsers).
+
+---
+
+### Category 3: UI Element Not Found (~39 failures)
+
+Tests look for specific DOM elements/selectors that do not exist in the current frontend implementation.
+
+**Affected test IDs and missing elements:**
+
+| Test ID | Missing Element | Selector Used |
+|---------|----------------|---------------|
+| ART-13 | Page heading on `/artifacts` | `h1, h2, [data-testid="page-title"]` |
+| ART-14 | "BTC-USD" or "BTC" text in artifact list | `text=BTC-USD`, `text=BTC` (chromium only) |
+| ART-16 | Copy button for Pine Script | `button:has-text("Copy"), button[aria-label*="copy" i], [data-testid="copy-button"]` |
+| BT-14 | Backtest run form | Run form selectors on `/backtests` |
+| BT-17 | Leaderboard table | Leaderboard table visibility check |
+| DASH-03 | Dashboard heading "Dashboard" | Heading containing "Dashboard" |
+| DASH-04 | KPI metric cards | KPI card selectors |
+| DASH-05 | Recent strategy runs section (nextgenstock-live) | Strategy runs section |
+| DASH-07 | User email in sidebar/header | Email text matching test user |
+| LIVE-18 | Disclaimer/warning alert | Alert/disclaimer selectors |
+| LIVE-22 | Orders history table | Orders table selectors |
+| CRED-10 | Add credential form interaction | Times out trying to add credential via UI (60s timeout) |
+| CRED-14 | Test connection result badge (firefox/webkit) | Result badge after test button click |
+| PROF-09 | Profile form elements | Expected form element selectors |
+| STRAT-18 | Validation error for invalid symbol | Error message display |
+| STRAT-19 | Signal/confirmation count in results | Result display selectors |
+| STRAT-01/02 | Strategy response shape fields | `confirmation_count` field expected but missing |
+
+**nextgenstock-live.spec.ts** specific UI failures (all behind login wall, timeout at ~16.5s):
+- DASH-01 through DASH-06 (dashboard page tests)
+- PAGES-01 through PAGES-08 (protected page rendering)
+- SESSION-01 through SESSION-04 (session management)
+- NAV-01 through NAV-03 (navigation flows)
+
+**Root cause:** Frontend pages exist but either (a) don't render the expected elements with the selectors tests look for, (b) the authenticated page never loads because the login flow in the test fails first (cascading from Category 5), or (c) the page structure differs from the test expectations.
+
+**Impact:** ~39 unique test cases x 3 browsers, though many of the nextgenstock-live.spec.ts failures are cascading from login failures.
+
+---
+
+### Category 4: Multi-Tenancy Returning Wrong Status Codes (~39 failures)
+
+Tests expect 403 or 404 when User B accesses User A's resources, but receive 200 instead.
+
+**Affected test IDs:**
+
+| Test ID | Resource | Expected | Got |
+|---------|----------|----------|-----|
+| MT-01 | `GET /backtests/{userA_runId}` | 403/404 | 200 |
+| MT-02 | `GET /backtests/{runId}/trades` | 403/404 | 200 |
+| MT-03 | `GET /backtests/{runId}/leaderboard` | 403/404 | 200 |
+| MT-04 | `GET /backtests` (list filtering) | Not contain User A's IDs | Contains them |
+| MT-05 | `GET /strategies/runs/{runId}` | 403/404 | 200 |
+| MT-06 | `GET /strategies/runs` (list filtering) | Not contain User A's IDs | Contains them |
+| MT-07 | `POST /broker/credentials/{credId}/test` | 403/404 | 200 |
+| MT-08 | `DELETE /broker/credentials/{credId}` | 403/404 | 204 |
+| MT-09 | `PATCH /broker/credentials/{credId}` | 403/404 | 200 |
+| MT-10 | `GET /artifacts/{artifactId}` | 403/404 | 200 |
+| MT-11 | `GET /artifacts` (list filtering) | Only User B's | Contains User A's |
+| MT-12 | `GET /live/orders` (filtering) | Not contain User A's | Contains them |
+| MT-14 | User ID injection in request body | Should be ignored | User ID accepted |
+| ART-12 | `GET /artifacts/{id}/pine-script` | 403/404 | 200 |
+| BT-13 | `GET /backtests/{id}/chart-data` | 403/404 | 200 |
+| CRED-07 | `GET /broker/credentials/{id}` | 403 | 200 |
+| SEC-10 | `GET /backtests/{id}` cross-user | 403/404 | 200 |
+| SEC-11 | `PATCH /broker/credentials/{id}` cross-user | 403/404 | 200 |
+| LIVE-17 | `GET /live/orders` cross-user | Not visible | Visible |
+
+**Root cause:** The backend queries are not properly scoping by `user_id`. The `WHERE user_id = current_user.id` filter is either missing or the `get_current_user` dependency is returning a shared/default user (possibly the `dev@nextgenstock.local` seeded user) for all requests. This is likely the same root cause as Category 1 -- if auth is not properly isolating sessions, both users resolve to the same account.
+
+**Impact:** 13 unique test cases x 3 browsers = 39 failures. This is a **critical security issue**.
+
+---
+
+### Category 5: Auth UI Flow Failures (~18 failures)
+
+Login and registration form submissions do not redirect to `/dashboard` after success.
+
+**Affected test IDs:**
+- AUTH-01-05: Register form stays on `/register` after submit (3 browsers)
+- AUTH-02-05: Login form stays on `/login` after submit (3 browsers)
+- AUTH-07-01: HttpOnly cookie check fails because login never completes in browser (3 browsers)
+- AUTH-07-02: localStorage check fails because login never completes (3 browsers)
+- REG-UI-05: Valid registration does not redirect to `/dashboard` (3 browsers)
+- REG-UI-06: Duplicate email error toast not shown (stays on /register) (3 browsers)
+- REG-UI-10: Authenticated user visiting `/register` not redirected to `/dashboard` (3 browsers)
+- LOGIN-UI-07: Successful login does not redirect to `/dashboard` (3 browsers)
+- LOGIN-UI-11: Authenticated user visiting `/login` not redirected to `/dashboard` (3 browsers)
+
+**Root cause:** The form submission handler in the register/login pages likely calls the API but does not perform `router.push("/dashboard")` on success, or the redirect depends on middleware that is broken (see Category 2). The page remains at the auth URL after form submission. Error message: `Expected pattern: /\/dashboard/; Received string: "http://localhost:3000/login"` (or `/register`).
+
+**Impact:** ~18 failures (6 unique test cases x 3 browsers), plus ~60 cascading failures in nextgenstock-live.spec.ts.
+
+---
+
+### Category 6: Email Mismatch in /auth/me (3 failures)
+
+- AUTH-03-01: Expected `e2e-user-a@nextgenstock.io` but received `dev@nextgenstock.local`
+- API-14: Same issue -- `GET /auth/me` returns wrong user data
+- API-15: Logout + subsequent `/auth/me` still returns 200 (related)
+
+**Root cause:** The `GET /auth/me` endpoint returns `dev@nextgenstock.local` instead of the test user's email. This indicates the login flow creates a session but `get_current_user` resolves to the pre-seeded dev user, or the access token JWT contains the wrong user ID. This could be caused by a DB seeding script that creates a default session that persists across test runs.
+
+**Impact:** 3 unique test cases x 3 browsers = 9 failures.
+
+---
+
+### Category 7: Live Status 404 vs Actual Response (3 failures)
+
+- LIVE-13: `GET /live/status` expected 404 when no credentials exist, but got a different status (likely 200 with empty/default data, or 422).
+
+**Root cause:** The endpoint returns a default/empty account status rather than 404 when no broker credentials exist for the user.
+
+**Impact:** 3 failures (1 test x 3 browsers).
+
+---
+
+### Category 8: Strategy Response Shape Mismatches (6 failures)
+
+- STRAT-01: Conservative backtest response missing `confirmation_count` field
+- STRAT-02: Aggressive backtest response missing `trailing_stop_pct` field
+- STRAT-08: Invalid timeframe not returning 422 (likely returns 200 and uses default)
+
+**Root cause:** The `StrategyRunOut` schema may not include all fields the tests expect, or the backtest endpoint normalizes/accepts invalid timeframes silently.
+
+**Impact:** 3 unique test cases x 3 browsers = ~9 failures.
+
+---
+
+### Category 9: Skipped Tests (10 total)
+
+These tests were skipped (marked with `-`), not failed:
+- CRED-13: Delete credential confirmation dialog (3 browsers)
+- CRED-14: Test connection result badge (chromium skipped; firefox/webkit fail)
+- LIVE-20: Live trading confirmation dialog (3 browsers)
+- LIVE-23: Warning banner for LIVE mode (3 browsers)
+
+These are likely `test.skip()` or `test.fixme()` in the spec files, pending UI implementation.
+
+---
+
+## Per-Spec File Breakdown
+
+### artifacts.spec.ts (16 tests per browser = 48 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| ART-01 | GET /artifacts empty array | PASS | PASS | PASS | -- |
+| ART-02 | AI Pick creates artifact | PASS | PASS | PASS | -- |
+| ART-03 | Artifact metadata shape | PASS | PASS | PASS | -- |
+| ART-04 | mode_name is 'ai-pick' | PASS | PASS | PASS | -- |
+| ART-05 | BLSH artifact mode_name | PASS | PASS | PASS | -- |
+| ART-06 | GET /artifacts/{id} | PASS | PASS | PASS | -- |
+| ART-07 | 404 for non-existent | PASS | PASS | PASS | -- |
+| ART-08 | Pine Script with code | PASS | PASS | PASS | -- |
+| ART-09 | Code starts with @version=5 | PASS | PASS | PASS | -- |
+| ART-10 | Symbol matches optimizer | PASS | PASS | PASS | -- |
+| ART-11 | 401 when unauthenticated | FAIL | FAIL | FAIL | Cat 1 |
+| ART-12 | 403 for other user's artifact | FAIL | FAIL | FAIL | Cat 4 |
+| ART-13 | Artifacts page loads | FAIL | FAIL | FAIL | Cat 3 |
+| ART-14 | BTC symbol visible | FAIL | PASS | PASS | Cat 3 |
+| ART-15 | Click shows Pine Script | PASS | PASS | PASS | -- |
+| ART-16 | Copy button present | FAIL | FAIL | FAIL | Cat 3 |
+
+**Pass: 36/48 | Fail: 11/48 | Skip: 0**
+
+---
+
+### auth.spec.ts (21 tests per browser = 63 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| AUTH-01-01 | Register returns 201 | PASS | PASS | PASS | -- |
+| AUTH-01-02 | Duplicate email 409/422 | PASS | PASS | PASS | -- |
+| AUTH-01-03 | Short password 422 | PASS | PASS | PASS | -- |
+| AUTH-01-04 | Malformed email 422 | PASS | PASS | PASS | -- |
+| AUTH-01-05 | Register UI redirects | FAIL | FAIL | FAIL | Cat 5 |
+| AUTH-01-06 | Inline error duplicate | PASS | PASS | PASS | -- |
+| AUTH-02-01 | Login returns 200 | PASS | PASS | PASS | -- |
+| AUTH-02-02 | Wrong password 401 | PASS | PASS | PASS | -- |
+| AUTH-02-03 | Non-existent email 401 | PASS | PASS | PASS | -- |
+| AUTH-02-04 | No raw tokens in body | PASS | PASS | PASS | -- |
+| AUTH-02-05 | Login UI redirects | FAIL | FAIL | FAIL | Cat 5 |
+| AUTH-02-06 | Error on wrong password | PASS | PASS | PASS | -- |
+| AUTH-03-01 | /auth/me returns user | FAIL | FAIL | FAIL | Cat 6 |
+| AUTH-03-02 | 401 without cookie | FAIL | FAIL | FAIL | Cat 1 |
+| AUTH-04-01 | Logout then 401 | FAIL | FAIL | FAIL | Cat 1 |
+| AUTH-04-02 | UI logout redirects | PASS | PASS | PASS | -- |
+| AUTH-05-01 | Refresh returns 200 | PASS | PASS | PASS | -- |
+| AUTH-05-02 | Refresh without cookie 401 | PASS | PASS | PASS | -- |
+| AUTH-06 x6 | Middleware redirects (6 routes) | 6xFAIL | 6xFAIL | 6xFAIL | Cat 2 |
+| AUTH-07-01 | HttpOnly cookie check | FAIL | FAIL | FAIL | Cat 5 |
+| AUTH-07-02 | No JWT in localStorage | FAIL | FAIL | FAIL | Cat 5 |
+| AUTH-07-03 | Unauth API returns 401 | FAIL | FAIL | FAIL | Cat 1 |
+
+**Pass: 30/63 | Fail: 33/63 | Skip: 0**
+
+---
+
+### backtests.spec.ts (17 tests per browser = 51 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| BT-01 | POST /backtests/run 202 | PASS | PASS | PASS | -- |
+| BT-02 | GET /backtests has entries | PASS | PASS | PASS | -- |
+| BT-03 | 401 unauthenticated | FAIL | FAIL | FAIL | Cat 1 |
+| BT-04 | GET /{id} correct details | PASS | PASS | PASS | -- |
+| BT-05 | 404 non-existent | PASS | PASS | PASS | -- |
+| BT-06 | 401 unauthenticated /{id} | FAIL | FAIL | FAIL | Cat 1 |
+| BT-07 | Trades array | PASS | PASS | PASS | -- |
+| BT-08 | 401 trades unauthenticated | FAIL | FAIL | FAIL | Cat 1 |
+| BT-09 | Leaderboard ranked | PASS | PASS | PASS | -- |
+| BT-10 | One selected_winner | PASS | PASS | PASS | -- |
+| BT-11 | Chart-data shape | PASS | PASS | PASS | -- |
+| BT-12 | OHLCV fields | PASS | PASS | PASS | -- |
+| BT-13 | 403 cross-user chart-data | FAIL | FAIL | FAIL | Cat 4 |
+| BT-14 | UI run form loads | FAIL | FAIL | FAIL | Cat 3 |
+| BT-15 | Equity curve renders | PASS | PASS | PASS | -- |
+| BT-16 | Trade list table | PASS | PASS | PASS | -- |
+| BT-17 | Leaderboard table | FAIL | FAIL | FAIL | Cat 3 |
+
+**Pass: 33/51 | Fail: 18/51 | Skip: 0**
+
+---
+
+### broker-credentials.spec.ts (14 tests per browser = 42 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| CRED-01 | Create Alpaca | PASS | PASS | PASS | -- |
+| CRED-02 | Create Robinhood | PASS | PASS | PASS | -- |
+| CRED-03 | List without raw keys | PASS | PASS | PASS | -- |
+| CRED-04 | Update profile_name | PASS | PASS | PASS | -- |
+| CRED-05 | Delete returns 204 | PASS | PASS | PASS | -- |
+| CRED-06 | Test returns {ok: bool} | PASS | PASS | PASS | -- |
+| CRED-07 | 403 cross-user | FAIL | FAIL | FAIL | Cat 4 |
+| CRED-08 | 401 unauthenticated | FAIL | FAIL | FAIL | Cat 1 |
+| CRED-09 | UI credential section | PASS | PASS | PASS | -- |
+| CRED-10 | Add via UI | FAIL | FAIL | FAIL | Cat 3 |
+| CRED-11 | No raw keys in DOM | PASS | PASS | PASS | -- |
+| CRED-12 | Green badge | PASS | PASS | PASS | -- |
+| CRED-13 | Delete confirmation | SKIP | SKIP | SKIP | Skipped |
+| CRED-14 | Test connection badge | SKIP | FAIL | FAIL | Cat 3 |
+
+**Pass: 27/42 | Fail: 10/42 | Skip: 3-4**
+
+---
+
+### dashboard.spec.ts (9 tests per browser = 27 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| DASH-01 | Lands on dashboard | PASS | PASS | PASS | -- |
+| DASH-02 | Unauth redirects | FAIL | FAIL | FAIL | Cat 2 |
+| DASH-03 | Heading "Dashboard" | FAIL | FAIL | FAIL | Cat 3 |
+| DASH-04 | KPI cards present | FAIL | FAIL | FAIL | Cat 3 |
+| DASH-05 | Recent runs section | FAIL | PASS | PASS | Cat 3 |
+| DASH-06 | Sidebar links | PASS | PASS | PASS | -- |
+| DASH-07 | User email visible | FAIL | FAIL | FAIL | Cat 3 |
+| DASH-08 | Broker health section | PASS | PASS | PASS | -- |
+| DASH-09 | CTA navigation | PASS | PASS | PASS | -- |
+
+**Pass: 16/27 | Fail: 11/27 | Skip: 0**
+
+---
+
+### live-trading.spec.ts (23 tests per browser = 69 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| LIVE-01 | Signal check returns shape | PASS | PASS | PASS | -- |
+| LIVE-02 | No broker order created | PASS | PASS | PASS | -- |
+| LIVE-03 | 401 unauthenticated signal | FAIL | FAIL | FAIL | Cat 1 |
+| LIVE-04 | Dry-run OrderOut | PASS | PASS | PASS | -- |
+| LIVE-05 | Dry-run default | PASS | PASS | PASS | -- |
+| LIVE-06 | Order in GET /live/orders | PASS | PASS | PASS | -- |
+| LIVE-07 | 401 execute unauth | FAIL | FAIL | FAIL | Cat 1 |
+| LIVE-08 | Orders array | PASS | PASS | PASS | -- |
+| LIVE-09 | 401 orders unauth | FAIL | FAIL | FAIL | Cat 1 |
+| LIVE-10 | Positions array | PASS | PASS | PASS | -- |
+| LIVE-11 | 401 positions unauth | FAIL | FAIL | FAIL | Cat 1 |
+| LIVE-12 | Account status shape | PASS | PASS | PASS | -- |
+| LIVE-13 | 404 no credentials | FAIL | FAIL | FAIL | Cat 7 |
+| LIVE-14 | 401 status unauth | FAIL | FAIL | FAIL | Cat 1 |
+| LIVE-15 | Chart-data candles | PASS | PASS | PASS | -- |
+| LIVE-16 | 422 invalid symbol | PASS | PASS | PASS | -- |
+| LIVE-17 | Cross-user order isolation | FAIL | FAIL | FAIL | Cat 4 |
+| LIVE-18 | Disclaimer alert | FAIL | FAIL | FAIL | Cat 3 |
+| LIVE-19 | Dry-run toggle | PASS | PASS | PASS | -- |
+| LIVE-20 | Confirmation dialog | SKIP | SKIP | SKIP | Skipped |
+| LIVE-21 | Positions table | PASS | PASS | PASS | -- |
+| LIVE-22 | Orders history table | FAIL | FAIL | FAIL | Cat 3 |
+| LIVE-23 | LIVE mode banner | SKIP | SKIP | SKIP | Skipped |
+
+**Pass: 30/69 | Fail: 27/69 | Skip: 6**
+
+---
+
+### multi-tenancy.spec.ts (14 tests per browser = 42 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| MT-01 | Cross-user backtest read | FAIL | FAIL | FAIL | Cat 4 |
+| MT-02 | Cross-user trades read | FAIL | FAIL | FAIL | Cat 4 |
+| MT-03 | Cross-user leaderboard | FAIL | FAIL | FAIL | Cat 4 |
+| MT-04 | List filtering backtests | FAIL | FAIL | FAIL | Cat 4 |
+| MT-05 | Cross-user strategy run | FAIL | FAIL | FAIL | Cat 4 |
+| MT-06 | List filtering strategy runs | FAIL | FAIL | FAIL | Cat 4 |
+| MT-07 | Cross-user cred test | FAIL | FAIL | FAIL | Cat 4 |
+| MT-08 | Cross-user cred delete | FAIL | FAIL | FAIL | Cat 4 |
+| MT-09 | Cross-user cred update | FAIL | FAIL | FAIL | Cat 4 |
+| MT-10 | Cross-user artifact read | FAIL | FAIL | FAIL | Cat 4 |
+| MT-11 | Artifact list filtering | FAIL | FAIL | FAIL | Cat 4 |
+| MT-12 | Cross-user orders | FAIL | FAIL | FAIL | Cat 4 |
+| MT-13 | Cross-user positions | PASS | PASS | PASS | -- |
+| MT-14 | User ID injection | FAIL | FAIL | FAIL | Cat 4 |
+
+**Pass: 3/42 | Fail: 39/42 | Skip: 0**
+
+---
+
+### nextgenstock-live.spec.ts (89 tests per browser = 267 total)
+
+| Test Group | Test IDs | Chromium | Firefox | WebKit | Category |
+|------------|----------|----------|---------|--------|----------|
+| API-01 to API-12 | Auth API basics | 12 PASS | 12 PASS | 12 PASS | -- |
+| API-13 | /auth/me without cookie | FAIL | FAIL | FAIL | Cat 1 |
+| API-14 | /auth/me with session | FAIL | FAIL | FAIL | Cat 6 |
+| API-15 | Logout + /auth/me | FAIL | FAIL | FAIL | Cat 1 |
+| API-16, API-17 | Refresh token | PASS | PASS | PASS | -- |
+| API-18 | Protected endpoints batch | FAIL | FAIL | FAIL | Cat 1 |
+| REG-UI-01 to 04 | Register form validation | 4 PASS | 4 PASS | 4 PASS | -- |
+| REG-UI-05 | Register redirects | FAIL | FAIL | FAIL | Cat 5 |
+| REG-UI-06 | Duplicate error toast | FAIL | FAIL | FAIL | Cat 5 |
+| REG-UI-07 to 09 | Register UI basics | 3 PASS | 3 PASS | 3 PASS | -- |
+| REG-UI-10 | Auth user redirect from register | FAIL | FAIL | FAIL | Cat 5 |
+| LOGIN-UI-01 to 06 | Login form validation | 6 PASS | 6 PASS | 6 PASS | -- |
+| LOGIN-UI-07 | Login redirects | FAIL | FAIL | FAIL | Cat 5 |
+| LOGIN-UI-08 to 10 | Login UI basics | 3 PASS | 3 PASS | 3 PASS | -- |
+| LOGIN-UI-11 | Auth user redirect from login | FAIL | FAIL | FAIL | Cat 5 |
+| MW-01 x6 | Route protection | 6 FAIL | 6 FAIL | 6 FAIL | Cat 2 |
+| MW-02 | callbackUrl param | FAIL | FAIL | FAIL | Cat 2 |
+| MW-03 | Root redirect | FAIL | FAIL | FAIL | Cat 2 |
+| MW-04 | Auth user access | FAIL | FAIL | FAIL | Cat 2/5 |
+| MW-05, MW-06 | Public routes allowed | PASS | PASS | PASS | -- |
+| DASH-01 to DASH-06 | Dashboard page | 6 FAIL | 6 FAIL | 6 FAIL | Cat 3/5 |
+| PAGES-01 to PAGES-08 | Protected pages | 8 FAIL | 8 FAIL | 8 FAIL | Cat 3/5 |
+| SESSION-01 to SESSION-04 | Session management | 4 FAIL | 4 FAIL | 4 FAIL | Cat 5 |
+| UI-01 to UI-08 | Auth page consistency | 8 PASS | 8 PASS | 8 PASS | -- |
+| ERR-01 to ERR-03 | Error handling | 3 PASS | 3 PASS | 3 PASS | -- |
+| NAV-01 to NAV-03 | Navigation flows | 3 FAIL | 3 FAIL | 3 FAIL | Cat 5 |
+
+**Pass: 120/267 | Fail: 147/267 | Skip: 0**
+
+---
+
+### profile.spec.ts (12 tests per browser = 36 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| PROF-01 to PROF-06 | API CRUD operations | 6 PASS | 6 PASS | 6 PASS | -- |
+| PROF-07 | 401 GET unauthenticated | FAIL | FAIL | FAIL | Cat 1 |
+| PROF-08 | 401 PATCH unauthenticated | FAIL | FAIL | FAIL | Cat 1 |
+| PROF-09 | UI form elements | FAIL | FAIL | FAIL | Cat 3 |
+| PROF-10 | Form pre-populated | PASS | PASS | PASS | -- |
+| PROF-11 | Update success toast | PASS | PASS | PASS | -- |
+| PROF-12 | Navigable from sidebar | PASS | PASS | PASS | -- |
+
+**Pass: 27/36 | Fail: 9/36 | Skip: 0**
+
+---
+
+### security.spec.ts (15 unique tests, 16 endpoints in SEC-09 = variable per browser)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| SEC-01 | HttpOnly access_token | FAIL | FAIL | FAIL | Cat 5 |
+| SEC-02 | HttpOnly refresh_token | FAIL | FAIL | FAIL | Cat 5 |
+| SEC-03 | No localStorage tokens | FAIL | FAIL | FAIL | Cat 5 |
+| SEC-04 | No sessionStorage tokens | FAIL | FAIL | FAIL | Cat 5 |
+| SEC-05 to SEC-08 | Key masking | 4 PASS | 4 PASS | 4 PASS | -- |
+| SEC-09 (16 endpoints) | 401 per endpoint | 8F/8P | 8F/8P | 8F/8P | Cat 1 |
+| SEC-10 | Cross-user backtest 403 | FAIL | FAIL | FAIL | Cat 4 |
+| SEC-11 | Cross-user cred 403 | FAIL | FAIL | FAIL | Cat 4 |
+| SEC-12 to SEC-14 | No sensitive fields | 3 PASS | 3 PASS | 3 PASS | -- |
+| SEC-15 | /healthz public | PASS | PASS | PASS | -- |
+
+SEC-09 endpoints that FAIL (return 200 instead of 401): `GET /auth/me`, `GET /profile`, `PATCH /profile`, `GET /broker/credentials`, `GET /backtests`, `GET /strategies/runs`, `GET /live/orders`, `GET /live/positions`, `GET /live/status`, `GET /artifacts`
+
+SEC-09 endpoints that PASS: `POST /broker/credentials`, `POST /backtests/run`, `POST /strategies/ai-pick/run`, `POST /strategies/buy-low-sell-high/run`, `POST /live/run-signal-check`, `POST /live/execute`
+
+---
+
+### strategies.spec.ts (19 tests per browser = 57 total)
+
+| Test ID | Description | Chromium | Firefox | WebKit | Category |
+|---------|-------------|----------|---------|--------|----------|
+| STRAT-01 | Conservative shape | FAIL | FAIL | FAIL | Cat 8 |
+| STRAT-02 | Aggressive shape | FAIL | FAIL | FAIL | Cat 8 |
+| STRAT-03 | Invalid symbol 422 | PASS | PASS | PASS | -- |
+| STRAT-04 | Symbol uppercase | PASS | PASS | PASS | -- |
+| STRAT-05 | Leverage override | PASS | PASS | PASS | -- |
+| STRAT-06 | Run persisted | PASS | PASS | PASS | -- |
+| STRAT-07 | 401 unauthenticated | FAIL | FAIL | FAIL | Cat 1 |
+| STRAT-08 | Invalid timeframe 422 | FAIL | FAIL | FAIL | Cat 8 |
+| STRAT-09 | Robinhood + stock 422 | PASS | PASS | PASS | -- |
+| STRAT-10 | AI Pick variant name | PASS | PASS | PASS | -- |
+| STRAT-11 | AI Pick artifact | PASS | PASS | PASS | -- |
+| STRAT-12 | AI Pick 401 unauth | FAIL | FAIL | FAIL | Cat 1 |
+| STRAT-13 | BLSH variant name | PASS | PASS | PASS | -- |
+| STRAT-14 | BLSH artifact | PASS | PASS | PASS | -- |
+| STRAT-15 | Mode tabs load | PASS | PASS | PASS | -- |
+| STRAT-16 | Symbol + run button | PASS | PASS | PASS | -- |
+| STRAT-17 | Loading state | PASS | PASS | PASS | -- |
+| STRAT-18 | Invalid symbol error | FAIL | FAIL | FAIL | Cat 3 |
+| STRAT-19 | Result display | FAIL | FAIL | FAIL | Cat 3 |
+
+**Pass: 36/57 | Fail: 21/57 | Skip: 0**
+
+---
+
+## Recommendations (Prioritized)
+
+### Priority 1: Fix Backend Auth -- GET Endpoints Return 200 Without Cookie (Impact: ~48 tests)
+
+**Problem:** GET endpoints (`/backtests`, `/strategies/runs`, `/live/orders`, `/live/positions`, `/live/status`, `/artifacts`, `/auth/me`, `/profile`, `/broker/credentials`) return 200 when no auth cookie is present.
+
+**Investigation:** Check whether `get_current_user` in `app/auth/` has a fallback that returns a default user (like `dev@nextgenstock.local`) when no token cookie is found. POST endpoints correctly return 401, suggesting GET endpoints may have a different dependency or the cookie from a previous test leaks.
+
+**Fix:** Ensure all protected endpoints use `Depends(get_current_user)` which raises `HTTPException(401)` when no valid token is found. Verify there is no `Optional` current_user dependency on GET routes. Also check if there is middleware that auto-creates sessions.
+
+**Files to check:**
+- `backend/app/auth/dependencies.py` (or wherever `get_current_user` is defined)
+- `backend/app/api/` -- all route files for GET endpoints
+- `backend/app/core/security.py` -- JWT decode logic
+
+### Priority 2: Fix Next.js Middleware Redirects (Impact: ~42 tests)
+
+**Problem:** Unauthenticated browser requests to `/dashboard`, `/strategies`, etc. are not redirected to `/login`.
+
+**Fix:** Review `frontend/middleware.ts`. Ensure it checks for the `access_token` cookie and redirects to `/login` if missing. Verify the middleware `matcher` config includes all protected routes.
+
+**Files to check:**
+- `frontend/middleware.ts`
+
+### Priority 3: Fix Multi-Tenancy -- Return 403/404 for Cross-User Access (Impact: ~39 tests)
+
+**Problem:** User B can read/modify User A's resources. The backend returns 200 with User A's data instead of 403/404.
+
+**Fix:** Add `assert_ownership(record, current_user)` checks in all service methods. For single-resource endpoints, if `record.user_id != current_user.id`, raise `HTTPException(403)`. For list endpoints, add `WHERE user_id = current_user.id` filter.
+
+**Files to check:**
+- `backend/app/api/backtests.py`
+- `backend/app/api/strategies.py`
+- `backend/app/api/broker.py`
+- `backend/app/api/artifacts.py`
+- `backend/app/api/live.py`
+- `backend/app/services/` -- all service files
+
+### Priority 4: Fix Auth UI Flows -- Form Submission Redirect (Impact: ~18 tests + ~60 cascading)
+
+**Problem:** After successful login/register, the page stays on `/login` or `/register` instead of redirecting to `/dashboard`.
+
+**Fix:** In the login and register form `onSubmit` handlers, ensure `router.push("/dashboard")` is called after a successful API response. Check that the response is properly awaited and cookies are set before navigation.
+
+**Files to check:**
+- `frontend/app/(auth)/login/page.tsx`
+- `frontend/app/(auth)/register/page.tsx`
+
+### Priority 5: Update Frontend UI to Match Test Selectors (Impact: ~39 tests)
+
+**Problem:** Tests look for elements like `h1`/`h2` headings, KPI cards, copy buttons, disclaimer alerts that don't exist in the DOM.
+
+**Fix:** Either update frontend components to include the expected elements/selectors, or add `data-testid` attributes. Key gaps:
+- Dashboard: Add `h1` with "Dashboard" text, KPI metric cards, user email display
+- Artifacts: Add page heading, copy button with `aria-label="copy"`
+- Backtests: Add run form UI, leaderboard table
+- Live Trading: Add disclaimer alert, orders history table
+- Profile: Ensure form has expected input elements with proper labels
+
+### Priority 6: Clean Up Test DB Between Runs (Impact: ~9 tests)
+
+**Problem:** The `dev@nextgenstock.local` user from DB seeding interferes with test assertions about user identity.
+
+**Fix:** Either (a) add a test setup script that truncates user-related tables before the E2E suite, (b) use unique email prefixes per test run, or (c) ensure the seeding script is idempotent and doesn't create sessions that persist.
+
+### Priority 7: Fix Strategy Response Schema (Impact: ~9 tests)
+
+**Problem:** STRAT-01/02 expect fields like `confirmation_count` and `trailing_stop_pct` in the response. STRAT-08 expects invalid timeframes to return 422.
+
+**Fix:** Check the `StrategyRunOut` Pydantic schema to ensure it includes all documented fields. Add timeframe validation in the backtest endpoint.
+
+### Priority 8: Fix LIVE-13 -- /live/status Without Credentials (Impact: 3 tests)
+
+**Problem:** `GET /live/status` returns something other than 404 when no credentials exist.
+
+**Fix:** Return 404 with a descriptive message when the user has no broker credentials configured.
+
+---
+
+## Coverage Gap Analysis
+
+### Well-Covered Areas (>80% pass rate)
+- **Auth API basics** (register, login, refresh, validation errors): ~95% pass rate
+- **Broker credential CRUD API**: ~90% pass rate
+- **Profile API CRUD**: ~100% pass rate
+- **Strategy execution API** (AI Pick, BLSH, conservative, aggressive): ~85% pass rate
+- **Backtest execution and data retrieval API**: ~80% pass rate
+- **UI consistency on auth pages** (titles, autocomplete, dark mode): 100% pass rate
+- **Error handling** (backend unreachable, 500 errors): 100% pass rate
+- **Credential key masking**: 100% pass rate
+- **Sensitive field exclusion**: 100% pass rate
+
+### Poorly Covered Areas (<50% pass rate)
+- **Multi-tenancy isolation**: 7% pass rate (1/14 tests pass) -- CRITICAL SECURITY GAP
+- **Authentication enforcement on GET endpoints**: ~0% pass rate -- SECURITY GAP
+- **Frontend middleware route protection**: 0% pass rate
+- **Post-login navigation and session management**: ~0% pass rate
+- **Dashboard page rendering**: ~50% pass rate
+- **nextgenstock-live.spec.ts protected pages**: ~0% pass rate (all behind broken login flow)
+
+### Areas Not Tested (Skipped)
+- Delete credential confirmation dialog (CRED-13)
+- Live trading confirmation dialog when disabling dry-run (LIVE-20)
+- LIVE mode warning banner (LIVE-23)
+
+### Potential False Positives
+Many `nextgenstock-live.spec.ts` failures (DASH-01 through DASH-06, PAGES-01 through PAGES-08, SESSION-01 through SESSION-04, NAV-01 through NAV-03) are likely **cascading failures** from the login flow not completing. These tests try to log in via the UI, fail to redirect to `/dashboard`, and then timeout waiting for dashboard elements. Fixing the auth UI redirect (Priority 4) and middleware (Priority 2) would likely resolve ~60+ of these failures automatically.
+
+---
+
+## Estimated Impact of Fixes
+
+| Fix | Tests Unblocked | New Pass Rate |
+|-----|----------------|---------------|
+| Priority 1: Backend auth on GET endpoints | ~48 | ~59% |
+| Priority 2: Next.js middleware redirects | ~42 | ~64% |
+| Priority 3: Multi-tenancy 403/404 | ~39 | ~69% |
+| Priority 4: Auth UI redirect | ~18 (+ ~60 cascading) | ~79% |
+| Priority 5: Frontend UI selectors | ~39 | ~84% |
+| Priority 6: DB cleanup | ~9 | ~85% |
+| Priority 7: Strategy schema | ~9 | ~86% |
+| Priority 8: LIVE-13 status | ~3 | ~87% |
+| **All fixes combined** | **~358** | **~95%+** |
+
+Note: Many failures overlap between categories (e.g., auth issues cause multi-tenancy tests to also fail), so the actual fix count will be less than the sum. Priorities 1 and 4 together would likely resolve the largest number of failures with the least code changes.
+
+---
+
+## Re-run Commands
 
 ```bash
-# From the repository root
-cd tests
-npm install
+# Full suite (all 3 browsers)
+cd C:\Users\Bruce\source\repos\NextgenAiTrading\tests
+npx playwright test --config=e2e/playwright.config.ts
 
-# Install Playwright browsers
-npx playwright install --with-deps
+# Single spec file
+npx playwright test --config=e2e/playwright.config.ts e2e/specs/auth.spec.ts
+
+# Single browser
+npx playwright test --config=e2e/playwright.config.ts --project=chromium
+
+# View HTML report from last run
+npx playwright show-report tests/e2e/playwright-report
 ```
-
----
-
-## Environment Setup
-
-### Required: Backend running
-
-The backend must be running against a live (test) PostgreSQL database. Strategy tests
-that run AI Pick or BLSH optimizers can take up to 120 seconds each.
-
-```bash
-cd backend
-cp .env.example .env
-# Fill in DATABASE_URL, SECRET_KEY, ENCRYPTION_KEY
-
-alembic upgrade head
-uvicorn app.main:app --reload --port 8000
-```
-
-### Required: Frontend running
-
-```bash
-cd frontend
-npm install
-npm run dev
-# Runs on http://localhost:3000
-```
-
-### Optional: Environment variable overrides
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `PLAYWRIGHT_BASE_URL` | `http://localhost:3000` | Override frontend URL (e.g. staging) |
-| `PLAYWRIGHT_API_URL` | `http://localhost:8000` | Override backend URL |
-
----
-
-## Running the Tests
-
-### Full suite (all browsers)
-
-```bash
-cd tests
-npm run test:e2e
-```
-
-### Chromium only (fastest for local development)
-
-```bash
-npm run test:e2e:chromium
-```
-
-### Headed mode (visible browser)
-
-```bash
-npm run test:e2e:headed
-```
-
-### Interactive UI mode
-
-```bash
-npm run test:e2e:ui
-```
-
-### Fast tests only (no optimizer runs, ~2-5 min)
-
-```bash
-npm run test:e2e:fast
-```
-
-This runs: auth, security, dashboard, profile, broker-credentials.
-Does NOT run AI Pick / BLSH optimizer tests (which take 2-3 min each).
-
-### Slow tests (optimizer modes)
-
-```bash
-npm run test:e2e:slow
-```
-
-Runs strategies, backtests, and artifacts with a 300-second per-test timeout.
-
-### Single spec file
-
-```bash
-npx playwright test specs/auth.spec.ts
-```
-
-### Specific test by name
-
-```bash
-npx playwright test --grep "AUTH-01-01"
-```
-
-### View HTML report
-
-```bash
-npm run test:e2e:report
-```
-
----
-
-## Test Suites and Test Cases
-
-Legend for Expected Status:
-- **PASS** — expected to pass once backend is running
-- **PENDING** — backend not yet running; will fail on infrastructure
-- **SLOW** — requires optimizer to run (~120 seconds); long timeout set
-- **UI** — requires frontend to be running (Next.js)
-- **SKIP** — conditionally skipped if UI element not yet implemented
-
----
-
-### `auth.spec.ts` — Authentication & Session Management
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| AUTH-01-01 | registers a new user and returns 201 with user_id and email | Backend | PASS |
-| AUTH-01-02 | returns 409 or 422 when registering a duplicate email | Backend | PASS |
-| AUTH-01-03 | returns 422 when password is shorter than 8 characters | Backend | PASS |
-| AUTH-01-04 | returns 422 when email is malformed | Backend | PASS |
-| AUTH-01-05 | UI register form → redirects to dashboard on success | Backend + Frontend | PASS / UI |
-| AUTH-01-06 | UI shows inline error when email already exists | Backend + Frontend | PASS / UI |
-| AUTH-02-01 | successful login returns 200 with user_id and email | Backend | PASS |
-| AUTH-02-02 | wrong password returns 401 | Backend | PASS |
-| AUTH-02-03 | non-existent email returns 401 | Backend | PASS |
-| AUTH-02-04 | login response never contains raw token values in body | Backend | PASS |
-| AUTH-02-05 | UI login form → redirects to dashboard on success | Backend + Frontend | PASS / UI |
-| AUTH-02-06 | UI shows error message on wrong password | Backend + Frontend | PASS / UI |
-| AUTH-03-01 | returns authenticated user when cookie is valid | Backend | PASS |
-| AUTH-03-02 | returns 401 without a valid cookie | Backend | PASS |
-| AUTH-04-01 | returns 204 and subsequent /auth/me returns 401 | Backend | PASS |
-| AUTH-04-02 | UI logout clears session and redirects to /login | Backend + Frontend | PASS / UI |
-| AUTH-05-01 | refresh with valid refresh token returns 200 | Backend | PASS |
-| AUTH-05-02 | refresh without a refresh token cookie returns 401 | Backend | PASS |
-| AUTH-06 (×6) | unauthenticated access to each protected route redirects to /login | Frontend | PASS / UI |
-| AUTH-07-01 | access_token is NOT readable via document.cookie (HttpOnly) | Backend + Frontend | PASS / UI |
-| AUTH-07-02 | no JWT token stored in localStorage after login | Backend + Frontend | PASS / UI |
-| AUTH-07-03 | unauthenticated API request returns 401 | Backend | PASS |
-
----
-
-### `profile.spec.ts` — User Profile Management
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| PROF-01 | GET /profile returns profile with expected shape | Backend | PASS |
-| PROF-02 | PATCH /profile updates display_name | Backend | PASS |
-| PROF-03 | PATCH /profile updates timezone | Backend | PASS |
-| PROF-04 | PATCH /profile updates default_symbol | Backend | PASS |
-| PROF-05 | PATCH /profile updates default_mode | Backend | PASS |
-| PROF-06 | updated profile values persist on subsequent GET | Backend | PASS |
-| PROF-07 | GET /profile returns 401 without authentication | Backend | PASS |
-| PROF-08 | PATCH /profile returns 401 without authentication | Backend | PASS |
-| PROF-09 | /profile page loads with expected form elements | Frontend | PASS / UI |
-| PROF-10 | profile form is pre-populated with current values | Backend + Frontend | PASS / UI |
-| PROF-11 | submitting profile update shows success toast | Backend + Frontend | PASS / UI |
-| PROF-12 | profile page accessible from sidebar navigation | Frontend | PASS / UI |
-
----
-
-### `broker-credentials.spec.ts` — Broker Credential Management
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| CRED-01 | POST /broker/credentials creates Alpaca credential with masked key | Backend | PASS |
-| CRED-02 | POST /broker/credentials creates Robinhood credential | Backend | PASS |
-| CRED-03 | GET /broker/credentials returns list — raw keys never exposed | Backend | PASS |
-| CRED-04 | PATCH /broker/credentials/{id} updates profile_name | Backend | PASS |
-| CRED-05 | DELETE /broker/credentials/{id} returns 204 and credential is gone | Backend | PASS |
-| CRED-06 | POST /broker/credentials/{id}/test returns {ok: bool} | Backend | PASS |
-| CRED-07 | accessing another user's credential returns 403 | Backend | PASS |
-| CRED-08 | returns 401 when listing credentials without auth | Backend | PASS |
-| CRED-09 | credential section visible on profile page | Frontend | PASS / UI |
-| CRED-10 | add Alpaca credential via UI — appears in list | Backend + Frontend | SKIP (conditional) |
-| CRED-11 | raw API keys never visible in DOM after saving | Backend + Frontend | PASS / UI |
-| CRED-12 | Alpaca credential badge shows green 'Stocks & ETFs' label | Backend + Frontend | PASS / UI |
-| CRED-13 | delete credential shows confirmation dialog | Frontend | SKIP (conditional) |
-| CRED-14 | test connection button shows result badge | Backend + Frontend | SKIP (conditional) |
-
----
-
-### `dashboard.spec.ts` — Dashboard
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| DASH-01 | authenticated user lands on dashboard after login | Backend + Frontend | PASS / UI |
-| DASH-02 | unauthenticated access redirects to /login | Frontend | PASS / UI |
-| DASH-03 | page title contains 'Dashboard' | Frontend | PASS / UI |
-| DASH-04 | KPI metric cards are present | Frontend | PASS / UI |
-| DASH-05 | recent strategy runs section is present | Backend + Frontend | PASS / UI |
-| DASH-06 | sidebar navigation links are visible | Frontend | PASS / UI |
-| DASH-07 | user email visible in sidebar/header | Backend + Frontend | PASS / UI |
-| DASH-08 | dashboard doesn't crash without broker credentials | Frontend | PASS / UI |
-| DASH-09 | CTA button navigates to strategies or backtests | Frontend | PASS / UI |
-
----
-
-### `strategies.spec.ts` — Strategy Execution (All 4 Modes)
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| STRAT-01 | conservative backtest returns correct fields (leverage=2.5, min_confirmations=7) | Backend | PASS |
-| STRAT-02 | aggressive backtest returns correct leverage (4.0) and trailing stop (5%) | Backend | PASS |
-| STRAT-03 | invalid symbol returns 422 with descriptive message | Backend | PASS |
-| STRAT-04 | symbol normalised to uppercase | Backend | PASS |
-| STRAT-05 | leverage override is respected | Backend | PASS |
-| STRAT-06 | strategy run persisted and appears in /strategies/runs | Backend | PASS |
-| STRAT-07 | returns 401 without authentication | Backend | PASS |
-| STRAT-08 | invalid timeframe returns 422 | Backend | PASS |
-| STRAT-09 | Robinhood credential + stock symbol returns 422 | Backend | PASS (validation added to run_signal_check — see Bug Fix 2) |
-| STRAT-10 | AI Pick run returns StrategyRunOut with selected_variant_name | Backend | SLOW |
-| STRAT-11 | AI Pick run creates a WinningStrategyArtifact | Backend | SLOW |
-| STRAT-12 | AI Pick returns 401 without auth | Backend | PASS |
-| STRAT-13 | BLSH run returns StrategyRunOut with selected_variant_name | Backend | SLOW |
-| STRAT-14 | BLSH run creates a WinningStrategyArtifact | Backend | SLOW |
-| STRAT-15 | strategies page loads with mode tabs | Frontend | PASS / UI |
-| STRAT-16 | symbol input and run button visible | Frontend | PASS / UI |
-| STRAT-17 | loading state visible while strategy runs | Backend + Frontend | PASS / UI |
-| STRAT-18 | invalid symbol shows validation error | Backend + Frontend | PASS / UI |
-| STRAT-19 | conservative run result shows signal and confirmation count | Backend + Frontend | PASS / UI |
-
----
-
-### `backtests.spec.ts` — Backtesting Engine
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| BT-01 | POST /backtests/run returns 202 with BacktestOut shape | Backend | PASS |
-| BT-02 | GET /backtests returns array with at least one entry after a run | Backend | PASS |
-| BT-03 | GET /backtests returns 401 when unauthenticated | Backend | PASS |
-| BT-04 | GET /backtests/{id} returns correct run details | Backend | PASS |
-| BT-05 | GET /backtests/{id} returns 404 for non-existent run | Backend | PASS |
-| BT-06 | GET /backtests/{id} returns 401 when unauthenticated | Backend | PASS |
-| BT-07 | GET /backtests/{id}/trades returns array with correct fields | Backend | PASS |
-| BT-08 | GET /backtests/{id}/trades returns 401 when unauthenticated | Backend | PASS |
-| BT-09 | GET /backtests/{id}/leaderboard returns variants ranked by validation_score (AI Pick) | Backend | SLOW |
-| BT-10 | Leaderboard has exactly one selected_winner=true | Backend | SLOW |
-| BT-11 | GET /backtests/{id}/chart-data returns candles, signals, equity | Backend | PASS |
-| BT-12 | Chart-data candles have OHLCV fields | Backend | PASS |
-| BT-13 | GET /backtests/{id}/chart-data returns 403 for another user's run | Backend | PASS |
-| BT-14 | /backtests page loads with run form | Frontend | PASS / UI |
-| BT-15 | equity curve Recharts element renders after a run | Backend + Frontend | PASS / UI |
-| BT-16 | trade list table visible with entry/exit columns | Backend + Frontend | PASS / UI |
-| BT-17 | leaderboard table visible for AI Pick runs | Backend + Frontend | SLOW |
-
----
-
-### `live-trading.spec.ts` — Live Trading
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| LIVE-01 | POST /live/run-signal-check returns StrategyRunOut with signal fields | Backend | PASS |
-| LIVE-02 | signal check does NOT create a broker order | Backend | PASS |
-| LIVE-03 | signal check returns 401 when unauthenticated | Backend | PASS |
-| LIVE-04 | POST /live/execute in dry_run returns OrderOut with dry_run=true | Backend | PASS |
-| LIVE-05 | dry_run is true by default | Backend | PASS |
-| LIVE-06 | executed dry-run order appears in GET /live/orders | Backend | PASS |
-| LIVE-07 | POST /live/execute returns 401 when unauthenticated | Backend | PASS |
-| LIVE-08 | GET /live/orders returns array (may be empty) | Backend | PASS |
-| LIVE-09 | GET /live/orders returns 401 when unauthenticated | Backend | PASS |
-| LIVE-10 | GET /live/positions returns array | Backend | PASS |
-| LIVE-11 | GET /live/positions returns 401 when unauthenticated | Backend | PASS |
-| LIVE-12 | GET /live/status with credential_id returns AccountStatus shape | Backend | PASS |
-| LIVE-13 | GET /live/status returns 404 when no credentials | Backend | PASS |
-| LIVE-14 | GET /live/status returns 401 when unauthenticated | Backend | PASS |
-| LIVE-15 | GET /live/chart-data returns candles array | Backend | PASS |
-| LIVE-16 | GET /live/chart-data returns 422 for invalid symbol | Backend | PASS |
-| LIVE-17 | orders from USER_A not visible to USER_B | Backend | PASS |
-| LIVE-18 | page loads with disclaimer / warning alert | Frontend | PASS / UI |
-| LIVE-19 | dry-run toggle is visible and enabled by default | Frontend | PASS / UI |
-| LIVE-20 | enabling live trading shows confirmation dialog | Backend + Frontend | PASS / UI |
-| LIVE-21 | live trading page shows positions table | Frontend | PASS / UI |
-| LIVE-22 | live trading page shows orders history table | Frontend | PASS / UI |
-| LIVE-23 | warning banner shows 'LIVE mode' when dry_run disabled | Frontend | PASS / UI |
-
----
-
-### `artifacts.spec.ts` — Pine Script Artifacts
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| ART-01 | GET /artifacts returns empty array for new user | Backend | PASS |
-| ART-02 | AI Pick run creates artifact accessible via GET /artifacts | Backend | SLOW |
-| ART-03 | artifact has correct metadata fields (ArtifactOut shape) | Backend | SLOW |
-| ART-04 | artifact.mode_name is 'ai-pick' for AI Pick runs | Backend | SLOW |
-| ART-05 | BLSH run creates artifact with mode_name='buy-low-sell-high' | Backend | SLOW |
-| ART-06 | GET /artifacts/{id} returns ArtifactOut | Backend | SLOW |
-| ART-07 | GET /artifacts/{id} returns 404 for non-existent artifact | Backend | PASS |
-| ART-08 | GET /artifacts/{id}/pine-script returns PineScriptOut with code | Backend | SLOW |
-| ART-09 | Pine Script code starts with //@version=5 | Backend | SLOW |
-| ART-10 | artifact symbol matches symbol used in optimizer run | Backend | SLOW |
-| ART-11 | GET /artifacts returns 401 when unauthenticated | Backend | PASS |
-| ART-12 | GET /artifacts/{id}/pine-script returns 403 for another user | Backend | SLOW |
-| ART-13 | artifacts page loads | Frontend | PASS / UI |
-| ART-14 | artifacts list shows Pine Script entries with mode + symbol | Backend + Frontend | SLOW |
-| ART-15 | clicking artifact shows Pine Script code block | Backend + Frontend | SLOW |
-| ART-16 | copy button present next to Pine Script code | Backend + Frontend | SLOW |
-
----
-
-### `multi-tenancy.spec.ts` — Per-User Data Isolation
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| MT-01 | USER_B cannot read USER_A's backtest run | Backend | PASS |
-| MT-02 | USER_B cannot read trades from USER_A's backtest | Backend | PASS |
-| MT-03 | USER_B cannot read leaderboard from USER_A's backtest | Backend | PASS |
-| MT-04 | GET /backtests as USER_B does not include USER_A's runs | Backend | PASS |
-| MT-05 | USER_B cannot read USER_A's strategy run by ID | Backend | PASS |
-| MT-06 | GET /strategies/runs as USER_B does not include USER_A's runs | Backend | PASS |
-| MT-07 | USER_B cannot test USER_A's broker credential | Backend | PASS |
-| MT-08 | USER_B cannot delete USER_A's broker credential | Backend | PASS |
-| MT-09 | USER_B cannot update USER_A's broker credential | Backend | PASS |
-| MT-10 | USER_B cannot read USER_A's Pine Script artifact | Backend | SLOW |
-| MT-11 | GET /artifacts as USER_B returns only USER_B's artifacts | Backend | SLOW |
-| MT-12 | USER_B cannot see USER_A's orders in GET /live/orders | Backend | PASS |
-| MT-13 | USER_B cannot see USER_A's positions | Backend | PASS |
-| MT-14 | supplying a different user_id in request body is ignored | Backend | PASS |
-
----
-
-### `security.spec.ts` — Security Tests
-
-| ID | Test Name | Requires | Expected Status |
-|---|---|---|---|
-| SEC-01 | access_token NOT visible in document.cookie (HttpOnly) | Backend + Frontend | PASS / UI |
-| SEC-02 | refresh_token NOT visible in document.cookie | Backend + Frontend | PASS / UI |
-| SEC-03 | localStorage has no token-related keys after login | Backend + Frontend | PASS / UI |
-| SEC-04 | sessionStorage has no token-related keys after login | Backend + Frontend | PASS / UI |
-| SEC-05 | raw api_key never in POST /broker/credentials response | Backend | PASS |
-| SEC-06 | raw secret_key never in GET /broker/credentials response | Backend | PASS |
-| SEC-07 | POST /broker/credentials/{id}/test returns only {ok: bool} | Backend | PASS |
-| SEC-08 | api_key_masked contains '****' or '(encrypted)' | Backend | PASS |
-| SEC-09 (×16) | each protected endpoint returns 401 without cookie | Backend | PASS |
-| SEC-10 | GET /backtests/{user_a_id} as USER_B returns 403 or 404 | Backend | PASS |
-| SEC-11 | PATCH /broker/credentials/{user_a_id} as USER_B returns 403 or 404 | Backend | PASS |
-| SEC-12 | GET /auth/me never includes password_hash | Backend | PASS |
-| SEC-13 | GET /profile never includes password_hash | Backend | PASS |
-| SEC-14 | POST /auth/login body does not contain JWT token strings | Backend | PASS |
-| SEC-15 | GET /healthz returns 200 without authentication | Backend | PASS |
-
----
-
-## Test Coverage Matrix
-
-Maps each PRD Functional Requirement to the test(s) that validate it.
-
-| FR ID | Requirement Summary | Test IDs |
-|---|---|---|
-| FR-01 | Register with email + password → 201 | AUTH-01-01, AUTH-01-03, AUTH-01-04 |
-| FR-02 | Login issues HTTP-only cookies with access + refresh tokens | AUTH-02-01, AUTH-02-04, SEC-01, SEC-02 |
-| FR-03 | GET /auth/me validates access token and returns user | AUTH-03-01, AUTH-03-02 |
-| FR-04 | POST /auth/refresh validates refresh hash, rotates token | AUTH-05-01, AUTH-05-02 |
-| FR-05 | POST /auth/logout clears cookies, revokes session | AUTH-04-01, AUTH-04-02 |
-| FR-06 | Middleware redirects unauthenticated to /login | AUTH-06 (×6) |
-| FR-07 | Silent refresh on 401 before redirecting | AUTH-05-01 (partial — full flow requires timing) |
-| FR-08 | Tokens never in localStorage / sessionStorage | SEC-03, SEC-04, AUTH-07-02 |
-| FR-09 | Every user-owned table has user_id FK | MT-01 through MT-14 (all validate isolation) |
-| FR-10 | All DB queries scoped WHERE user_id = current_user.id | MT-04, MT-06, MT-11, MT-12, MT-13 |
-| FR-11 | User IDs derived from JWT, never from request body | MT-14 |
-| FR-12 | assert_ownership raises HTTP 403 on mismatch | MT-01 to MT-09, SEC-10, SEC-11 |
-| FR-13 | GET /profile returns profile shape | PROF-01 |
-| FR-14 | PATCH /profile updates fields | PROF-02 to PROF-05 |
-| FR-15 | Profile page pre-populated, shows success toast | PROF-09 to PROF-12 |
-| FR-16 | GET /broker/credentials returns masked summaries | CRED-03, SEC-05, SEC-06 |
-| FR-17 | POST /broker/credentials encrypts keys, returns masked | CRED-01, CRED-02, SEC-05 |
-| FR-18 | PATCH /broker/credentials/{id} updates credential | CRED-04 |
-| FR-19 | DELETE /broker/credentials/{id} removes after ownership check | CRED-05 |
-| FR-20 | POST /broker/credentials/{id}/test returns {ok: bool} only | CRED-06, SEC-07 |
-| FR-21 | Form adapts fields based on provider | CRED-10 (UI — conditional skip) |
-| FR-22 | Provider badge displayed per credential | CRED-12 |
-| FR-23 | Alpaca is default pre-selected provider | CRED-10 (checked in form default) |
-| FR-24 | Delete requires confirmation dialog | CRED-13 |
-| FR-25 | All modes accept symbol + timeframe | STRAT-01, STRAT-02, STRAT-10, STRAT-13 |
-| FR-26 | Invalid symbol returns 422 with message | STRAT-03, STRAT-18 |
-| FR-27 | Conservative: leverage 2.5, min confirmations 7 | STRAT-01 |
-| FR-28 | Aggressive: leverage 4.0, min confirmations 5, trailing stop 5% | STRAT-02 |
-| FR-29 | AI Pick: variants, ranking, winner, Pine Script artifact | STRAT-10, STRAT-11, ART-02 to ART-10 |
-| FR-30 | BLSH: variants, ranking, winner, Pine Script artifact | STRAT-13, STRAT-14, ART-05 |
-| FR-31 | Every strategy run creates StrategyRun record | STRAT-06, BT-01, BT-02 |
-| FR-32 | Symbol normalised to uppercase | STRAT-04 |
-| FR-33 | Robinhood + stock symbol = 422 | STRAT-09 |
-| FR-34 | Leverage override accepted | STRAT-05 |
-| FR-35 | POST /backtests/run creates StrategyRun + BacktestTrade | BT-01, BT-07 |
-| FR-36 | GET /backtests returns paginated list | BT-02 |
-| FR-37 | GET /backtests/{id} returns full run details | BT-04 |
-| FR-38 | GET /backtests/{id}/trades returns BacktestTrade list | BT-07 |
-| FR-39 | GET /backtests/{id}/leaderboard ranked by validation_score | BT-09, BT-10 |
-| FR-40 | GET /backtests/{id}/chart-data returns candles, signals, equity | BT-11, BT-12 |
-| FR-41 | VariantBacktestResult includes all metric fields | BT-09 |
-| FR-42 | POST /live/run-signal-check runs signal logic, no order | LIVE-01, LIVE-02 |
-| FR-43 | POST /live/execute dry_run=true by default | LIVE-04, LIVE-05 |
-| FR-44 | GET /live/orders returns recent orders | LIVE-06, LIVE-08 |
-| FR-45 | GET /live/positions returns position snapshots | LIVE-10 |
-| FR-46 | GET /live/status returns broker connection status | LIVE-12 |
-| FR-47 | Live mode warning banner when dry_run disabled | LIVE-23 |
-| FR-48 | Enabling live trading requires confirmation dialog | LIVE-20 |
-| FR-49 | Active credential provider shown as badge | LIVE-12 (via AccountStatus.provider) |
-| FR-50 | GET /live/chart-data returns candle data | LIVE-15, LIVE-16 |
-| FR-51 | Optimizer runs generate Pine Script v5 code | ART-08, ART-09 |
-| FR-52 | Artifacts stored in WinningStrategyArtifact with user_id | ART-02, ART-03 |
-| FR-53 | GET /artifacts returns all artifacts for user | ART-01, ART-02, MT-11 |
-| FR-54 | GET /artifacts/{id} returns metadata | ART-06, ART-07 |
-| FR-55 | GET /artifacts/{id}/pine-script returns raw code | ART-08, ART-09, ART-10 |
-| FR-56 | Frontend renders Pine Script in copyable block | ART-15, ART-16 |
-
----
-
-## CI/CD Integration
-
-### GitHub Actions
-
-```yaml
-# .github/workflows/e2e.yml
-name: E2E Tests
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-
-jobs:
-  e2e-fast:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: testuser
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: nextgenstock_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install backend deps
-        run: |
-          cd backend
-          pip install -r requirements.txt
-
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgresql+asyncpg://testuser:testpass@localhost/nextgenstock_test
-          SECRET_KEY: ci-test-secret-key-minimum-32-chars-long
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-        run: |
-          cd backend
-          alembic upgrade head
-
-      - name: Start backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://testuser:testpass@localhost/nextgenstock_test
-          SECRET_KEY: ci-test-secret-key-minimum-32-chars-long
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-          CORS_ORIGINS: http://localhost:3000
-          COOKIE_SECURE: "false"
-        run: |
-          cd backend
-          uvicorn app.main:app --port 8000 &
-          sleep 5
-          curl -f http://localhost:8000/healthz
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install frontend deps
-        run: |
-          cd frontend
-          npm ci
-
-      - name: Start frontend
-        env:
-          NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
-        run: |
-          cd frontend
-          npm run build
-          npm run start &
-          sleep 10
-
-      - name: Install Playwright
-        run: |
-          cd tests
-          npm ci
-          npx playwright install --with-deps chromium
-
-      - name: Run fast E2E tests
-        run: |
-          cd tests
-          npm run test:e2e:fast -- --project=chromium --reporter=github
-
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: tests/playwright-report/
-```
-
-### GitLab CI
-
-```yaml
-# .gitlab-ci.yml (partial)
-e2e-tests:
-  image: mcr.microsoft.com/playwright:v1.44.0-focal
-  services:
-    - postgres:15
-  variables:
-    POSTGRES_DB: nextgenstock_test
-    POSTGRES_USER: testuser
-    POSTGRES_PASSWORD: testpass
-    DATABASE_URL: postgresql+asyncpg://testuser:testpass@postgres/nextgenstock_test
-    SECRET_KEY: gitlab-ci-secret-key-minimum-32-characters
-    ENCRYPTION_KEY: $ENCRYPTION_KEY
-  script:
-    - cd backend && pip install -r requirements.txt
-    - alembic upgrade head
-    - uvicorn app.main:app --port 8000 &
-    - cd ../frontend && npm ci && npm run build && npm run start &
-    - sleep 15
-    - cd ../tests && npm ci
-    - npm run test:e2e:fast -- --project=chromium
-  artifacts:
-    when: always
-    paths:
-      - tests/playwright-report/
-```
-
----
-
-## Test Data Management
-
-### User accounts
-
-Two test users are defined in `fixtures/test-data.ts`:
-
-- `USER_A` — `e2e-user-a@nextgenstock.test` — primary test user
-- `USER_B` — `e2e-user-b@nextgenstock.test` — multi-tenancy / cross-user tests
-
-Both users are created on-demand via `POST /auth/register`. If they already exist (409), the error is silently swallowed. There is no explicit teardown — test state accumulates across runs, which is acceptable because each test creates its own data and asserts on its own results.
-
-### Unique user generation
-
-Tests that need fresh users (registration duplicate tests, cross-user tests) generate
-unique emails via `uniqueEmail("base@domain.com")` which appends a `Date.now()` timestamp.
-
-### Credential data
-
-Broker credentials use fake API keys (matching the format of real keys but with test prefixes:
-`PKTEST...` for Alpaca, `RHTEST...` for Robinhood). These will NOT authenticate against real
-broker APIs. The `POST /broker/credentials/{id}/test` endpoint will return `{ok: false}`.
-This is the expected and tested behaviour.
-
-### Optimizer runs and artifacts
-
-AI Pick and BLSH optimizer tests require `yfinance` to download real market data (BTC-USD
-historical OHLCV). These tests will fail if the backend has no internet access or if yfinance
-rate-limits the requests. Consider adding a `--retries=2` flag in CI.
-
-### Database cleanup
-
-No teardown scripts are provided. For a clean-slate CI run:
-
-```bash
-# Reset the test database (drop and recreate all tables)
-cd backend
-alembic downgrade base
-alembic upgrade head
-```
-
----
-
-## Known Limitations and Gaps
-
-### 1. Refresh token expiry testing
-
-`AUTH-05` tests the refresh endpoint with a valid token but does not test behaviour when
-the access token has actually expired (that requires manipulating `ACCESS_TOKEN_EXPIRE_MINUTES`
-or advancing system time). The silent-refresh-on-401 flow (FR-07) is exercised implicitly but
-not with a truly expired token.
-
-**Recommendation:** Add a test that sets `ACCESS_TOKEN_EXPIRE_MINUTES=0` and verifies the
-silent refresh triggers correctly.
-
-### 2. Optimizer test speed
-
-STRAT-10, STRAT-13, BT-09, ART-02 etc. run the AI Pick and BLSH optimizers, which can take
-up to 120 seconds per run and require internet access (yfinance data). These are tagged SLOW.
-In a fast CI pipeline, run only `npm run test:e2e:fast` and schedule SLOW tests separately
-(e.g. nightly).
-
-### 3. Frontend UI selectors are defensive
-
-Many UI tests use fallback selectors with `if (await element.count() === 0) { test.skip() }`
-because the exact component structure depends on the Next.js + shadcn/ui implementation.
-Once the frontend is fully implemented, replace generic selectors with `data-testid` attributes
-for reliability.
-
-### 4. CORS origin restriction not tested
-
-The PRD states that requests from unlisted CORS origins should be rejected with 403. This is
-difficult to test reliably in Playwright (browsers enforce CORS client-side). A curl-based
-integration test is more appropriate:
-
-```bash
-curl -H "Origin: http://evil.com" -v http://localhost:8000/auth/me
-# Expect: Access-Control-Allow-Origin header absent or non-matching
-```
-
-### 5. Robinhood provider routing (STRAT-09) — RESOLVED
-
-`STRAT-09` tests that a Robinhood credential + stock symbol returns HTTP 422. The validation
-has been added to `POST /live/run-signal-check` in `backend/app/api/live.py` (Bug Fix 2 in
-the "Bug Fixes Applied" section below). STRAT-09 is now expected to PASS.
-
-### 6. 4h timeframe resampling
-
-The `4h` timeframe is resampled from `1h` bars (per BACKEND.md). No dedicated test verifies
-the resampling logic itself. A unit test for `load_ohlcv_for_strategy("AAPL", "4h")` would
-be more appropriate than an E2E test for this edge case.
-
-### 7. Chart rendering (Lightweight Charts, Recharts, Plotly)
-
-Tests check for the presence of SVG elements from Recharts (`.recharts-wrapper`) but do not
-assert on Lightweight Charts canvas or Plotly SVG in detail. Canvas-based chart assertions are
-fragile in Playwright; visual regression tests (e.g. `expect(page).toHaveScreenshot()`) are
-a better long-term approach.
-
-### 8. Real broker connection tests
-
-`CRED-06` and `LIVE-12` call `test-connection` and `GET /live/status` with fake credentials.
-These will always return `connected: false`. Tests verify the shape but not a successful ping.
-To test a real successful connection, set `ALPACA_PAPER_KEY` and `ALPACA_PAPER_SECRET` as CI
-secrets and conditionally run a live-connection test group.
-
-### 9. Token rotation after refresh
-
-`AUTH-05-01` verifies the refresh endpoint returns 200 but does not confirm that the old refresh
-token is revoked (i.e., that a second call with the same token fails). Add this assertion:
-
-```typescript
-const { ok: ok1 } = await refreshToken(request); // succeeds
-const { ok: ok2, status } = await refreshToken(request); // should fail: old token revoked
-expect(status).toBe(401);
-```
-
----
-
-## Adding New Tests
-
-### File placement
-
-| Test category | Target file |
-|---|---|
-| Auth flow changes | `specs/auth.spec.ts` |
-| Profile field additions | `specs/profile.spec.ts` |
-| New broker provider | `specs/broker-credentials.spec.ts` |
-| New strategy mode | `specs/strategies.spec.ts` + `specs/backtests.spec.ts` |
-| New live trading feature | `specs/live-trading.spec.ts` |
-| New artifact type | `specs/artifacts.spec.ts` |
-| Any new user-owned resource | `specs/multi-tenancy.spec.ts` + `specs/security.spec.ts` |
-
-### Naming convention
-
-```
-[SUITE_PREFIX]-[NN]: description starting with a verb
-```
-
-Examples:
-- `AUTH-08: accepts login with case-insensitive email`
-- `BT-18: returns 422 when timeframe is 4h and symbol has no 1h data`
-
-### Using the authenticated fixture
-
-For tests that need a pre-logged-in browser page:
-
-```typescript
-import { test, expect } from "../fixtures/auth.fixture";
-
-test("MY-01: my new test", async ({ authenticatedPage: page }) => {
-  await page.goto("/my-route");
-  // ... page is already logged in as USER_A
-});
-```
-
-### Adding a page object
-
-If a new page needs many interaction helpers, add a class to `helpers/`:
-
-```typescript
-// helpers/pages/MyNewPage.ts
-import { type Page } from "@playwright/test";
-
-export class MyNewPage {
-  constructor(private page: Page) {}
-  async navigate() { await this.page.goto("/my-new-page"); }
-  async clickAction() { await this.page.click('[data-testid="action"]'); }
-  async getResultText() { return this.page.textContent('[data-testid="result"]'); }
-}
-```
-
-### Selector priority
-
-Use selectors in this order of preference:
-
-1. `data-testid` attribute (most stable — add to components if missing)
-2. `role` + accessible name (`getByRole("button", { name: "Submit" })`)
-3. `aria-label`
-4. Input `name` or `id`
-5. Visible text (only for stable, unique strings)
-
-Avoid Tailwind class selectors — they change with styling updates.
-
----
-
-## Bug Fixes Applied
-
-**Session date:** 2026-03-19
-**Scope:** Full audit of `backend/` Python source and `tests/e2e/` TypeScript source
-
-The following bugs were identified and fixed. All fixes are minimal and targeted; no
-surrounding logic was changed beyond what was required to resolve each root cause.
-
----
-
-### Fix 1 — FastAPI `Depends()` injection silently bypassed on `/live/chart-data`
-
-**File:** `backend/app/api/live.py`
-**Root cause:** `get_live_chart_data` declared its injected dependencies with `= None`
-default values:
-```python
-current_user: Annotated[User, Depends(get_current_user)] = None,
-db: Annotated[AsyncSession, Depends(get_db)] = None,
-```
-In FastAPI, a default value on a `Depends()` parameter overrides the dependency injector
-for that parameter. The result is that `current_user` and `db` are never populated by
-FastAPI; they arrive as `None`. This means:
-- The endpoint accepts unauthenticated requests (no 401 raised).
-- Any downstream use of `db` or `current_user` would raise `AttributeError` on `None`.
-**Fix:** Removed the `= None` defaults. Also reordered parameters so that query params
-(`symbol`, `interval`) appear after all `Depends()` parameters, which is required for
-FastAPI to correctly parse query strings when `Depends()` parameters are present.
-**Tests affected:** LIVE-15, LIVE-16, SEC-09 (`GET /live/chart-data`)
-
----
-
-### Fix 2 — Missing Robinhood + stock symbol validation in `run_signal_check`
-
-**File:** `backend/app/api/live.py`
-**Root cause:** Per FR-33 and STRAT-09, a Robinhood credential combined with a non-crypto
-symbol (no `-` in the ticker) must return HTTP 422. This validation existed in
-`execution_service.py` (for the `/execute` path) but was absent from the
-`/live/run-signal-check` handler. A Robinhood + stock combination would pass through to the
-strategy engine and return 200, failing the STRAT-09 assertion (`not.toBe(200)`).
-**Fix:** Added a credential provider + symbol check at the top of `run_signal_check`,
-identical in logic to the existing check in `execute_order`, after fetching the credential
-via `credential_service.get_credential`.
-**Tests affected:** STRAT-09 (was PENDING — now expected PASS)
-
----
-
-### Fix 3 — Wrong return type annotation on `_safe_fit_hmm`
-
-**File:** `backend/app/strategies/conservative.py`
-**Root cause:** `_safe_fit_hmm` was annotated as `-> GaussianHMM` but the function body
-returns a two-element tuple `(model, scaler)`. The callers correctly unpack
-`model, scaler = _safe_fit_hmm(features)`, so runtime behaviour was correct. However, the
-wrong annotation would mislead type checkers (mypy/pyright) and IDEs into flagging all
-call-sites as errors, and it misrepresents the contract.
-**Fix:** Changed annotation to `-> tuple[GaussianHMM, StandardScaler]`.
-**Tests affected:** No test directly validates this annotation; the fix is preventative.
-
----
-
-### Fix 4 — Wrong numeric assertion for `trailing_stop_pct` in STRAT-02
-
-**File:** `tests/e2e/specs/strategies.spec.ts`
-**Root cause:** STRAT-02 asserted:
-```typescript
-expect(body.trailing_stop_pct).toBeCloseTo(5.0, 1);
-```
-The backend stores `trailing_stop_pct` as a decimal fraction (`0.05` = 5%), not as a
-percentage integer (`5.0`). The assertion would always fail against a correctly implemented
-backend because `0.05` is not close to `5.0`.
-**Fix:** Changed to:
-```typescript
-expect(body.trailing_stop_pct).toBeCloseTo(0.05, 3);
-```
-**Tests affected:** STRAT-02 (was PASS prediction but would have failed at runtime)
-
----
-
-### Fix 5 — `refreshToken` helper returned no `body`, breaking AUTH-05-01
-
-**File:** `tests/e2e/helpers/api.helper.ts`
-**Root cause:** `refreshToken` returned only `{ ok, status }`, but the test `AUTH-05-01`
-destructured the result as `{ ok, status, body }` and then called:
-```typescript
-expect(body).toHaveProperty("user_id");
-```
-Since `body` was `undefined`, this would throw a runtime error or always fail. All other
-helper functions in the same file return `{ ok, status, body }`.
-**Fix:** Added `body` capture and return to `refreshToken`, consistent with every other
-helper in the file.
-**Tests affected:** AUTH-05-01 (was PASS prediction but would have failed at runtime)
-
----
-
-## Updated Pass/Fail Predictions
-
-The following test predictions change as a result of the fixes above. All other predictions
-in the coverage matrix above are unchanged.
-
-| Test ID | Previous Prediction | Updated Prediction | Reason |
-|---|---|---|---|
-| AUTH-05-01 | PASS | PASS (confirmed) | Fix 5: `refreshToken` now returns `body` |
-| STRAT-02 | PASS | PASS (confirmed) | Fix 4: `trailing_stop_pct` assertion corrected to `0.05` |
-| STRAT-09 | PENDING | PASS | Fix 2: Robinhood + stock validation added to `run_signal_check` |
-| LIVE-15 | PASS | PASS (confirmed) | Fix 1: `get_live_chart_data` now has proper auth injection |
-| LIVE-16 | PASS | PASS (confirmed) | Fix 1: same endpoint — auth gate now active |
-| SEC-09 (`GET /live/chart-data`) | PASS | PASS (confirmed) | Fix 1: endpoint now returns 401 without cookie |
-
----
-
-## Known Remaining Issues
-
-The following items require a running server to verify and could not be confirmed
-statically. They are noted here for tracking.
-
-### A. `SEC-09` — `/live/chart-data` previously accepted unauthenticated requests (Fix 1)
-
-Before Fix 1, `GET /live/chart-data` did not enforce authentication due to the `= None`
-default values overriding `Depends()`. Any prior test run against an unpatched server would
-show SEC-09 (for `/live/chart-data`) passing for the wrong reason (422 from missing `symbol`
-query param rather than 401 from the auth guard). After Fix 1, the endpoint correctly returns
-401 for unauthenticated requests. The SEC-09 parametrised test loop includes
-`GET /live/chart-data` and will pass for the correct reason after the fix.
-
-### B. `STRAT-09` — Credential must exist before provider check runs (Fix 2)
-
-The Robinhood validation in `run_signal_check` calls
-`credential_service.get_credential(payload.credential_id, db, current_user)` before the
-provider check. If `payload.credential_id` does not exist or belongs to another user, the
-service will raise a 404/403 before the 422 is reached. STRAT-09 creates the Robinhood
-credential in `beforeEach`, so the `credentialId` in the request body is valid — this is
-correct test flow. No code change needed, but it is worth noting the ordering.
-
-### C. Optimizer tests require live internet access (yfinance)
-
-STRAT-10, STRAT-11, STRAT-13, STRAT-14, BT-09, BT-10, ART-02 through ART-12 all call
-`yfinance` to download real OHLCV data. These will fail in air-gapped or rate-limited
-environments. No code fix can address this; use the `--retries=2` Playwright flag in CI and
-consider caching yfinance responses for stable test data.
-
-### D. `AUTH-05-01` — Refresh token rotation not fully validated
-
-AUTH-05-01 now correctly receives a `body` with `user_id` (Fix 5). However, the test does
-not assert that calling `refreshToken` a second time with the old refresh cookie returns 401
-(token rotation / one-time-use). As noted in Known Limitation 9, this is a coverage gap,
-not a bug in the current implementation.

@@ -87,5 +87,16 @@ class AccountStatus(BaseModel):
     account_info: dict | None = Field(default=None, description="Raw account data if available")
 
 
+class SignalCheckOut(BaseModel):
+    """Slim response for /live/run-signal-check — matches the frontend SignalCheckResult type."""
+    model_config = ConfigDict(from_attributes=True)
+
+    symbol: str
+    regime: str | None
+    signal: str | None
+    confirmation_count: int | None
+    strategy_run_id: int
+
+
 class LiveChartResponse(BaseModel):
     candles: list[dict] = Field(description="OHLCV bars for the price chart")

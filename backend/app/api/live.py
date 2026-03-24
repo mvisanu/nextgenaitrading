@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -17,8 +18,8 @@ from app.schemas.live import (
     LiveRunRequest,
     OrderOut,
     PositionOut,
+    SignalCheckOut,
 )
-from app.schemas.strategy import StrategyRunOut
 from app.services import credential_service
 from app.services.execution_service import execute_order
 from app.services.market_data import df_to_candles, load_ohlcv_for_strategy
@@ -27,12 +28,12 @@ from app.services.strategy_run_service import run_strategy
 router = APIRouter(prefix="/live", tags=["live"])
 
 
-@router.post("/run-signal-check", response_model=StrategyRunOut)
+@router.post("/run-signal-check", response_model=SignalCheckOut)
 async def run_signal_check(
     payload: LiveRunRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> StrategyRunOut:
+) -> SignalCheckOut:
     """Run regime + signal logic for the selected symbol; no order submitted."""
     # Enforce Robinhood crypto-only constraint at signal-check time too
     cred = await credential_service.get_credential(payload.credential_id, db, current_user)
@@ -54,7 +55,13 @@ async def run_signal_check(
         current_user=current_user,
         run_type="signal",
     )
-    return StrategyRunOut.model_validate(run)
+    return SignalCheckOut(
+        symbol=run.symbol,
+        regime=run.current_regime,
+        signal=run.current_signal,
+        confirmation_count=run.confirmation_count,
+        strategy_run_id=run.id,
+    )
 
 
 @router.post("/execute", response_model=OrderOut)
@@ -168,6 +175,14 @@ async def get_live_chart_data(
 ) -> LiveChartResponse:
     """Fetch OHLCV candles for the live trading price chart."""
     symbol = symbol.strip().upper()
+    # Reject obviously invalid symbols before hitting yfinance.
+    # Valid examples: AAPL, BTC-USD, ETH-USD, SPY, TSLA
+    # Must be at least 2 chars, contain only letters/digits/hyphens, start with a letter.
+    if not re.fullmatch(r"[A-Z][A-Z0-9\-]{1,19}", symbol):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid symbol '{symbol}'. Must be 2–20 characters, letters/digits/hyphens, starting with a letter.",
+        )
     try:
         df = load_ohlcv_for_strategy(symbol, interval)
         candles = df_to_candles(df)

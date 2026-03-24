@@ -262,7 +262,7 @@ describe("liveApi", () => {
     globalThis.fetch = makeFetchMock([{ status: 200, body: {} }]);
     const { liveApi } = await import("@/lib/api");
 
-    await liveApi.signalCheck({ symbol: "AAPL", timeframe: "1d", credential_id: 1 });
+    await liveApi.signalCheck({ symbol: "AAPL", timeframe: "1d", mode: "conservative", credential_id: 1 });
 
     const [url, opts] = (fetch as jest.Mock).mock.calls[0];
     expect(url).toBe(`${BASE}/live/run-signal-check`);
