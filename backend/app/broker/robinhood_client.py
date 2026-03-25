@@ -66,6 +66,7 @@ class RobinhoodClient(AbstractBrokerClient):
         quantity: float,
         order_type: str = "market",
         dry_run: bool = True,
+        notional_usd: float | None = None,
     ) -> OrderResult:
         if dry_run:
             return OrderResult(
@@ -73,7 +74,13 @@ class RobinhoodClient(AbstractBrokerClient):
                 status="simulated",
                 filled_price=None,
                 filled_quantity=quantity,
-                raw_response={"dry_run": True, "symbol": symbol, "side": side},
+                raw_response={
+                    "dry_run": True,
+                    "symbol": symbol,
+                    "side": side,
+                    "notional_usd": notional_usd,
+                    "estimated_quantity": quantity,
+                },
             )
         raise NotImplementedError(
             "RobinhoodClient.place_order() live execution is not implemented in this release."

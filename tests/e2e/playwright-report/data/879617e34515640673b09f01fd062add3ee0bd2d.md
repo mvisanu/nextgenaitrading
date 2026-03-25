@@ -1,0 +1,504 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - img
+          - generic: NextGenStock
+        - navigation:
+          - link:
+            - /url: /dashboard
+            - generic:
+              - img
+              - generic: Dashboard
+          - link:
+            - /url: /strategies
+            - generic:
+              - img
+              - generic: Strategies
+          - link:
+            - /url: /backtests
+            - generic:
+              - img
+              - generic: Backtests
+          - link:
+            - /url: /live-trading
+            - generic:
+              - img
+              - generic: Live Trading
+          - link:
+            - /url: /artifacts
+            - generic:
+              - img
+              - generic: Artifacts
+          - link:
+            - /url: /strategy-samples
+            - generic:
+              - img
+              - generic: Strategy Samples
+          - link:
+            - /url: /trade-log
+            - generic:
+              - img
+              - generic: Trade Log
+          - link:
+            - /url: /opportunities
+            - generic:
+              - img
+              - generic: Opportunities
+          - link:
+            - /url: /ideas
+            - generic:
+              - img
+              - generic: Ideas
+          - link:
+            - /url: /alerts
+            - generic:
+              - img
+              - generic: Alerts
+          - link:
+            - /url: /auto-buy
+            - generic:
+              - img
+              - generic: Auto-Buy
+          - link:
+            - /url: /learn
+            - generic:
+              - img
+              - generic: Learn to Trade
+          - link:
+            - /url: /faq
+            - generic:
+              - img
+              - generic: FAQ & Strategies
+          - link:
+            - /url: /profile
+            - generic:
+              - img
+              - generic: Profile
+        - generic:
+          - generic:
+            - generic:
+              - generic: E2
+          - button:
+            - img
+            - generic: Sign out
+    - generic:
+      - banner:
+        - generic:
+          - heading [level=1]: Profile
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - heading [level=3]: User Profile
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - text: Display Name
+                    - textbox:
+                      - /placeholder: Your name
+                      - text: Updated 1774405626321
+                  - generic:
+                    - text: Timezone
+                    - textbox:
+                      - /placeholder: America/New_York
+                      - text: America/Chicago
+                  - generic:
+                    - text: Default Symbol
+                    - textbox:
+                      - /placeholder: BTC-USD
+                      - text: TSLA
+                  - generic:
+                    - text: Default Strategy Mode
+                    - combobox:
+                      - generic: Select mode...
+                      - img
+                    - combobox
+                - button: Save Profile
+          - generic:
+            - generic:
+              - heading [level=3]: Broker Credentials
+              - button:
+                - img
+                - text: Add Credential
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Robinhood Crypto
+                      - generic: Robinhood · Crypto only
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Updated Name 1774404839272
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Robinhood Crypto
+                      - generic: Robinhood · Crypto only
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Updated Name 1774405675156
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: E2E Alpaca Paper
+                      - generic: Alpaca · Stocks & ETFs
+                  - generic:
+                    - button: Test
+                    - button:
+                      - img
+      - generic:
+        - generic: NextGenStock v1.0
+        - generic: "|"
+        - generic: Connected
+        - generic: "|"
+        - generic: e2e-user-a@nextgenstock.io
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e6] [cursor=pointer]:
+    - img [ref=e7]
+  - alert
+  - dialog "Add Broker Credential" [ref=e11]:
+    - generic [ref=e12]:
+      - heading "Add Broker Credential" [level=2] [ref=e13]
+      - paragraph [ref=e14]: Your API keys are encrypted at rest and never returned in API responses.
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - text: Provider
+        - combobox [ref=e17] [cursor=pointer]:
+          - generic: Alpaca (Stocks & ETFs)
+          - img [ref=e18]
+        - combobox [ref=e20]
+      - generic [ref=e21]:
+        - text: Profile Name
+        - textbox "My Alpaca Account" [ref=e22]
+      - generic [ref=e23]:
+        - text: API Key ID
+        - textbox [ref=e24]: PKTEST00000000000001
+      - generic [ref=e25]:
+        - text: Secret Key
+        - textbox [active] [ref=e26]: SKTEST00000000000001abcdef1234567890
+      - generic [ref=e27]:
+        - switch "Paper Trading(uses paper-api.alpaca.markets)" [ref=e28] [cursor=pointer]
+        - checkbox
+        - generic [ref=e29]: Paper Trading(uses paper-api.alpaca.markets)
+      - generic [ref=e30]:
+        - button "Cancel" [ref=e31] [cursor=pointer]
+        - button "Save Credential" [ref=e32] [cursor=pointer]
+    - button "Close" [ref=e33] [cursor=pointer]:
+      - img [ref=e34]
+      - generic [ref=e37]: Close
+```

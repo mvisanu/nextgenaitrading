@@ -87,6 +87,12 @@ class AccountStatus(BaseModel):
     account_info: dict | None = Field(default=None, description="Raw account data if available")
 
 
+class ConfirmationDetail(BaseModel):
+    name: str
+    met: bool
+    value: str
+
+
 class SignalCheckOut(BaseModel):
     """Slim response for /live/run-signal-check — matches the frontend SignalCheckResult type."""
     model_config = ConfigDict(from_attributes=True)
@@ -96,6 +102,8 @@ class SignalCheckOut(BaseModel):
     signal: str | None
     confirmation_count: int | None
     strategy_run_id: int
+    reason: str | None = None
+    confirmation_details: list[ConfirmationDetail] = []
 
 
 class LiveChartResponse(BaseModel):

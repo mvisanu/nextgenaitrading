@@ -376,9 +376,11 @@ test.describe("Backtests UI — /backtests page", () => {
     await page.waitForLoadState("networkidle");
 
     // Look for leaderboard section or table
-    const leaderboard = page.locator(
-      '[data-testid="leaderboard"], table:has-text("variant"), text=/leaderboard/i, text=/variant/i'
-    );
+    // Use .or() to combine CSS selectors and Playwright text selectors
+    const leaderboard = page
+      .locator('[data-testid="leaderboard"], table')
+      .or(page.locator('text=/leaderboard/i').first())
+      .or(page.locator('text=/variant/i').first());
     if (await leaderboard.count() > 0) {
       await expect(leaderboard.first()).toBeVisible({ timeout: 10_000 });
     }

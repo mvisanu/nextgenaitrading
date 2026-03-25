@@ -25,6 +25,7 @@ class AbstractBrokerClient(ABC):
         quantity: float,
         order_type: str = "market",
         dry_run: bool = True,
+        notional_usd: float | None = None,
     ) -> OrderResult: ...
 
     @abstractmethod

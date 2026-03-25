@@ -75,6 +75,11 @@ export const ROUTES = {
   liveTrading: "/live-trading",
   artifacts: "/artifacts",
   profile: "/profile",
+  // v2 routes
+  opportunities: "/opportunities",
+  ideas: "/ideas",
+  alerts: "/alerts",
+  autoBuy: "/auto-buy",
 } as const;
 
 // ── Cookie names ───────────────────────────────────────────────────────────

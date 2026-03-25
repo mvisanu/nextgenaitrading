@@ -18,4 +18,14 @@ from app.models import (  # noqa: F401, E402
     live,
     strategy,
     user,
+    # v2 models
+    buy_zone,
+    theme_score,
+    idea,
+    alert,
+    auto_buy,
+    # v3 models
+    user_watchlist,
+    buy_signal,
+    generated_idea,
 )

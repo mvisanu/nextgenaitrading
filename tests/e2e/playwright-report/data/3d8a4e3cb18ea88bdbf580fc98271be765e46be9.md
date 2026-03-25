@@ -1,0 +1,344 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e13]: NextGenStock
+      - navigation [ref=e14]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - generic [ref=e22]: Dashboard
+        - link "Strategies" [ref=e23] [cursor=pointer]:
+          - /url: /strategies
+          - generic [ref=e24]:
+            - img [ref=e25]
+            - generic [ref=e28]: Strategies
+        - link "Backtests" [ref=e29] [cursor=pointer]:
+          - /url: /backtests
+          - generic [ref=e30]:
+            - img [ref=e31]
+            - generic [ref=e33]: Backtests
+        - link "Live Trading" [ref=e34] [cursor=pointer]:
+          - /url: /live-trading
+          - generic [ref=e35]:
+            - img [ref=e36]
+            - generic [ref=e42]: Live Trading
+        - link "Artifacts" [ref=e43] [cursor=pointer]:
+          - /url: /artifacts
+          - generic [ref=e44]:
+            - img [ref=e45]
+            - generic [ref=e50]: Artifacts
+        - link "Strategy Samples" [ref=e51] [cursor=pointer]:
+          - /url: /strategy-samples
+          - generic [ref=e52]:
+            - img [ref=e53]
+            - generic [ref=e55]: Strategy Samples
+        - link "Trade Log" [ref=e56] [cursor=pointer]:
+          - /url: /trade-log
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e61]: Trade Log
+        - 'link "Opportunities Scanner: market closed" [ref=e62] [cursor=pointer]':
+          - /url: /opportunities
+          - generic [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e66]:
+              - text: Opportunities
+              - 'generic "Scanner: market closed" [ref=e67]'
+        - link "Ideas" [ref=e68] [cursor=pointer]:
+          - /url: /ideas
+          - generic [ref=e69]:
+            - img [ref=e70]
+            - generic [ref=e72]: Ideas
+        - link "Alerts" [ref=e73] [cursor=pointer]:
+          - /url: /alerts
+          - generic [ref=e74]:
+            - img [ref=e75]
+            - generic [ref=e78]: Alerts
+        - link "Auto-Buy" [ref=e79] [cursor=pointer]:
+          - /url: /auto-buy
+          - generic [ref=e80]:
+            - img [ref=e81]
+            - generic [ref=e83]: Auto-Buy
+        - link "Learn to Trade" [ref=e84] [cursor=pointer]:
+          - /url: /learn
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e89]: Learn to Trade
+        - link "FAQ & Strategies" [ref=e90] [cursor=pointer]:
+          - /url: /faq
+          - generic [ref=e91]:
+            - img [ref=e92]
+            - generic [ref=e95]: FAQ & Strategies
+        - link "Profile" [ref=e96] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e97]:
+            - img [ref=e98]
+            - generic [ref=e101]: Profile
+      - generic [ref=e102]:
+        - generic "e2e-user-a@nextgenstock.io" [ref=e103]:
+          - generic [ref=e105]: E2
+          - generic: e2e-user-a@nextgenstock.io
+        - button "Sign out" [ref=e106] [cursor=pointer]:
+          - img [ref=e107]
+          - generic [ref=e110]: Sign out
+    - generic [ref=e111]:
+      - banner [ref=e112]:
+        - heading "Backtest Detail" [level=1] [ref=e114]
+      - main [ref=e115]:
+        - link "Back to Backtests" [ref=e117] [cursor=pointer]:
+          - /url: /backtests
+          - img
+          - text: Back to Backtests
+        - generic [ref=e118]:
+          - generic [ref=e119]:
+            - heading "AI Pick — BTC-USD" [level=3] [ref=e121]
+            - generic [ref=e123]:
+              - generic [ref=e124]: "Timeframe: 1d"
+              - generic [ref=e125]:
+                - text: "Leverage:"
+                - generic [ref=e126]: 2x
+              - generic [ref=e127]: "Winner: ai_pick_v4"
+              - generic [ref=e128]: "Created: Mar 24, 2026, 09:27 PM"
+          - generic [ref=e129]:
+            - heading "Equity Curve" [level=3] [ref=e131]
+            - img [ref=e136]:
+              - generic [ref=e138]:
+                - generic [ref=e140]: 2024-10-01
+                - generic [ref=e142]: 2025-01-09
+                - generic [ref=e144]: 2025-01-27
+                - generic [ref=e146]: 2025-02-17
+                - generic [ref=e148]: 2025-02-24
+                - generic [ref=e150]: 2025-06-13
+                - generic [ref=e152]: 2025-07-10
+                - generic [ref=e154]: 2025-08-13
+                - generic [ref=e156]: 2025-09-22
+                - generic [ref=e158]: 2025-10-02
+              - generic [ref=e160]:
+                - generic [ref=e162]: "0"
+                - generic [ref=e164]: "30"
+                - generic [ref=e166]: "60"
+                - generic [ref=e168]: "90"
+                - generic [ref=e170]: "120"
+          - generic [ref=e177]:
+            - heading "Trades (10)" [level=3] [ref=e179]
+            - table [ref=e182]:
+              - rowgroup [ref=e183]:
+                - row "Entry Exit Entry Price Exit Price Return Exit Reason" [ref=e184]:
+                  - columnheader "Entry" [ref=e185]
+                  - columnheader "Exit" [ref=e186]
+                  - columnheader "Entry Price" [ref=e187]
+                  - columnheader "Exit Price" [ref=e188]
+                  - columnheader "Return" [ref=e189]
+                  - columnheader "Exit Reason" [ref=e190]
+              - rowgroup [ref=e191]:
+                - row "Sep 30, 2024, 12:00 AM Oct 1, 2024, 12:00 AM 63329.50 60837.01 -3.94% signal" [ref=e192]:
+                  - cell "Sep 30, 2024, 12:00 AM" [ref=e193]
+                  - cell "Oct 1, 2024, 12:00 AM" [ref=e194]
+                  - cell "63329.50" [ref=e195]
+                  - cell "60837.01" [ref=e196]
+                  - cell "-3.94%" [ref=e197]
+                  - cell "signal" [ref=e198]
+                - row "Jan 7, 2025, 12:00 AM Jan 9, 2025, 12:00 AM 96922.70 92484.04 -4.58% signal" [ref=e199]:
+                  - cell "Jan 7, 2025, 12:00 AM" [ref=e200]
+                  - cell "Jan 9, 2025, 12:00 AM" [ref=e201]
+                  - cell "96922.70" [ref=e202]
+                  - cell "92484.04" [ref=e203]
+                  - cell "-4.58%" [ref=e204]
+                  - cell "signal" [ref=e205]
+                - row "Jan 26, 2025, 12:00 AM Jan 27, 2025, 12:00 AM 102682.50 102087.69 -0.58% signal" [ref=e206]:
+                  - cell "Jan 26, 2025, 12:00 AM" [ref=e207]
+                  - cell "Jan 27, 2025, 12:00 AM" [ref=e208]
+                  - cell "102682.50" [ref=e209]
+                  - cell "102087.69" [ref=e210]
+                  - cell "-0.58%" [ref=e211]
+                  - cell "signal" [ref=e212]
+                - row "Feb 15, 2025, 12:00 AM Feb 17, 2025, 12:00 AM 97580.35 95773.38 -1.85% signal" [ref=e213]:
+                  - cell "Feb 15, 2025, 12:00 AM" [ref=e214]
+                  - cell "Feb 17, 2025, 12:00 AM" [ref=e215]
+                  - cell "97580.35" [ref=e216]
+                  - cell "95773.38" [ref=e217]
+                  - cell "-1.85%" [ref=e218]
+                  - cell "signal" [ref=e219]
+                - row "Feb 20, 2025, 12:00 AM Feb 24, 2025, 12:00 AM 98333.94 91418.17 -7.03% signal" [ref=e220]:
+                  - cell "Feb 20, 2025, 12:00 AM" [ref=e221]
+                  - cell "Feb 24, 2025, 12:00 AM" [ref=e222]
+                  - cell "98333.94" [ref=e223]
+                  - cell "91418.17" [ref=e224]
+                  - cell "-7.03%" [ref=e225]
+                  - cell "signal" [ref=e226]
+                - row "Jun 12, 2025, 12:00 AM Jun 13, 2025, 12:00 AM 105929.05 106090.97 +0.15% signal" [ref=e227]:
+                  - cell "Jun 12, 2025, 12:00 AM" [ref=e228]
+                  - cell "Jun 13, 2025, 12:00 AM" [ref=e229]
+                  - cell "105929.05" [ref=e230]
+                  - cell "106090.97" [ref=e231]
+                  - cell "+0.15%" [ref=e232]
+                  - cell "signal" [ref=e233]
+                - row "Jul 1, 2025, 12:00 AM Jul 10, 2025, 12:00 AM 105698.28 115987.20 +9.73% signal" [ref=e234]:
+                  - cell "Jul 1, 2025, 12:00 AM" [ref=e235]
+                  - cell "Jul 10, 2025, 12:00 AM" [ref=e236]
+                  - cell "105698.28" [ref=e237]
+                  - cell "115987.20" [ref=e238]
+                  - cell "+9.73%" [ref=e239]
+                  - cell "signal" [ref=e240]
+                - row "Aug 9, 2025, 12:00 AM Aug 13, 2025, 12:00 AM 116500.36 123344.06 +5.87% signal" [ref=e241]:
+                  - cell "Aug 9, 2025, 12:00 AM" [ref=e242]
+                  - cell "Aug 13, 2025, 12:00 AM" [ref=e243]
+                  - cell "116500.36" [ref=e244]
+                  - cell "123344.06" [ref=e245]
+                  - cell "+5.87%" [ref=e246]
+                  - cell "signal" [ref=e247]
+                - row "Sep 3, 2025, 12:00 AM Sep 22, 2025, 12:00 AM 111723.21 112748.51 +0.92% signal" [ref=e248]:
+                  - cell "Sep 3, 2025, 12:00 AM" [ref=e249]
+                  - cell "Sep 22, 2025, 12:00 AM" [ref=e250]
+                  - cell "111723.21" [ref=e251]
+                  - cell "112748.51" [ref=e252]
+                  - cell "+0.92%" [ref=e253]
+                  - cell "signal" [ref=e254]
+                - row "Sep 30, 2025, 12:00 AM Oct 2, 2025, 12:00 AM 114056.09 120681.26 +5.81% signal" [ref=e255]:
+                  - cell "Sep 30, 2025, 12:00 AM" [ref=e256]
+                  - cell "Oct 2, 2025, 12:00 AM" [ref=e257]
+                  - cell "114056.09" [ref=e258]
+                  - cell "120681.26" [ref=e259]
+                  - cell "+5.81%" [ref=e260]
+                  - cell "signal" [ref=e261]
+          - generic [ref=e262]:
+            - heading "Variant Leaderboard" [level=3] [ref=e264]
+            - table [ref=e267]:
+              - rowgroup [ref=e268]:
+                - row "Variant Val Score Train % Val % Test % Max DD Trades Winner" [ref=e269]:
+                  - columnheader "Variant" [ref=e270]
+                  - columnheader "Val Score" [ref=e271]
+                  - columnheader "Train %" [ref=e272]
+                  - columnheader "Val %" [ref=e273]
+                  - columnheader "Test %" [ref=e274]
+                  - columnheader "Max DD" [ref=e275]
+                  - columnheader "Trades" [ref=e276]
+                  - columnheader "Winner" [ref=e277]
+              - rowgroup [ref=e278]:
+                - row "ai_pick_v4 27.020 -17.97% +27.02% +0.00% +0.00% 10" [ref=e279]:
+                  - cell "ai_pick_v4" [ref=e280]
+                  - cell "27.020" [ref=e281]
+                  - cell "-17.97%" [ref=e282]
+                  - cell "+27.02%" [ref=e283]
+                  - cell "+0.00%" [ref=e284]
+                  - cell "+0.00%" [ref=e285]
+                  - cell "10" [ref=e286]
+                  - cell [ref=e287]:
+                    - img [ref=e288]
+                - row "ai_pick_v2 26.410 -17.11% +27.58% +0.00% +4.44% 8" [ref=e294]:
+                  - cell "ai_pick_v2" [ref=e295]
+                  - cell "26.410" [ref=e296]
+                  - cell "-17.11%" [ref=e297]
+                  - cell "+27.58%" [ref=e298]
+                  - cell "+0.00%" [ref=e299]
+                  - cell "+4.44%" [ref=e300]
+                  - cell "8" [ref=e301]
+                  - cell [ref=e302]
+                - row "ai_pick_v8 20.743 -21.11% +20.74% +0.00% +0.00% 9" [ref=e303]:
+                  - cell "ai_pick_v8" [ref=e304]
+                  - cell "20.743" [ref=e305]
+                  - cell "-21.11%" [ref=e306]
+                  - cell "+20.74%" [ref=e307]
+                  - cell "+0.00%" [ref=e308]
+                  - cell "+0.00%" [ref=e309]
+                  - cell "9" [ref=e310]
+                  - cell [ref=e311]
+                - row "ai_pick_v1 19.658 -8.88% +19.66% +0.00% +0.00% 4" [ref=e312]:
+                  - cell "ai_pick_v1" [ref=e313]
+                  - cell "19.658" [ref=e314]
+                  - cell "-8.88%" [ref=e315]
+                  - cell "+19.66%" [ref=e316]
+                  - cell "+0.00%" [ref=e317]
+                  - cell "+0.00%" [ref=e318]
+                  - cell "4" [ref=e319]
+                  - cell [ref=e320]
+                - row "ai_pick_v5 19.468 -9.16% +19.47% +0.00% +0.00% 2" [ref=e321]:
+                  - cell "ai_pick_v5" [ref=e322]
+                  - cell "19.468" [ref=e323]
+                  - cell "-9.16%" [ref=e324]
+                  - cell "+19.47%" [ref=e325]
+                  - cell "+0.00%" [ref=e326]
+                  - cell "+0.00%" [ref=e327]
+                  - cell "2" [ref=e328]
+                  - cell [ref=e329]
+                - row "ai_pick_v9 17.791 -9.16% +18.02% -9.17% +1.30% 5" [ref=e330]:
+                  - cell "ai_pick_v9" [ref=e331]
+                  - cell "17.791" [ref=e332]
+                  - cell "-9.16%" [ref=e333]
+                  - cell "+18.02%" [ref=e334]
+                  - cell "-9.17%" [ref=e335]
+                  - cell "+1.30%" [ref=e336]
+                  - cell "5" [ref=e337]
+                  - cell [ref=e338]
+                - row "ai_pick_v6 12.687 -26.97% +13.25% +0.00% +4.44% 7" [ref=e339]:
+                  - cell "ai_pick_v6" [ref=e340]
+                  - cell "12.687" [ref=e341]
+                  - cell "-26.97%" [ref=e342]
+                  - cell "+13.25%" [ref=e343]
+                  - cell "+0.00%" [ref=e344]
+                  - cell "+4.44%" [ref=e345]
+                  - cell "7" [ref=e346]
+                  - cell [ref=e347]
+                - row "ai_pick_v10 10.193 -21.82% +10.92% -9.17% +7.15% 11" [ref=e348]:
+                  - cell "ai_pick_v10" [ref=e349]
+                  - cell "10.193" [ref=e350]
+                  - cell "-21.82%" [ref=e351]
+                  - cell "+10.92%" [ref=e352]
+                  - cell "-9.17%" [ref=e353]
+                  - cell "+7.15%" [ref=e354]
+                  - cell "11" [ref=e355]
+                  - cell [ref=e356]
+                - row "ai_pick_v11 3.344 -2.10% +3.34% +0.00% +0.00% 5" [ref=e357]:
+                  - cell "ai_pick_v11" [ref=e358]
+                  - cell "3.344" [ref=e359]
+                  - cell "-2.10%" [ref=e360]
+                  - cell "+3.34%" [ref=e361]
+                  - cell "+0.00%" [ref=e362]
+                  - cell "+0.00%" [ref=e363]
+                  - cell "5" [ref=e364]
+                  - cell [ref=e365]
+                - row "ai_pick_v3 1.997 -5.44% +2.00% +0.00% +0.00% 7" [ref=e366]:
+                  - cell "ai_pick_v3" [ref=e367]
+                  - cell "1.997" [ref=e368]
+                  - cell "-5.44%" [ref=e369]
+                  - cell "+2.00%" [ref=e370]
+                  - cell "+0.00%" [ref=e371]
+                  - cell "+0.00%" [ref=e372]
+                  - cell "7" [ref=e373]
+                  - cell [ref=e374]
+                - row "ai_pick_v7 1.835 -5.73% +1.84% +0.00% +0.00% 5" [ref=e375]:
+                  - cell "ai_pick_v7" [ref=e376]
+                  - cell "1.835" [ref=e377]
+                  - cell "-5.73%" [ref=e378]
+                  - cell "+1.84%" [ref=e379]
+                  - cell "+0.00%" [ref=e380]
+                  - cell "+0.00%" [ref=e381]
+                  - cell "5" [ref=e382]
+                  - cell [ref=e383]
+                - row "ai_pick_v12 1.641 -19.45% +1.67% +0.00% +1.53% 9" [ref=e384]:
+                  - cell "ai_pick_v12" [ref=e385]
+                  - cell "1.641" [ref=e386]
+                  - cell "-19.45%" [ref=e387]
+                  - cell "+1.67%" [ref=e388]
+                  - cell "+0.00%" [ref=e389]
+                  - cell "+1.53%" [ref=e390]
+                  - cell "9" [ref=e391]
+                  - cell [ref=e392]
+      - generic [ref=e393]:
+        - generic [ref=e394]: NextGenStock v1.0
+        - generic [ref=e395]: "|"
+        - generic [ref=e396]: Connected
+        - generic [ref=e398]: "|"
+        - generic [ref=e399]: e2e-user-a@nextgenstock.io
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e405] [cursor=pointer]:
+    - img [ref=e406]
+  - alert [ref=e409]
+  - generic [ref=e410]: "0"
+```

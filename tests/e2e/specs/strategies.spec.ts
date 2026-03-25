@@ -350,7 +350,10 @@ test.describe("Strategy UI — /strategies page", () => {
     await symbolInput.first().fill(INVALID_SYMBOL);
     await page.click('button:has-text("Run"), button:has-text("Analyze")');
 
-    const error = page.locator('[role="alert"], .error, [data-testid="error"], text=/not found|invalid/i');
+    // Use .or() to combine CSS selectors with Playwright text selectors
+    const error = page
+      .locator('[role="alert"], .error, [data-testid="error"]')
+      .or(page.locator('text=/not found|invalid/i').first());
     await expect(error.first()).toBeVisible({ timeout: 30_000 });
   });
 
@@ -378,9 +381,11 @@ test.describe("Strategy UI — /strategies page", () => {
     await page.click('button:has-text("Run"), button:has-text("Analyze")');
 
     // Wait for results — conservative is faster than optimizer modes
-    const signalSection = page.locator(
-      '[data-testid="signal"], text=/signal/i, text=/regime/i, text=/confirmation/i'
-    );
+    const signalSection = page
+      .locator('[data-testid="signal"]')
+      .or(page.locator('text=/signal/i').first())
+      .or(page.locator('text=/regime/i').first())
+      .or(page.locator('text=/confirmation/i').first());
     await expect(signalSection.first()).toBeVisible({ timeout: 45_000 });
   });
 });

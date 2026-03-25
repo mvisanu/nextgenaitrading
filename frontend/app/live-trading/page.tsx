@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AppShell } from "@/components/layout/AppShell";
+import { AppShell, useAuth } from "@/components/layout/AppShell";
 import { PriceChart } from "@/components/charts/PriceChart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -54,21 +55,33 @@ import type {
 } from "@/types";
 import {
   AlertTriangle,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  MinusCircle,
   RefreshCw,
   Zap,
 } from "lucide-react";
+import type { SignalMarker } from "@/types";
 
 const executeSchema = z.object({
   side: z.enum(["buy", "sell"]),
-  quantity: z.preprocess(
+  amount: z.preprocess(
     (v) => Number(v),
-    z.number().positive("Quantity must be positive")
+    z.number().positive("Amount must be positive")
   ),
 });
 type ExecuteFormValues = z.infer<typeof executeSchema>;
 
 export default function LiveTradingPage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login?callbackUrl=/live-trading");
+    }
+  }, [authLoading, user, router]);
   const [selectedCredentialId, setSelectedCredentialId] = useState<
     number | null
   >(null);
@@ -131,7 +144,7 @@ export default function LiveTradingPage() {
     setValue: setExecuteValue,
   } = useForm<ExecuteFormValues>({
     resolver: zodResolver(executeSchema),
-    defaultValues: { side: "buy", quantity: 0 },
+    defaultValues: { side: "buy", amount: 0 },
   });
 
   const { mutate: executeOrder, isPending: isExecuting } = useMutation({
@@ -141,7 +154,7 @@ export default function LiveTradingPage() {
       return liveApi.execute({
         symbol: committedSymbol,
         side: values.side,
-        quantity: values.quantity,
+        notional_usd: values.amount,
         credential_id: selectedCredentialId,
         dry_run: dryRun,
         strategy_run_id: signalResult?.strategy_run_id,
@@ -151,7 +164,8 @@ export default function LiveTradingPage() {
       queryClient.invalidateQueries({ queryKey: ["live", "orders"] });
       queryClient.invalidateQueries({ queryKey: ["live", "positions"] });
       const label = order.dry_run ? "[DRY RUN] " : "";
-      toast.success(`${label}Order submitted: ${order.side?.toUpperCase()} ${symbol}`);
+      const amt = order.notional_usd ? ` $${order.notional_usd}` : "";
+      toast.success(`${label}Order submitted: ${order.side?.toUpperCase()}${amt} ${symbol}`);
     },
     onError: (err: Error) => {
       toast.error(getErrorMessage(err, "Order execution failed"));
@@ -182,6 +196,8 @@ export default function LiveTradingPage() {
     queryClient.invalidateQueries({ queryKey: ["live", "orders"] });
     toast.info("Refreshed");
   }
+
+  if (authLoading || !user) return null;
 
   return (
     <AppShell title="Live Trading">
@@ -221,6 +237,17 @@ export default function LiveTradingPage() {
               <div className="flex items-center gap-2">
                 {credsLoading ? (
                   <Skeleton className="h-10 flex-1" />
+                ) : credentials.length === 0 ? (
+                  <Alert className="flex-1 border-amber-500/30 bg-amber-500/5">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <AlertDescription className="text-sm">
+                      No broker credentials found.{" "}
+                      <a href="/profile" className="underline font-medium text-primary hover:text-primary/80">
+                        Go to Profile
+                      </a>{" "}
+                      to add your Alpaca or Robinhood API keys first.
+                    </AlertDescription>
+                  </Alert>
                 ) : (
                   <Select
                     onValueChange={(v) => setSelectedCredentialId(Number(v))}
@@ -229,20 +256,14 @@ export default function LiveTradingPage() {
                       <SelectValue placeholder="Select a credential..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {credentials.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          No credentials saved — add one in Profile
+                      {credentials.filter((c) => c.is_active).map((cred) => (
+                        <SelectItem
+                          key={cred.id}
+                          value={String(cred.id)}
+                        >
+                          {cred.profile_name}
                         </SelectItem>
-                      ) : (
-                        credentials.filter((c) => c.is_active).map((cred) => (
-                          <SelectItem
-                            key={cred.id}
-                            value={String(cred.id)}
-                          >
-                            {cred.profile_name}
-                          </SelectItem>
-                        ))
-                      )}
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
@@ -331,7 +352,7 @@ export default function LiveTradingPage() {
 
             {/* Signal Result */}
             {signalResult && (
-              <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+              <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground">Regime:</span>
                   <Badge variant={getRegimeVariant(signalResult.regime)}>
@@ -342,9 +363,32 @@ export default function LiveTradingPage() {
                     {signalResult.signal?.toUpperCase() ?? '—'}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {signalResult.confirmation_count} confirmations
+                    {signalResult.confirmation_count}/8 confirmations
                   </span>
                 </div>
+                {signalResult.reason && (
+                  <p className="text-xs text-muted-foreground italic">{signalResult.reason}</p>
+                )}
+                {signalResult.confirmation_details?.length > 0 && (
+                  <div className="space-y-1 pt-1 border-t border-border">
+                    <p className="text-xs font-medium text-muted-foreground">Indicator Breakdown</p>
+                    {signalResult.confirmation_details.map((detail, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={detail.met ? "text-green-400" : "text-red-400"}>
+                            {detail.met ? "\u2713" : "\u2717"}
+                          </span>
+                          <span className={detail.met ? "text-foreground" : "text-muted-foreground"}>
+                            {detail.name}
+                          </span>
+                        </div>
+                        <span className="text-muted-foreground font-mono text-[11px] shrink-0">
+                          {detail.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -373,17 +417,21 @@ export default function LiveTradingPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Quantity</Label>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    placeholder="0"
-                    {...registerExecute("quantity")}
-                  />
-                  {executeErrors.quantity && (
+                  <Label>Amount (USD)</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="100.00"
+                      className="pl-7"
+                      {...registerExecute("amount")}
+                    />
+                  </div>
+                  {executeErrors.amount && (
                     <p className="text-xs text-destructive">
-                      {executeErrors.quantity.message?.toString()}
+                      {executeErrors.amount.message?.toString()}
                     </p>
                   )}
                 </div>
@@ -413,13 +461,21 @@ export default function LiveTradingPage() {
           </CardHeader>
           <CardContent>
             {chartData?.candles ? (
-              <PriceChart data={chartData.candles} symbol={symbol} height={300} />
+              <PriceChart
+                data={chartData.candles}
+                signals={signalResult ? buildSignalMarkers(signalResult, chartData.candles) : []}
+                symbol={symbol}
+                height={300}
+              />
             ) : (
               <Skeleton className="h-[300px] w-full" />
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Signal Decision Banner */}
+      {signalResult && <SignalDecisionBanner result={signalResult} symbol={committedSymbol} mode={mode} dryRun={dryRun} />}
 
       {/* Positions Table */}
       <Card className="mt-6">
@@ -503,7 +559,7 @@ export default function LiveTradingPage() {
                   <TableHead>Symbol</TableHead>
                   <TableHead>Side</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Fill Price</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Created</TableHead>
@@ -525,7 +581,9 @@ export default function LiveTradingPage() {
                     </TableCell>
                     <TableCell className="text-xs">{order.status}</TableCell>
                     <TableCell className="text-right text-xs">
-                      {order.filled_quantity ?? order.quantity ?? "-"}
+                      {order.notional_usd
+                        ? formatCurrency(order.notional_usd)
+                        : order.filled_quantity ?? order.quantity ?? "-"}
                     </TableCell>
                     <TableCell className="text-right text-xs">
                       {order.filled_price
@@ -580,6 +638,125 @@ export default function LiveTradingPage() {
     </AppShell>
   );
 }
+
+// ─── Signal Decision Banner ──────────────────────────────────────────────────
+
+const SIGNAL_CONFIG: Record<string, {
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+  icon: typeof ArrowUpCircle;
+}> = {
+  buy: {
+    label: "BUY",
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
+    icon: ArrowUpCircle,
+  },
+  sell: {
+    label: "SELL",
+    color: "text-red-400",
+    bg: "bg-red-500/10",
+    border: "border-red-500/30",
+    icon: ArrowDownCircle,
+  },
+  hold: {
+    label: "HOLD",
+    color: "text-yellow-400",
+    bg: "bg-yellow-500/10",
+    border: "border-yellow-500/30",
+    icon: MinusCircle,
+  },
+};
+
+function SignalDecisionBanner({
+  result,
+  symbol,
+  mode,
+  dryRun,
+}: {
+  result: SignalCheckResult;
+  symbol: string;
+  mode: string;
+  dryRun: boolean;
+}) {
+  const sig = result.signal?.toLowerCase() ?? "hold";
+  const config = SIGNAL_CONFIG[sig] ?? SIGNAL_CONFIG.hold;
+  const Icon = config.icon;
+
+  return (
+    <Card className={`mt-6 ${config.border} ${config.bg}`} data-testid="signal-decision">
+      <CardContent className="py-5">
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          {/* Left: big signal */}
+          <div className="flex items-center gap-4">
+            <Icon className={`h-12 w-12 ${config.color}`} />
+            <div>
+              <p className={`text-3xl font-bold tracking-tight ${config.color}`}>
+                {config.label}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Signal for <span className="font-mono font-medium text-foreground">{symbol}</span>
+                {" · "}
+                <span className="capitalize">{mode}</span>
+                {" · "}
+                {dryRun ? "Dry Run" : "LIVE"}
+              </p>
+            </div>
+          </div>
+
+          {/* Right: details */}
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <div className="rounded-md border border-border bg-background/50 px-3 py-1.5 text-center">
+              <p className="text-xs text-muted-foreground">Regime</p>
+              <Badge variant={getRegimeVariant(result.regime)} className="mt-0.5">
+                {result.regime ?? "—"}
+              </Badge>
+            </div>
+            <div className="rounded-md border border-border bg-background/50 px-3 py-1.5 text-center">
+              <p className="text-xs text-muted-foreground">Confirmations</p>
+              <p className="font-mono font-bold text-foreground">
+                {result.confirmation_count ?? 0}
+              </p>
+            </div>
+            <div className="rounded-md border border-border bg-background/50 px-3 py-1.5 text-center">
+              <p className="text-xs text-muted-foreground">Run ID</p>
+              <p className="font-mono text-xs text-muted-foreground">
+                #{result.strategy_run_id}
+              </p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Signal Marker Builder ───────────────────────────────────────────────────
+
+function buildSignalMarkers(
+  result: SignalCheckResult,
+  candles: { time: string; high: number; low: number }[]
+): SignalMarker[] {
+  if (!candles.length || !result.signal) return [];
+  const sig = result.signal.toLowerCase();
+  if (sig === "hold") return [];
+
+  const lastCandle = candles[candles.length - 1];
+  return [
+    {
+      time: lastCandle.time,
+      position: sig === "buy" ? "belowBar" : "aboveBar",
+      color: sig === "buy" ? "#26a69a" : "#ef5350",
+      shape: sig === "buy" ? "arrowUp" : "arrowDown",
+      text: sig.toUpperCase(),
+    },
+  ];
+}
+
+// ─── Credential Badge ────────────────────────────────────────────────────────
 
 function CredentialBadge({ credential }: { credential: BrokerCredential }) {
   if (credential.provider === "alpaca") {

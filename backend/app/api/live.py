@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from typing import Annotated
 
@@ -55,12 +56,25 @@ async def run_signal_check(
         current_user=current_user,
         run_type="signal",
     )
+    # Parse per-indicator confirmation details from notes JSON
+    confirmation_details = []
+    reason = None
+    if run.notes:
+        try:
+            notes_data = json.loads(run.notes)
+            confirmation_details = notes_data.get("confirmation_details", [])
+            reason = notes_data.get("reason")
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     return SignalCheckOut(
         symbol=run.symbol,
         regime=run.current_regime,
         signal=run.current_signal,
         confirmation_count=run.confirmation_count,
         strategy_run_id=run.id,
+        reason=reason,
+        confirmation_details=confirmation_details,
     )
 
 

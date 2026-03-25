@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AppShell } from "@/components/layout/AppShell";
+import { AppShell, useAuth } from "@/components/layout/AppShell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,9 +67,17 @@ const credentialSchema = z.object({
 type CredentialFormValues = z.infer<typeof credentialSchema>;
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
   const [credDialogOpen, setCredDialogOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login?callbackUrl=/profile");
+    }
+  }, [authLoading, user, router]);
 
   // ── Profile data ────────────────────────────────────────────────────────────
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -184,6 +193,8 @@ export default function ProfilePage() {
     }
     createCredential(body);
   }
+
+  if (authLoading || !user) return null;
 
   return (
     <AppShell title="Profile">

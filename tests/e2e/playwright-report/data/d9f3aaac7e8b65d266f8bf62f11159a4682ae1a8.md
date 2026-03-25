@@ -1,0 +1,663 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - img
+          - generic: NextGenStock
+        - navigation:
+          - link:
+            - /url: /dashboard
+            - generic:
+              - img
+              - generic: Dashboard
+          - link:
+            - /url: /strategies
+            - generic:
+              - img
+              - generic: Strategies
+          - link:
+            - /url: /backtests
+            - generic:
+              - img
+              - generic: Backtests
+          - link:
+            - /url: /live-trading
+            - generic:
+              - img
+              - generic: Live Trading
+          - link:
+            - /url: /artifacts
+            - generic:
+              - img
+              - generic: Artifacts
+          - link:
+            - /url: /strategy-samples
+            - generic:
+              - img
+              - generic: Strategy Samples
+          - link:
+            - /url: /trade-log
+            - generic:
+              - img
+              - generic: Trade Log
+          - link:
+            - /url: /opportunities
+            - generic:
+              - img
+              - generic: Opportunities
+          - link:
+            - /url: /ideas
+            - generic:
+              - img
+              - generic: Ideas
+          - link:
+            - /url: /alerts
+            - generic:
+              - img
+              - generic: Alerts
+          - link:
+            - /url: /auto-buy
+            - generic:
+              - img
+              - generic: Auto-Buy
+          - link:
+            - /url: /learn
+            - generic:
+              - img
+              - generic: Learn to Trade
+          - link:
+            - /url: /faq
+            - generic:
+              - img
+              - generic: FAQ & Strategies
+          - link:
+            - /url: /profile
+            - generic:
+              - img
+              - generic: Profile
+        - generic:
+          - generic:
+            - generic:
+              - generic: E2
+          - button:
+            - img
+            - generic: Sign out
+    - generic:
+      - banner:
+        - generic:
+          - heading [level=1]: Alerts
+          - generic:
+            - button:
+              - img
+              - text: New Alert
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Disabled
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Confidence score improved
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: SPY
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Macro / theme deterioration
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Theme score increased
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Confidence score improved
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Below invalidation level
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Near entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Near entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Theme score increased
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Near entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Disabled
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: SPY
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Confidence score improved
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - switch [checked]
+                  - generic:
+                    - generic: AAPL
+                    - generic:
+                      - img
+                      - text: Active
+                - button:
+                  - img
+            - generic:
+              - generic:
+                - generic:
+                  - paragraph: Alert type
+                  - paragraph: Entered high-probability entry zone
+                - generic:
+                  - paragraph: Cooldown
+                  - paragraph:
+                    - img
+                    - text: 60m
+                - generic:
+                  - paragraph: Market hours only
+                  - paragraph: "Yes"
+      - generic:
+        - generic: NextGenStock v1.0
+        - generic: "|"
+        - generic: Connected
+        - generic: "|"
+        - generic: e2e-user-a@nextgenstock.io
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e6] [cursor=pointer]:
+    - img [ref=e7]
+  - alert
+  - dialog "New alert rule" [ref=e12]:
+    - heading "New alert rule" [level=2] [ref=e14]
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - text: Ticker
+        - textbox "Ticker" [ref=e17]:
+          - /placeholder: AAPL
+          - text: SPY
+      - generic [ref=e18]:
+        - text: Alert type
+        - combobox "Alert type" [ref=e19] [cursor=pointer]:
+          - generic: Entered high-probability entry zone
+          - img [ref=e20]
+        - combobox [ref=e22]
+      - generic [ref=e23]:
+        - text: Cooldown (minutes)
+        - spinbutton "Cooldown (minutes)" [ref=e24]: "60"
+      - generic [ref=e25]:
+        - switch "Market hours only (9:30am–4pm ET)" [checked] [ref=e26] [cursor=pointer]
+        - checkbox [checked]
+        - generic [ref=e27]: Market hours only (9:30am–4pm ET)
+      - generic [ref=e28]:
+        - switch "Enable alert immediately" [checked] [ref=e29] [cursor=pointer]
+        - checkbox [checked]
+        - generic [ref=e30]: Enable alert immediately
+      - button "Create alert" [active] [ref=e31] [cursor=pointer]
+    - button "Close" [ref=e32] [cursor=pointer]:
+      - img [ref=e33]
+      - generic [ref=e36]: Close
+```

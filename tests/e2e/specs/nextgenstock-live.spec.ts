@@ -18,7 +18,7 @@
  * All test emails in this file use `.com` or `.io` TLDs.
  */
 
-import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
+import { test, expect, type Page, type APIRequestContext, type PlaywrightTestArgs } from "@playwright/test";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -191,9 +191,16 @@ test.describe("Backend API — Auth endpoints", () => {
     expect(bodyStr).not.toMatch(/eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/);
   });
 
-  test("API-13: GET /auth/me without cookie returns 401", async ({ request }) => {
-    const res = await request.get(`${API_URL}/auth/me`);
-    expect(res.status()).toBe(401);
+  test("API-13: GET /auth/me without cookie returns 401", async ({ playwright }) => {
+    // Use a fresh context with no cookies — the shared `request` fixture may
+    // have inherited cookies from earlier login tests in this describe block.
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/auth/me`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("API-14: GET /auth/me with valid session returns user data", async ({
@@ -225,10 +232,15 @@ test.describe("Backend API — Auth endpoints", () => {
   });
 
   test("API-16: POST /auth/refresh without refresh cookie returns 401", async ({
-    request,
+    playwright,
   }) => {
-    const res = await request.post(`${API_URL}/auth/refresh`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(`${API_URL}/auth/refresh`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("API-17: POST /auth/refresh with valid session returns 200 and new token data", async ({
@@ -243,7 +255,10 @@ test.describe("Backend API — Auth endpoints", () => {
     expect(body).toHaveProperty("user_id");
   });
 
-  test("API-18: protected endpoints return 401 without auth", async ({ request }) => {
+  test("API-18: protected endpoints return 401 without auth", async ({ playwright }) => {
+    // Use a fresh context with no cookies to avoid inheriting login state from
+    // earlier tests in this describe block.
+    const freshCtx = await playwright.request.newContext();
     const endpoints = [
       { method: "GET", path: "/profile" },
       { method: "GET", path: "/broker/credentials" },
@@ -252,12 +267,16 @@ test.describe("Backend API — Auth endpoints", () => {
       { method: "GET", path: "/live/positions" },
       { method: "GET", path: "/artifacts" },
     ];
-    for (const { method, path } of endpoints) {
-      const res =
-        method === "GET"
-          ? await request.get(`${API_URL}${path}`)
-          : await request.post(`${API_URL}${path}`);
-      expect(res.status(), `Expected 401 for ${method} ${path}`).toBe(401);
+    try {
+      for (const { method, path } of endpoints) {
+        const res =
+          method === "GET"
+            ? await freshCtx.get(`${API_URL}${path}`)
+            : await freshCtx.post(`${API_URL}${path}`);
+        expect(res.status(), `Expected 401 for ${method} ${path}`).toBe(401);
+      }
+    } finally {
+      await freshCtx.dispose();
     }
   });
 });

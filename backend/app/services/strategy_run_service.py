@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Literal
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +23,7 @@ from app.models.artifact import WinningStrategyArtifact
 from app.models.backtest import BacktestTrade, VariantBacktestResult
 from app.models.strategy import StrategyRun, TradeDecision
 from app.models.user import User
-from app.services.market_data import load_ohlcv_for_strategy, validate_symbol
+from app.services.market_data import load_ohlcv_for_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +49,6 @@ async def run_strategy(
     Main entry point for all strategy/backtest runs.
     Returns the persisted StrategyRun record.
     """
-    validate_symbol(symbol)
-
     defaults = MODE_DEFAULTS.get(mode, {})
     leverage = leverage_override if leverage_override is not None else defaults.get("leverage", 1.0)
     min_confirmations = defaults.get("min_confirmations")
@@ -116,6 +113,10 @@ async def _run_hmm_mode(
     run.bull_state_id = result.bull_state_id  # type: ignore[assignment]
     run.bear_state_id = result.bear_state_id  # type: ignore[assignment]
     run.current_state_id = result.current_state_id  # type: ignore[assignment]
+
+    # Store per-indicator confirmation details in notes as JSON for the signal check UI
+    if result.confirmation_details:
+        run.notes = json.dumps({"confirmation_details": result.confirmation_details, "reason": result.reason_summary})  # type: ignore[assignment]
 
     # Save per-bar TradeDecision records (up to last 100 bars to avoid bloat)
     bar_data = list(zip(result.bar_timestamps, result.signals_per_bar))[-100:]

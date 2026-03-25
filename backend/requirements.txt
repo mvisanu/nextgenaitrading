@@ -38,6 +38,13 @@ scikit-learn>=1.5.0
 # Broker SDK
 alpaca-py>=0.30.0
 
+# Scheduler
+apscheduler>=3.10.0
+
 # Utilities
 python-dotenv>=1.0.0
 python-multipart>=0.0.9
+pytz>=2024.1
+
+# V3 — RSS feed parsing for news scanner
+feedparser>=6.0.10

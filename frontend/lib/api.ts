@@ -31,6 +31,29 @@ import type {
   PositionSnapshot,
   LiveStatus,
   Artifact,
+  BuyZoneSnapshot,
+  ThemeScoreResult,
+  PriceAlertRule,
+  CreateAlertRequest,
+  UpdateAlertRequest,
+  WatchlistIdea,
+  CreateIdeaRequest,
+  UpdateIdeaRequest,
+  AutoBuySettings,
+  UpdateAutoBuySettingsRequest,
+  AutoBuyDecisionLog,
+  AutoBuyDryRunResult,
+  OpportunityRow,
+  EstimatedBuyPriceOut,
+  ScanResultOut,
+  GeneratedIdeaOut,
+  // V3 types
+  WatchlistEntry,
+  GeneratedIdeaRow,
+  AddToWatchlistResult,
+  LastScanResult,
+  ScannerStatus,
+  RunNowResult,
 } from "@/types";
 
 const BASE_URL =
@@ -246,4 +269,124 @@ export const artifactApi = {
       // Normalize field name: backend returns pine_script_code, client expects code
       code: r.pine_script_code ?? r.code ?? "",
     })),
+};
+
+// ─── Buy Zone ─────────────────────────────────────────────────────────────────
+
+export const buyZoneApi = {
+  get: (ticker: string) =>
+    get<BuyZoneSnapshot>(`/stocks/${encodeURIComponent(ticker)}/buy-zone`),
+
+  recalculate: (ticker: string) =>
+    post<BuyZoneSnapshot>(`/stocks/${encodeURIComponent(ticker)}/recalculate-buy-zone`),
+};
+
+// ─── Theme Score ──────────────────────────────────────────────────────────────
+
+export const themeScoreApi = {
+  get: (ticker: string) =>
+    get<ThemeScoreResult>(`/stocks/${encodeURIComponent(ticker)}/theme-score`),
+
+  recompute: (ticker: string) =>
+    post<ThemeScoreResult>(`/stocks/${encodeURIComponent(ticker)}/theme-score/recompute`),
+};
+
+// ─── Alerts ───────────────────────────────────────────────────────────────────
+
+export const alertsApi = {
+  list: () => get<PriceAlertRule[]>("/alerts"),
+
+  create: (body: CreateAlertRequest) => post<PriceAlertRule>("/alerts", body),
+
+  update: (id: number, body: UpdateAlertRequest) =>
+    patch<PriceAlertRule>(`/alerts/${id}`, body),
+
+  delete: (id: number) => del<{ ok: boolean }>(`/alerts/${id}`),
+};
+
+// ─── Ideas ────────────────────────────────────────────────────────────────────
+
+export const ideasApi = {
+  list: () => get<WatchlistIdea[]>("/ideas"),
+
+  create: (body: CreateIdeaRequest) => post<WatchlistIdea>("/ideas", body),
+
+  update: (id: number, body: UpdateIdeaRequest) =>
+    patch<WatchlistIdea>(`/ideas/${id}`, body),
+
+  delete: (id: number) => del<{ ok: boolean }>(`/ideas/${id}`),
+};
+
+// ─── Auto-Buy ─────────────────────────────────────────────────────────────────
+
+export const autoBuyApi = {
+  getSettings: () => get<AutoBuySettings>("/auto-buy/settings"),
+
+  updateSettings: (body: UpdateAutoBuySettingsRequest) =>
+    patch<AutoBuySettings>("/auto-buy/settings", body),
+
+  decisionLog: (limit = 50) =>
+    get<AutoBuyDecisionLog[]>(`/auto-buy/decision-log?limit=${limit}`),
+
+  dryRun: (ticker: string) =>
+    post<AutoBuyDryRunResult>(`/auto-buy/dry-run/${encodeURIComponent(ticker)}`, {}),
+};
+
+// ─── Opportunities ────────────────────────────────────────────────────────────
+
+export const opportunitiesApi = {
+  /** V3: enriched watchlist with signal status + all 10 condition flags */
+  list: () => get<OpportunityRow[]>("/opportunities/watchlist"),
+};
+
+// ─── Scanner ─────────────────────────────────────────────────────────────────
+
+export const scannerApi = {
+  estimateBuyPrices: (tickers: string[]) =>
+    post<EstimatedBuyPriceOut[]>("/scanner/estimate-buy-prices", { tickers }),
+
+  run: () => post<ScanResultOut[]>("/scanner/run"),
+
+  getIdeas: () => get<GeneratedIdeaOut[]>("/scanner/ideas"),
+
+  saveIdea: (ticker: string) =>
+    post<WatchlistIdea>(`/scanner/ideas/${encodeURIComponent(ticker)}/save`),
+
+  // V3 endpoints
+  status: () => get<ScannerStatus>("/scanner/status"),
+
+  runNow: () => post<RunNowResult>("/scanner/run-now"),
+};
+
+// ─── V3: Watchlist (user_watchlist table) ─────────────────────────────────────
+
+export const watchlistApi = {
+  add: (ticker: string) =>
+    post<WatchlistEntry>("/watchlist", { ticker }),
+
+  remove: (ticker: string) =>
+    del<void>(`/watchlist/${encodeURIComponent(ticker)}`),
+
+  toggleAlert: (ticker: string, alert_enabled: boolean) =>
+    patch<WatchlistEntry>(`/watchlist/${encodeURIComponent(ticker)}/alert`, { alert_enabled }),
+};
+
+// ─── V3: Generated Ideas (DB feed) ────────────────────────────────────────────
+
+export const generatedIdeasApi = {
+  list: (params?: { source?: string; theme?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.source) qs.set("source", params.source);
+    if (params?.theme) qs.set("theme", params.theme);
+    if (params?.limit != null) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return get<GeneratedIdeaRow[]>(`/ideas/generated${query ? `?${query}` : ""}`);
+  },
+
+  addToWatchlist: (id: number) =>
+    post<AddToWatchlistResult>(`/ideas/generated/${id}/add-to-watchlist`),
+
+  lastScan: () => get<LastScanResult>("/ideas/generated/last-scan"),
+
+  runNow: () => post<{ generated: number; top_ticker: string | null }>("/ideas/generated/run-now"),
 };

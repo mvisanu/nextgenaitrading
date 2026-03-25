@@ -204,31 +204,38 @@ test.describe("Security — 401 on all protected endpoints", () => {
   ] as const;
 
   for (const [method, path] of protectedEndpoints) {
-    test(`SEC-09: ${method} ${path} returns 401 without cookie`, async ({ request }) => {
+    test(`SEC-09: ${method} ${path} returns 401 without cookie`, async ({ playwright }) => {
+      // Use a fresh context with no cookies — the shared `request` fixture inherits
+      // cookies from the "Broker credential key masking" beforeEach login above.
+      const freshCtx = await playwright.request.newContext();
       let res;
-      switch (method) {
-        case "GET":
-          res = await request.get(`${API_URL}${path}`);
-          break;
-        case "POST":
-          res = await request.post(`${API_URL}${path}`, {
-            data: {},
-          });
-          break;
-        case "PATCH":
-          res = await request.patch(`${API_URL}${path}`, {
-            data: {},
-          });
-          break;
-        default:
-          throw new Error(`Unhandled method: ${method}`);
-      }
-      // Accept 401 or 422 (validation error before auth, acceptable on POST with empty body)
-      // but NOT 200, 201, 202
-      expect([401, 403, 422]).toContain(res.status());
-      // More strictly: auth check must trigger 401
-      if (res.status() !== 422) {
-        expect(res.status()).toBe(401);
+      try {
+        switch (method) {
+          case "GET":
+            res = await freshCtx.get(`${API_URL}${path}`);
+            break;
+          case "POST":
+            res = await freshCtx.post(`${API_URL}${path}`, {
+              data: {},
+            });
+            break;
+          case "PATCH":
+            res = await freshCtx.patch(`${API_URL}${path}`, {
+              data: {},
+            });
+            break;
+          default:
+            throw new Error(`Unhandled method: ${method}`);
+        }
+        // Accept 401 or 422 (validation error before auth, acceptable on POST with empty body)
+        // but NOT 200, 201, 202
+        expect([401, 403, 422]).toContain(res.status());
+        // More strictly: auth check must trigger 401
+        if (res.status() !== 422) {
+          expect(res.status()).toBe(401);
+        }
+      } finally {
+        await freshCtx.dispose();
       }
     });
   }

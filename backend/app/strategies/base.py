@@ -18,6 +18,7 @@ class SignalResult:
     bull_state_id: int = 0
     bear_state_id: int = 1
     current_state_id: int = 0
+    confirmation_details: list[dict] = field(default_factory=list)
     bar_timestamps: list = field(default_factory=list)
     signals_per_bar: list = field(default_factory=list)
 

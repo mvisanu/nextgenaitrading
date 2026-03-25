@@ -1,0 +1,27 @@
+1. The Core Engine (HMM Logic):
+Use hmmlearn.GaussianHMM with 7 components to detect market regimes.
+Train on 3 features: Returns, Range (High-Low/Close), and Volume Volatility.
+Crucial: Automaticall identify the 'Bull Run' state (highest positive return) and the 'Bear/Crash' state (lowest return).
+
+2. The Strategy Logic: Implement a voting system with 8 Confirmations. We only enter a trade if the HMM Regime is Bullish AND at least 7 out of 8 of these conditions are met:
+RSI < 90
+Momentum > 1%
+Volatility < 6%
+Volume > 20-period SMA
+ADX > 25
+Price > EMA 50
+Price > EMA 200
+MACD > Signal Line
+
+3. Risk Management Rules:
+Cooldown: Enforce a hard 48-hour cooldown after ANY exit. The bot cannot re-enter for 48 hours to avoid chop.
+Exit Rule: Close position immediately if the Regime flips to 'Bear' or 'Crash'
+Leverage: Simulate 2.5x Leverage on the PnL calculation
+
+4. The Architecture:
+data_loader.py: Fetch 'BTC-USD' or any other stocks specify hourly data (last 730 days) using yfinance.
+backtester.py: Run the simulation with $10k starting capital. Log every trade.
+app.py: A Streamlit Dashboard.
+Top Sectuion: Show Current Signal (Long/Cash) and Detected Regime.
+Chart: An interactive Plotly candelstick chart where the background color changes based on the detected Regime (Green for Bull, Red for Bear).
+Meterics: Display Total Return, Alpha vs Buy & Hold, Win Rate, and Max Drawdown"

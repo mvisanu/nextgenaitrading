@@ -86,12 +86,28 @@ export default function BacktestsPage() {
     setSelectedRunId(runId);
     setIsDetailLoading(true);
     try {
-      const [summary, trades, chartData, variants] = await Promise.all([
+      const [raw, trades, chartData, variants] = await Promise.all([
         backtestApi.get(runId),
         backtestApi.trades(runId),
         backtestApi.chartData(runId).catch(() => undefined),
         backtestApi.leaderboard(runId).catch(() => []),
       ]);
+      // API returns flat StrategyRunOut; wrap it into BacktestSummary shape
+      const flatRun = (raw as any).run ?? raw;
+      const totalReturnPct = trades.reduce((s, t) => s + (t.leveraged_return_pct ?? t.return_pct), 0);
+      const wins = trades.filter((t) => t.return_pct >= 0).length;
+      const avgRet = trades.length > 0 ? totalReturnPct / trades.length : 0;
+      const stdDev = trades.length > 1
+        ? Math.sqrt(trades.reduce((s, t) => s + Math.pow((t.leveraged_return_pct ?? t.return_pct) - avgRet, 2), 0) / (trades.length - 1))
+        : 1;
+      const summary: BacktestSummary = {
+        run: flatRun,
+        total_return_pct: totalReturnPct,
+        max_drawdown_pct: trades.length > 0 ? Math.min(...trades.map((t) => t.leveraged_return_pct ?? t.return_pct)) : 0,
+        sharpe_like: stdDev > 0 ? avgRet / stdDev : 0,
+        trade_count: trades.length,
+        win_rate: trades.length > 0 ? wins / trades.length : 0,
+      };
       setRunDetail({ summary, chartData, trades, variants });
     } catch (err) {
       toast.error("Failed to load run details");

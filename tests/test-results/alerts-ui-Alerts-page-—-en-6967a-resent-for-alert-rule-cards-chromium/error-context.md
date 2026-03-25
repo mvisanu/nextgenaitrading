@@ -1,0 +1,144 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - img
+          - generic: NextGenStock
+        - navigation:
+          - link:
+            - /url: /dashboard
+            - generic:
+              - img
+              - generic: Dashboard
+          - link:
+            - /url: /strategies
+            - generic:
+              - img
+              - generic: Strategies
+          - link:
+            - /url: /backtests
+            - generic:
+              - img
+              - generic: Backtests
+          - link:
+            - /url: /live-trading
+            - generic:
+              - img
+              - generic: Live Trading
+          - link:
+            - /url: /artifacts
+            - generic:
+              - img
+              - generic: Artifacts
+          - link:
+            - /url: /strategy-samples
+            - generic:
+              - img
+              - generic: Strategy Samples
+          - link:
+            - /url: /trade-log
+            - generic:
+              - img
+              - generic: Trade Log
+          - link:
+            - /url: /opportunities
+            - generic:
+              - img
+              - generic: Opportunities
+          - link:
+            - /url: /ideas
+            - generic:
+              - img
+              - generic: Ideas
+          - link:
+            - /url: /alerts
+            - generic:
+              - img
+              - generic: Alerts
+          - link:
+            - /url: /auto-buy
+            - generic:
+              - img
+              - generic: Auto-Buy
+          - link:
+            - /url: /learn
+            - generic:
+              - img
+              - generic: Learn to Trade
+          - link:
+            - /url: /faq
+            - generic:
+              - img
+              - generic: FAQ & Strategies
+          - link:
+            - /url: /profile
+            - generic:
+              - img
+              - generic: Profile
+        - generic:
+          - generic:
+            - generic:
+              - generic: E2
+          - button:
+            - img
+            - generic: Sign out
+    - generic:
+      - banner:
+        - generic:
+          - heading [level=1]: Alerts
+          - generic:
+            - button:
+              - img
+              - text: New Alert
+      - main:
+        - generic:
+          - img
+          - paragraph: No alert rules yet.
+          - paragraph: Create your first alert to be notified when a ticker enters a high-probability entry zone.
+          - button:
+            - img
+            - text: New Alert
+      - generic:
+        - generic: NextGenStock v1.0
+        - generic: "|"
+        - generic: Connected
+        - generic: "|"
+        - generic: e2e-user-a@nextgenstock.io
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e6] [cursor=pointer]:
+    - img [ref=e7]
+  - alert
+  - dialog "New alert rule" [ref=e11]:
+    - heading "New alert rule" [level=2] [ref=e13]
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - text: Ticker
+        - textbox "Ticker" [ref=e16]:
+          - /placeholder: AAPL
+          - text: AAPL
+      - generic [ref=e17]:
+        - text: Alert type
+        - combobox "Alert type" [ref=e18] [cursor=pointer]:
+          - generic: Entered high-probability entry zone
+          - img [ref=e19]
+        - combobox [ref=e21]
+      - generic [ref=e22]:
+        - text: Cooldown (minutes)
+        - spinbutton "Cooldown (minutes)" [ref=e23]: "60"
+      - generic [ref=e24]:
+        - switch "Market hours only (9:30am–4pm ET)" [checked] [ref=e25] [cursor=pointer]
+        - checkbox [checked]
+        - generic [ref=e26]: Market hours only (9:30am–4pm ET)
+      - generic [ref=e27]:
+        - switch "Enable alert immediately" [checked] [ref=e28] [cursor=pointer]
+        - checkbox [checked]
+        - generic [ref=e29]: Enable alert immediately
+      - button "Create alert" [active] [ref=e30] [cursor=pointer]
+    - button "Close" [ref=e31] [cursor=pointer]:
+      - img [ref=e32]
+      - generic [ref=e35]: Close
+```

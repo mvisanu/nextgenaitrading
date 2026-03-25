@@ -1,0 +1,152 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e13]: NextGenStock
+      - navigation [ref=e14]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - generic [ref=e22]: Dashboard
+        - link "Strategies" [ref=e23] [cursor=pointer]:
+          - /url: /strategies
+          - generic [ref=e24]:
+            - img [ref=e25]
+            - generic [ref=e28]: Strategies
+        - link "Backtests" [ref=e29] [cursor=pointer]:
+          - /url: /backtests
+          - generic [ref=e30]:
+            - img [ref=e31]
+            - generic [ref=e33]: Backtests
+        - link "Live Trading" [ref=e34] [cursor=pointer]:
+          - /url: /live-trading
+          - generic [ref=e35]:
+            - img [ref=e36]
+            - generic [ref=e42]: Live Trading
+        - link "Artifacts" [ref=e43] [cursor=pointer]:
+          - /url: /artifacts
+          - generic [ref=e44]:
+            - img [ref=e45]
+            - generic [ref=e50]: Artifacts
+        - link "Strategy Samples" [ref=e51] [cursor=pointer]:
+          - /url: /strategy-samples
+          - generic [ref=e52]:
+            - img [ref=e53]
+            - generic [ref=e55]: Strategy Samples
+        - link "Trade Log" [ref=e56] [cursor=pointer]:
+          - /url: /trade-log
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e61]: Trade Log
+        - 'link "Opportunities Scanner: market closed" [ref=e62] [cursor=pointer]':
+          - /url: /opportunities
+          - generic [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e66]:
+              - text: Opportunities
+              - 'generic "Scanner: market closed" [ref=e67]'
+        - link "Ideas" [ref=e68] [cursor=pointer]:
+          - /url: /ideas
+          - generic [ref=e69]:
+            - img [ref=e70]
+            - generic [ref=e72]: Ideas
+        - link "Alerts" [ref=e73] [cursor=pointer]:
+          - /url: /alerts
+          - generic [ref=e74]:
+            - img [ref=e75]
+            - generic [ref=e78]: Alerts
+        - link "Auto-Buy" [ref=e79] [cursor=pointer]:
+          - /url: /auto-buy
+          - generic [ref=e80]:
+            - img [ref=e81]
+            - generic [ref=e83]: Auto-Buy
+        - link "Learn to Trade" [ref=e84] [cursor=pointer]:
+          - /url: /learn
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e89]: Learn to Trade
+        - link "FAQ & Strategies" [ref=e90] [cursor=pointer]:
+          - /url: /faq
+          - generic [ref=e91]:
+            - img [ref=e92]
+            - generic [ref=e95]: FAQ & Strategies
+        - link "Profile" [ref=e96] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e97]:
+            - img [ref=e98]
+            - generic [ref=e101]: Profile
+      - generic [ref=e102]:
+        - generic "e2e-user-a@nextgenstock.io" [ref=e103]:
+          - generic [ref=e105]: E2
+          - generic: e2e-user-a@nextgenstock.io
+        - button "Sign out" [ref=e106] [cursor=pointer]:
+          - img [ref=e107]
+          - generic [ref=e110]: Sign out
+    - generic [ref=e111]:
+      - banner [ref=e112]:
+        - heading "Strategies" [level=1] [ref=e114]
+      - main [ref=e115]:
+        - generic [ref=e116]:
+          - tablist [ref=e117]:
+            - tab "Conservative" [selected] [ref=e118] [cursor=pointer]:
+              - generic [ref=e119]: Conservative
+            - tab "Aggressive" [ref=e120] [cursor=pointer]:
+              - generic [ref=e121]: Aggressive
+            - tab "AI Pick" [ref=e122] [cursor=pointer]:
+              - generic [ref=e123]: AI Pick
+            - tab "Buy Low / Sell High" [ref=e124] [cursor=pointer]:
+              - generic [ref=e125]: Buy Low / Sell High
+            - tab "AI Builder" [ref=e126] [cursor=pointer]:
+              - img [ref=e127]
+              - generic [ref=e129]: AI Builder
+          - tabpanel "Conservative" [ref=e130]:
+            - generic [ref=e132]:
+              - paragraph [ref=e133]: Leverage 2.5x · 7/8 signal confirmations · HMM regime
+              - generic [ref=e134]:
+                - generic [ref=e135]:
+                  - img [ref=e136]
+                  - text: Investment Amount (USD)
+                - generic [ref=e138]:
+                  - generic [ref=e139]: $
+                  - spinbutton "Investment Amount (USD)" [disabled] [ref=e140]
+                - paragraph [ref=e141]: How much capital to simulate. Leave blank for $10,000 default.
+              - generic [ref=e142]:
+                - generic [ref=e143]:
+                  - text: Symbol
+                  - textbox "Symbol" [disabled] [ref=e144]:
+                    - /placeholder: AAPL, BTC-USD, SPY, TSLA
+                    - text: XXXXINVALID999
+                - generic [ref=e145]:
+                  - text: Timeframe
+                  - combobox "Timeframe" [disabled] [ref=e146]:
+                    - generic: Daily (1d)
+                    - img [ref=e147]
+                  - combobox [disabled] [ref=e149]
+                - generic [ref=e150]:
+                  - generic [ref=e151]:
+                    - text: Leverage
+                    - generic [ref=e152]: "(default: 2.5x)"
+                  - 'spinbutton "Leverage (default: 2.5x)" [disabled] [ref=e153]'
+              - generic [ref=e154]:
+                - switch "Dry Run (simulation — no real orders)" [checked] [disabled] [ref=e155]
+                - checkbox [checked] [disabled]
+                - generic [ref=e156]: Dry Run (simulation — no real orders)
+              - button "Running strategy..." [disabled]:
+                - img
+                - text: Running strategy...
+      - generic [ref=e157]:
+        - generic [ref=e158]: NextGenStock v1.0
+        - generic [ref=e159]: "|"
+        - generic [ref=e160]: Connected
+        - generic [ref=e162]: "|"
+        - generic [ref=e163]: e2e-user-a@nextgenstock.io
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e169] [cursor=pointer]:
+    - img [ref=e170]
+  - alert [ref=e173]
+```

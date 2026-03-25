@@ -12,6 +12,10 @@ const PROTECTED_PREFIXES = [
   "/live-trading",
   "/artifacts",
   "/profile",
+  "/opportunities",
+  "/ideas",
+  "/alerts",
+  "/auto-buy",
 ];
 
 /**

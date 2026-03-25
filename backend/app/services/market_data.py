@@ -63,8 +63,9 @@ def validate_symbol(symbol: str) -> None:
 
 def load_ohlcv_for_strategy(symbol: str, timeframe: str) -> pd.DataFrame:
     """
-    Load 730 days of OHLCV for strategy/backtest use.
-    Maps timeframe parameter to yfinance interval.
+    Load OHLCV data for strategy/backtest use.
+    Period length is chosen per timeframe to ensure enough bars remain after
+    indicator warmup (EMA-50 alone consumes the first 50 bars).
     """
     interval_map = {
         "1m": "1m",
@@ -82,20 +83,27 @@ def load_ohlcv_for_strategy(symbol: str, timeframe: str) -> pd.DataFrame:
     }
     yf_interval = interval_map.get(timeframe, "1d")
 
-    # yfinance intraday data availability:
-    #   1m  → max ~7 days
-    #   2m  → max ~60 days
-    #   5m  → max ~60 days
-    #   15m → max ~60 days
-    #   30m → max ~60 days
-    #   1h  → max ~730 days
-    #   1d+ → max ~730 days
+    # yfinance data availability / period choices:
+    #   1m        → max ~7 days
+    #   2m–30m    → max ~60 days
+    #   1h–4h     → max ~730 days (we cap at 60d to stay within yfinance limits)
+    #   1d        → 730d  (~730 bars, plenty after indicator warmup)
+    #   1wk       → 3650d (~520 bars; needs >60 after EMA-50 warmup consumes 50)
+    #   1mo       → max   (~300+ bars depending on ticker history)
     if timeframe == "1m":
         period = "7d"
     elif timeframe in ("2m", "5m", "15m", "30m"):
         period = "60d"
     elif timeframe in ("1h", "2h", "3h", "4h"):
         period = "60d"
+    elif timeframe == "1wk":
+        # 730d (~104 bars) leaves only ~54 bars after EMA-50 warmup — below the 60-bar
+        # minimum required by the strategy. Fetch 10 years to get ~500 weekly bars.
+        period = "3650d"
+    elif timeframe == "1mo":
+        # 730d yields only ~24 monthly bars — far too few. Fetch the maximum available
+        # history so we have enough bars after indicator warmup (EMA-50 needs 50+).
+        period = "max"
     else:
         period = "730d"
 

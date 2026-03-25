@@ -299,9 +299,11 @@ test.describe("Live Trading UI — /live-trading page", () => {
     await page.waitForLoadState("networkidle");
 
     // Financial risk disclaimer should always be present
-    const disclaimer = page.locator(
-      '[role="alert"], [data-testid="risk-disclaimer"], text=/risk/i, text=/live mode/i, text=/educational/i'
-    );
+    // Use .or() to combine CSS selectors and text selectors (cannot mix in one string)
+    const disclaimer = page
+      .locator('[role="alert"], [data-testid="risk-disclaimer"]')
+      .or(page.locator('text=/risk/i').first())
+      .or(page.locator('text=/educational/i').first());
     await expect(disclaimer.first()).toBeVisible({ timeout: 8_000 });
   });
 
@@ -373,9 +375,9 @@ test.describe("Live Trading UI — /live-trading page", () => {
     await page.goto(ROUTES.liveTrading);
     await page.waitForLoadState("networkidle");
 
-    const ordersSection = page.locator(
-      '[data-testid="orders"], h2:has-text("Order"), h3:has-text("Order"), text=/order history/i'
-    );
+    const ordersSection = page
+      .locator('[data-testid="orders"], h2:has-text("Order"), h3:has-text("Order")')
+      .or(page.locator('text=/order history/i').first());
     await expect(ordersSection.first()).toBeVisible({ timeout: 8_000 });
   });
 

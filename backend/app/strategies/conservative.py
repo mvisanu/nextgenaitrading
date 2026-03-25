@@ -45,6 +45,18 @@ def _identify_bull_bear(model: GaussianHMM, features_scaled: np.ndarray) -> tupl
     return bull_state, bear_state
 
 
+CONFIRMATION_LABELS = [
+    "RSI < 70 (not overbought)",
+    "MACD > Signal line",
+    "EMA 20 > EMA 50 (uptrend)",
+    "Price > lower Bollinger",
+    "ADX > 20 (trending)",
+    "OBV increasing",
+    "ATR > 0 (market active)",
+    "Volume > 80% of 20-bar avg",
+]
+
+
 def _compute_confirmations(df: pd.DataFrame, row_idx: int) -> tuple[int, list[bool]]:
     """
     Compute 8 binary confirmation signals at a given bar index.
@@ -88,6 +100,40 @@ def _compute_confirmations(df: pd.DataFrame, row_idx: int) -> tuple[int, list[bo
     confirms.append(bool(vol_ratio > 0.8))
 
     return sum(confirms), confirms
+
+
+def compute_confirmation_details(df: pd.DataFrame, row_idx: int) -> list[dict]:
+    """Return detailed per-indicator confirmation results for the signal check UI."""
+    row = df.iloc[row_idx]
+    details = []
+
+    rsi_val = row.get("rsi", 50.0)
+    details.append({"name": CONFIRMATION_LABELS[0], "met": bool(rsi_val < 70), "value": f"RSI = {rsi_val:.1f}"})
+
+    macd_val = row.get("macd", 0.0)
+    macd_sig = row.get("macd_signal", 0.0)
+    details.append({"name": CONFIRMATION_LABELS[1], "met": bool(macd_val > macd_sig), "value": f"MACD = {macd_val:.4f}, Signal = {macd_sig:.4f}"})
+
+    ema20 = row.get("ema_20", row["Close"])
+    ema50 = row.get("ema_50", row["Close"])
+    details.append({"name": CONFIRMATION_LABELS[2], "met": bool(ema20 > ema50), "value": f"EMA20 = {ema20:.2f}, EMA50 = {ema50:.2f}"})
+
+    bb_lower = row.get("bb_lower", 0.0)
+    details.append({"name": CONFIRMATION_LABELS[3], "met": bool(row["Close"] > bb_lower), "value": f"Close = {row['Close']:.2f}, BB Lower = {bb_lower:.2f}"})
+
+    adx_val = row.get("adx", 0.0)
+    details.append({"name": CONFIRMATION_LABELS[4], "met": bool(adx_val > 20), "value": f"ADX = {adx_val:.1f}"})
+
+    obv_diff = row.get("obv_diff", 0.0)
+    details.append({"name": CONFIRMATION_LABELS[5], "met": bool(obv_diff > 0), "value": f"OBV diff = {obv_diff:,.0f}"})
+
+    atr_val = row.get("atr", 0.0)
+    details.append({"name": CONFIRMATION_LABELS[6], "met": bool(atr_val > 0), "value": f"ATR = {atr_val:.4f}"})
+
+    vol_ratio = row.get("vol_ratio", 1.0)
+    details.append({"name": CONFIRMATION_LABELS[7], "met": bool(vol_ratio > 0.8), "value": f"Vol ratio = {vol_ratio:.2f}x"})
+
+    return details
 
 
 def _add_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -175,6 +221,7 @@ class ConservativeStrategy(BaseStrategy):
         regime = "bull" if current_state == bull_state else "bear"
 
         conf_count, conf_list = _compute_confirmations(df, -1)
+        conf_details = compute_confirmation_details(df, -1)
         entry_eligible = regime == "bull" and conf_count >= self.min_confirmations
 
         signal: str
@@ -202,6 +249,7 @@ class ConservativeStrategy(BaseStrategy):
             entry_eligible=entry_eligible,
             cooldown_active=False,
             reason_summary=f"HMM regime={regime}, confirmations={conf_count}/{len(conf_list)}",
+            confirmation_details=conf_details,
             bull_state_id=bull_state,
             bear_state_id=bear_state,
             current_state_id=current_state,

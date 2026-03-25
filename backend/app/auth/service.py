@@ -48,8 +48,29 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
 
 
 def _clear_auth_cookies(response: Response) -> None:
-    response.delete_cookie("access_token", path="/")
-    response.delete_cookie("refresh_token", path="/")
+    # Use set_cookie with Max-Age=0 and matching attributes to ensure browsers
+    # and Playwright's APIRequestContext both clear the cookies properly.
+    # delete_cookie() may not match original samesite/httponly attrs causing non-deletion.
+    response.set_cookie(
+        "access_token",
+        value="",
+        max_age=0,
+        expires=0,
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+    )
+    response.set_cookie(
+        "refresh_token",
+        value="",
+        max_age=0,
+        expires=0,
+        path="/",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+    )
 
 
 async def register(

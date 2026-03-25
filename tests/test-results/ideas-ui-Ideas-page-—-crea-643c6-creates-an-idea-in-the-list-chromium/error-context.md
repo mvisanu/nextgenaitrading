@@ -1,0 +1,510 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e13]: NextGenStock
+      - navigation [ref=e14]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - generic [ref=e22]: Dashboard
+        - link "Strategies" [ref=e23] [cursor=pointer]:
+          - /url: /strategies
+          - generic [ref=e24]:
+            - img [ref=e25]
+            - generic [ref=e28]: Strategies
+        - link "Backtests" [ref=e29] [cursor=pointer]:
+          - /url: /backtests
+          - generic [ref=e30]:
+            - img [ref=e31]
+            - generic [ref=e33]: Backtests
+        - link "Live Trading" [ref=e34] [cursor=pointer]:
+          - /url: /live-trading
+          - generic [ref=e35]:
+            - img [ref=e36]
+            - generic [ref=e42]: Live Trading
+        - link "Artifacts" [ref=e43] [cursor=pointer]:
+          - /url: /artifacts
+          - generic [ref=e44]:
+            - img [ref=e45]
+            - generic [ref=e50]: Artifacts
+        - link "Strategy Samples" [ref=e51] [cursor=pointer]:
+          - /url: /strategy-samples
+          - generic [ref=e52]:
+            - img [ref=e53]
+            - generic [ref=e55]: Strategy Samples
+        - link "Trade Log" [ref=e56] [cursor=pointer]:
+          - /url: /trade-log
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e61]: Trade Log
+        - 'link "Opportunities Scanner: market closed" [ref=e62] [cursor=pointer]':
+          - /url: /opportunities
+          - generic [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e66]:
+              - text: Opportunities
+              - 'generic "Scanner: market closed" [ref=e67]'
+        - link "Ideas" [ref=e68] [cursor=pointer]:
+          - /url: /ideas
+          - generic [ref=e69]:
+            - img [ref=e70]
+            - generic [ref=e72]: Ideas
+        - link "Alerts" [ref=e73] [cursor=pointer]:
+          - /url: /alerts
+          - generic [ref=e74]:
+            - img [ref=e75]
+            - generic [ref=e78]: Alerts
+        - link "Auto-Buy" [ref=e79] [cursor=pointer]:
+          - /url: /auto-buy
+          - generic [ref=e80]:
+            - img [ref=e81]
+            - generic [ref=e83]: Auto-Buy
+        - link "Learn to Trade" [ref=e84] [cursor=pointer]:
+          - /url: /learn
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e89]: Learn to Trade
+        - link "FAQ & Strategies" [ref=e90] [cursor=pointer]:
+          - /url: /faq
+          - generic [ref=e91]:
+            - img [ref=e92]
+            - generic [ref=e95]: FAQ & Strategies
+        - link "Profile" [ref=e96] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e97]:
+            - img [ref=e98]
+            - generic [ref=e101]: Profile
+      - generic [ref=e102]:
+        - generic "e2e-user-a@nextgenstock.io" [ref=e103]:
+          - generic [ref=e105]: E2
+          - generic: e2e-user-a@nextgenstock.io
+        - button "Sign out" [ref=e106] [cursor=pointer]:
+          - img [ref=e107]
+          - generic [ref=e110]: Sign out
+    - generic [ref=e111]:
+      - banner [ref=e112]:
+        - generic [ref=e113]:
+          - heading "Ideas" [level=1] [ref=e114]
+          - button "New Idea" [ref=e116] [cursor=pointer]:
+            - img
+            - text: New Idea
+      - main [ref=e117]:
+        - generic [ref=e118]:
+          - button "Suggested Ideas 7" [ref=e119] [cursor=pointer]:
+            - img [ref=e120]
+            - text: Suggested Ideas
+            - generic [ref=e122]: "7"
+          - button "My Ideas 19" [ref=e123] [cursor=pointer]:
+            - text: My Ideas
+            - generic [ref=e124]: "19"
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - button "All" [ref=e127] [cursor=pointer]
+            - button "News" [ref=e128] [cursor=pointer]
+            - button "Theme" [ref=e129] [cursor=pointer]
+            - button "Technical" [ref=e130] [cursor=pointer]
+          - generic [ref=e131]:
+            - generic [ref=e132]:
+              - button "AI" [ref=e133] [cursor=pointer]
+              - button "Energy" [ref=e134] [cursor=pointer]
+              - button "Defense" [ref=e135] [cursor=pointer]
+              - button "Space" [ref=e136] [cursor=pointer]
+              - button "Semiconductors" [ref=e137] [cursor=pointer]
+              - button "Longevity" [ref=e138] [cursor=pointer]
+              - button "Robotics" [ref=e139] [cursor=pointer]
+            - generic [ref=e140]:
+              - generic [ref=e141]: "Last updated: 1 minute ago"
+              - button "Refresh" [ref=e142] [cursor=pointer]:
+                - img
+                - text: Refresh
+          - paragraph [ref=e143]: 7 ideas — ranked by confidence score
+          - generic [ref=e144]:
+            - generic [ref=e145]:
+              - generic [ref=e148]:
+                - generic [ref=e149]:
+                  - generic [ref=e150]: TSM
+                  - generic [ref=e151]: Taiwan Semiconductor Manufacturing Company Limited
+                  - generic [ref=e152]: Score 84%
+                - generic [ref=e153]:
+                  - generic [ref=e154]: AI
+                  - generic [ref=e155]: SEMICONDUCTORS
+                - generic [ref=e157]: At weekly support — historically favorable entry zone
+              - generic [ref=e158]:
+                - generic [ref=e159]:
+                  - paragraph [ref=e160]: Why flagged
+                  - paragraph [ref=e161]: Strong technical setup (75% conditions passing).
+                - generic [ref=e162]:
+                  - generic [ref=e163]: "Current price: $343.25"
+                  - generic [ref=e164]: "Entry zone: $284.67 – $297.09"
+                  - generic [ref=e165]: "Ideal entry: $290.88"
+                - generic [ref=e166]:
+                  - generic [ref=e167]:
+                    - generic [ref=e168]: "Competitive moat:"
+                    - generic [ref=e169]: Strong (85%)
+                  - paragraph [ref=e170]: World's leading advanced-node chip foundry; near-monopoly at <5nm
+                - generic [ref=e171]:
+                  - generic [ref=e172]:
+                    - generic [ref=e173]: "Financial quality:"
+                    - generic [ref=e174]: Strong
+                    - generic [ref=e175]: (100%)
+                  - generic [ref=e176]:
+                    - generic [ref=e177]: revenue growth positive (+20%)
+                    - generic [ref=e178]: earnings growth positive (+35%)
+                    - generic [ref=e179]: gross margins strong (60%)
+                    - generic [ref=e180]: operating margins strong (54%)
+                - generic [ref=e181]:
+                  - generic [ref=e182]:
+                    - generic [ref=e183]: "Confidence:"
+                    - generic [ref=e184]: 61%
+                  - generic [ref=e185]:
+                    - generic [ref=e186]: "Historical 90d win rate:"
+                    - generic [ref=e187]: 62%
+                - generic [ref=e188]:
+                  - button "Add TSM to watchlist" [ref=e189] [cursor=pointer]:
+                    - img
+                    - text: Add to Watchlist
+                  - link "View Chart" [ref=e190] [cursor=pointer]:
+                    - /url: /dashboard?ticker=TSM
+                    - img [ref=e191]
+                    - text: View Chart
+                - generic [ref=e194]:
+                  - text: Generated 1 minute ago
+                  - generic [ref=e195]: via technical
+            - generic [ref=e196]:
+              - generic [ref=e199]:
+                - generic [ref=e200]:
+                  - generic [ref=e201]: NVDA
+                  - generic [ref=e202]: NVIDIA Corporation
+                  - generic [ref=e203]: Score 84%
+                - generic [ref=e204]:
+                  - generic [ref=e205]: AI
+                  - generic [ref=e206]: SEMICONDUCTORS
+                - generic [ref=e208]: At weekly support — historically favorable entry zone
+              - generic [ref=e209]:
+                - generic [ref=e210]:
+                  - paragraph [ref=e211]: Why flagged
+                  - paragraph [ref=e212]: "News catalyst: DeepSeek Won't Sink U.S. AI Titans"
+                  - 'link "DeepSeek Won''t Sink U.S. AI Titans — WSJ.com: Markets" [ref=e213] [cursor=pointer]':
+                    - /url: https://www.wsj.com/articles/deepseek-us-ai-stocks-nvidia-broadcom-6cdfae81?mod=rss_markets_main
+                    - img [ref=e214]
+                    - generic [ref=e218]: DeepSeek Won't Sink U.S. AI Titans
+                    - generic [ref=e219]: "— WSJ.com: Markets"
+                - generic [ref=e220]:
+                  - generic [ref=e221]: "Current price: $175.20"
+                  - generic [ref=e222]: "Entry zone: $171.12 – $176.64"
+                  - generic [ref=e223]: "Ideal entry: $173.88"
+                - generic [ref=e224]:
+                  - generic [ref=e225]:
+                    - generic [ref=e226]: "Competitive moat:"
+                    - generic [ref=e227]: Strong (85%)
+                  - paragraph [ref=e228]: Dominant GPU share for AI training (~80% data-center GPU market)
+                - generic [ref=e229]:
+                  - generic [ref=e230]:
+                    - generic [ref=e231]: "Financial quality:"
+                    - generic [ref=e232]: Strong
+                    - generic [ref=e233]: (100%)
+                  - generic [ref=e234]:
+                    - generic [ref=e235]: revenue growth positive (+73%)
+                    - generic [ref=e236]: earnings growth positive (+96%)
+                    - generic [ref=e237]: gross margins strong (71%)
+                    - generic [ref=e238]: operating margins strong (65%)
+                - generic [ref=e239]:
+                  - generic [ref=e240]:
+                    - generic [ref=e241]: "Confidence:"
+                    - generic [ref=e242]: 79%
+                  - generic [ref=e243]:
+                    - generic [ref=e244]: "Historical 90d win rate:"
+                    - generic [ref=e245]: 82%
+                - generic [ref=e246]:
+                  - button "Add NVDA to watchlist" [ref=e247] [cursor=pointer]:
+                    - img
+                    - text: Add to Watchlist
+                  - link "View Chart" [ref=e248] [cursor=pointer]:
+                    - /url: /dashboard?ticker=NVDA
+                    - img [ref=e249]
+                    - text: View Chart
+                - generic [ref=e252]:
+                  - text: Generated 1 minute ago
+                  - generic [ref=e253]: via news
+            - generic [ref=e254]:
+              - generic [ref=e257]:
+                - generic [ref=e258]:
+                  - generic [ref=e259]: AVGO
+                  - generic [ref=e260]: Broadcom Inc.
+                  - generic [ref=e261]: Score 79%
+                - generic [ref=e262]:
+                  - generic [ref=e263]: AI
+                  - generic [ref=e264]: SEMICONDUCTORS
+                - generic [ref=e266]: At weekly support — historically favorable entry zone
+              - generic [ref=e267]:
+                - generic [ref=e268]:
+                  - paragraph [ref=e269]: Why flagged
+                  - paragraph [ref=e270]: "News catalyst: DeepSeek Won't Sink U.S. AI Titans"
+                  - 'link "DeepSeek Won''t Sink U.S. AI Titans — WSJ.com: Markets" [ref=e271] [cursor=pointer]':
+                    - /url: https://www.wsj.com/articles/deepseek-us-ai-stocks-nvidia-broadcom-6cdfae81?mod=rss_markets_main
+                    - img [ref=e272]
+                    - generic [ref=e276]: DeepSeek Won't Sink U.S. AI Titans
+                    - generic [ref=e277]: "— WSJ.com: Markets"
+                - generic [ref=e278]:
+                  - generic [ref=e279]: "Current price: $318.29"
+                  - generic [ref=e280]: "Entry zone: $307.69 – $320.96"
+                  - generic [ref=e281]: "Ideal entry: $314.32"
+                - generic [ref=e282]:
+                  - generic [ref=e283]:
+                    - generic [ref=e284]: "Competitive moat:"
+                    - generic [ref=e285]: Moderate (65%)
+                  - paragraph [ref=e286]: Mega-cap (1509B market cap) — probable market leadership
+                - generic [ref=e287]:
+                  - generic [ref=e288]:
+                    - generic [ref=e289]: "Financial quality:"
+                    - generic [ref=e290]: Strong
+                    - generic [ref=e291]: (100%)
+                  - generic [ref=e292]:
+                    - generic [ref=e293]: revenue growth positive (+16%)
+                    - generic [ref=e294]: earnings growth positive (+188%)
+                    - generic [ref=e295]: gross margins strong (77%)
+                    - generic [ref=e296]: operating margins strong (32%)
+                - generic [ref=e297]:
+                  - generic [ref=e298]:
+                    - generic [ref=e299]: "Confidence:"
+                    - generic [ref=e300]: 74%
+                  - generic [ref=e301]:
+                    - generic [ref=e302]: "Historical 90d win rate:"
+                    - generic [ref=e303]: 100%
+                - generic [ref=e304]:
+                  - button "Add AVGO to watchlist" [ref=e305] [cursor=pointer]:
+                    - img
+                    - text: Add to Watchlist
+                  - link "View Chart" [ref=e306] [cursor=pointer]:
+                    - /url: /dashboard?ticker=AVGO
+                    - img [ref=e307]
+                    - text: View Chart
+                - generic [ref=e310]:
+                  - text: Generated 1 minute ago
+                  - generic [ref=e311]: via news
+            - generic [ref=e312]:
+              - generic [ref=e315]:
+                - generic [ref=e316]:
+                  - generic [ref=e317]: ASML
+                  - generic [ref=e318]: ASML Holding N.V.
+                  - generic [ref=e319]: Score 74%
+                - generic [ref=e321]: SEMICONDUCTORS
+                - generic [ref=e323]: At weekly support — historically favorable entry zone
+              - generic [ref=e324]:
+                - generic [ref=e325]:
+                  - paragraph [ref=e326]: Why flagged
+                  - paragraph [ref=e327]: Strong technical setup (75% conditions passing).
+                - generic [ref=e328]:
+                  - generic [ref=e329]: "Current price: $1,399.42"
+                  - generic [ref=e330]: "Entry zone: $1,076.74 – $1,132.00"
+                  - generic [ref=e331]: "Ideal entry: $1,104.37"
+                - generic [ref=e332]:
+                  - generic [ref=e333]:
+                    - generic [ref=e334]: "Competitive moat:"
+                    - generic [ref=e335]: Strong (95%)
+                  - paragraph [ref=e336]: Only company producing EUV lithography machines — no alternative
+                - generic [ref=e337]:
+                  - generic [ref=e338]:
+                    - generic [ref=e339]: "Financial quality:"
+                    - generic [ref=e340]: Strong
+                    - generic [ref=e341]: (100%)
+                  - generic [ref=e342]:
+                    - generic [ref=e343]: revenue growth positive (+5%)
+                    - generic [ref=e344]: earnings growth positive (+7%)
+                    - generic [ref=e345]: gross margins strong (53%)
+                    - generic [ref=e346]: operating margins strong (35%)
+                - generic [ref=e347]:
+                  - generic [ref=e348]:
+                    - generic [ref=e349]: "Confidence:"
+                    - generic [ref=e350]: 52%
+                  - generic [ref=e351]:
+                    - generic [ref=e352]: "Historical 90d win rate:"
+                    - generic [ref=e353]: 0%
+                - generic [ref=e354]:
+                  - button "Add ASML to watchlist" [ref=e355] [cursor=pointer]:
+                    - img
+                    - text: Add to Watchlist
+                  - link "View Chart" [ref=e356] [cursor=pointer]:
+                    - /url: /dashboard?ticker=ASML
+                    - img [ref=e357]
+                    - text: View Chart
+                - generic [ref=e360]:
+                  - text: Generated 1 minute ago
+                  - generic [ref=e361]: via technical
+            - generic [ref=e362]:
+              - generic [ref=e365]:
+                - generic [ref=e366]:
+                  - generic [ref=e367]: NEE
+                  - generic [ref=e368]: NextEra Energy, Inc.
+                  - generic [ref=e369]: Score 68%
+                - generic [ref=e371]: ENERGY
+                - generic [ref=e373]: At weekly support — historically favorable entry zone
+              - generic [ref=e374]:
+                - generic [ref=e375]:
+                  - paragraph [ref=e376]: Why flagged
+                  - paragraph [ref=e377]: Strong technical setup (75% conditions passing).
+                - generic [ref=e378]:
+                  - generic [ref=e379]: "Current price: $91.62"
+                  - generic [ref=e380]: "Entry zone: $80.27 – $82.50"
+                  - generic [ref=e381]: "Ideal entry: $81.39"
+                - generic [ref=e382]:
+                  - generic [ref=e383]:
+                    - generic [ref=e384]: "Competitive moat:"
+                    - generic [ref=e385]: Moderate (55%)
+                  - paragraph [ref=e386]: Large-cap (191B) in Utilities
+                - generic [ref=e387]:
+                  - generic [ref=e388]:
+                    - generic [ref=e389]: "Financial quality:"
+                    - generic [ref=e390]: Strong
+                    - generic [ref=e391]: (100%)
+                  - generic [ref=e392]:
+                    - generic [ref=e393]: revenue growth positive (+21%)
+                    - generic [ref=e394]: earnings growth positive (+26%)
+                    - generic [ref=e395]: gross margins strong (62%)
+                    - generic [ref=e396]: operating margins strong (24%)
+                - generic [ref=e397]:
+                  - generic [ref=e398]:
+                    - generic [ref=e399]: "Confidence:"
+                    - generic [ref=e400]: 55%
+                  - generic [ref=e401]:
+                    - generic [ref=e402]: "Historical 90d win rate:"
+                    - generic [ref=e403]: 79%
+                - generic [ref=e404]:
+                  - button "Add NEE to watchlist" [ref=e405] [cursor=pointer]:
+                    - img
+                    - text: Add to Watchlist
+                  - link "View Chart" [ref=e406] [cursor=pointer]:
+                    - /url: /dashboard?ticker=NEE
+                    - img [ref=e407]
+                    - text: View Chart
+                - generic [ref=e410]:
+                  - text: Generated 1 minute ago
+                  - generic [ref=e411]: via technical
+            - generic [ref=e412]:
+              - generic [ref=e415]:
+                - generic [ref=e416]:
+                  - generic [ref=e417]: GS
+                  - generic [ref=e418]: The Goldman Sachs Group, Inc.
+                  - generic [ref=e419]: Score 64%
+                - generic [ref=e421]: ENERGY
+                - generic [ref=e423]: At weekly support — historically favorable entry zone
+              - generic [ref=e424]:
+                - generic [ref=e425]:
+                  - paragraph [ref=e426]: Why flagged
+                  - paragraph [ref=e427]: "News catalyst: Russia's Crude Exports Fairly Stable Despite U.S. Sanctions, Goldman Says"
+                  - 'link "Russia''s Crude Exports Fairly Stable Despite U.S. Sanctions, Goldman Says — WSJ.com: Markets" [ref=e428] [cursor=pointer]':
+                    - /url: https://www.wsj.com/articles/oil-futures-fall-after-trump-calls-for-tariffs-on-colombia-5b2a178c?mod=rss_markets_main
+                    - img [ref=e429]
+                    - generic [ref=e433]: Russia's Crude Exports Fairly Stable Despite U.S. Sanctions, Goldman Says
+                    - generic [ref=e434]: "— WSJ.com: Markets"
+                - generic [ref=e435]:
+                  - generic [ref=e436]: "Current price: $835.72"
+                  - generic [ref=e437]: "Entry zone: $779.38 – $808.59"
+                  - generic [ref=e438]: "Ideal entry: $793.98"
+                - generic [ref=e439]:
+                  - generic [ref=e440]:
+                    - generic [ref=e441]: "Competitive moat:"
+                    - generic [ref=e442]: Moderate (55%)
+                  - paragraph [ref=e443]: Large-cap (251B) in Financial Services
+                - generic [ref=e444]:
+                  - generic [ref=e445]:
+                    - generic [ref=e446]: "Financial quality:"
+                    - generic [ref=e447]: Strong
+                    - generic [ref=e448]: (100%)
+                  - generic [ref=e449]:
+                    - generic [ref=e450]: revenue growth positive (+15%)
+                    - generic [ref=e451]: earnings growth positive (+17%)
+                    - generic [ref=e452]: gross margins strong (83%)
+                    - generic [ref=e453]: operating margins strong (38%)
+                - generic [ref=e454]:
+                  - generic [ref=e455]:
+                    - generic [ref=e456]: "Confidence:"
+                    - generic [ref=e457]: 64%
+                  - generic [ref=e458]:
+                    - generic [ref=e459]: "Historical 90d win rate:"
+                    - generic [ref=e460]: 100%
+                - generic [ref=e461]:
+                  - button "Add GS to watchlist" [ref=e462] [cursor=pointer]:
+                    - img
+                    - text: Add to Watchlist
+                  - link "View Chart" [ref=e463] [cursor=pointer]:
+                    - /url: /dashboard?ticker=GS
+                    - img [ref=e464]
+                    - text: View Chart
+                - generic [ref=e467]:
+                  - text: Generated 1 minute ago
+                  - generic [ref=e468]: via news
+            - generic [ref=e469]:
+              - generic [ref=e472]:
+                - generic [ref=e473]:
+                  - generic [ref=e474]: JPM
+                  - generic [ref=e475]: JPMorgan Chase & Co.
+                  - generic [ref=e476]: Score 49%
+                - generic [ref=e478]: At weekly support — historically favorable entry zone
+              - generic [ref=e479]:
+                - generic [ref=e480]:
+                  - paragraph [ref=e481]: Why flagged
+                  - paragraph [ref=e482]: "News catalyst: Trump Adds Fuel to Claims That Big Banks Discriminate Against Conservatives"
+                  - 'link "Trump Adds Fuel to Claims That Big Banks Discriminate Against Conservatives — WSJ.com: Markets" [ref=e483] [cursor=pointer]':
+                    - /url: https://www.wsj.com/articles/trump-big-bank-conservative-bias-accusations-168abb27?mod=rss_markets_main
+                    - img [ref=e484]
+                    - generic [ref=e488]: Trump Adds Fuel to Claims That Big Banks Discriminate Against Conservatives
+                    - generic [ref=e489]: "— WSJ.com: Markets"
+                - generic [ref=e490]:
+                  - generic [ref=e491]: "Current price: $292.40"
+                  - generic [ref=e492]: "Entry zone: $289.89 – $297.30"
+                  - generic [ref=e493]: "Ideal entry: $293.60"
+                - generic [ref=e494]:
+                  - generic [ref=e495]:
+                    - generic [ref=e496]: "Competitive moat:"
+                    - generic [ref=e497]: Moderate (65%)
+                  - paragraph [ref=e498]: Mega-cap (789B market cap) — probable market leadership
+                - generic [ref=e499]:
+                  - generic [ref=e500]:
+                    - generic [ref=e501]: "Financial quality:"
+                    - generic [ref=e502]: Moderate
+                    - generic [ref=e503]: (50%)
+                  - generic [ref=e504]:
+                    - generic [ref=e505]: revenue growth positive (+2%)
+                    - generic [ref=e506]: earnings growth negative (-4%)
+                    - generic [ref=e507]: gross margins thin (0%)
+                    - generic [ref=e508]: operating margins strong (41%)
+                - generic [ref=e509]:
+                  - generic [ref=e510]:
+                    - generic [ref=e511]: "Confidence:"
+                    - generic [ref=e512]: 74%
+                  - generic [ref=e513]:
+                    - generic [ref=e514]: "Historical 90d win rate:"
+                    - generic [ref=e515]: 83%
+                - generic [ref=e516]:
+                  - button "Add JPM to watchlist" [ref=e517] [cursor=pointer]:
+                    - img
+                    - text: Add to Watchlist
+                  - link "View Chart" [ref=e518] [cursor=pointer]:
+                    - /url: /dashboard?ticker=JPM
+                    - img [ref=e519]
+                    - text: View Chart
+                - generic [ref=e522]:
+                  - text: Generated 1 minute ago
+                  - generic [ref=e523]: via news
+      - generic [ref=e524]:
+        - generic [ref=e525]: NextGenStock v1.0
+        - generic [ref=e526]: "|"
+        - generic [ref=e527]: Connected
+        - generic [ref=e529]: "|"
+        - generic [ref=e530]: e2e-user-a@nextgenstock.io
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e531]:
+        - img [ref=e533]
+        - generic [ref=e536]: Idea created
+  - button "Open Next.js Dev Tools" [ref=e542] [cursor=pointer]:
+    - img [ref=e543]
+  - alert [ref=e546]
+```

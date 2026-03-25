@@ -59,7 +59,11 @@ export function ResultsPanel({
   artifactId,
   investmentAmount,
 }: ResultsPanelProps) {
-  const { run } = summary;
+  // summary.run may be undefined when the API returns a flat StrategyRunOut
+  // (e.g. from GET /backtests/:id). In that case, treat summary itself as the run.
+  const run = summary.run ?? (summary as unknown as BacktestSummary["run"]);
+  if (!run?.mode_name) return null;
+
   const isOptimizer =
     run.mode_name === "ai-pick" || run.mode_name === "buy-low-sell-high";
 

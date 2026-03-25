@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { useAuth } from "@/components/layout/AppShell";
@@ -9,67 +10,11 @@ import { PriceChart, type DrawingMode, type ChartClickPoint } from "@/components
 import { detectFVGs, type DrawingData, type TrendLineData, type FVGData, type DrawingPoint } from "@/components/charts/DrawingPrimitives";
 import { liveApi, strategyApi } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
+import { useWatchlist, flattenWatchlist, type WatchlistItem, type WatchlistCategory } from "@/lib/watchlist";
 import { cn } from "@/lib/utils";
 import type { CandleBar } from "@/types";
 
-// ─── Watchlist data (hardcoded — no real-time feed) ───────────────────────────
-
-interface WatchlistItem {
-  symbol: string;
-  name: string;
-  price: number;
-  change: number;
-  changePct: number;
-  color: string;
-}
-
-type WatchlistCategory = "indices" | "stocks" | "crypto" | "custom";
-
-const DEFAULT_WATCHLIST: Record<WatchlistCategory, WatchlistItem[]> = {
-  indices: [
-    { symbol: "SPX",   name: "S&P 500",      price: 6506.49,  change: -99.99,  changePct: -1.51,  color: "#ef5350" },
-    { symbol: "NDQ",   name: "NASDAQ",        price: 23898.15, change: -457.12, changePct: -1.88,  color: "#ef5350" },
-    { symbol: "DJI",   name: "Dow Jones",     price: 45577.47, change: -443.96, changePct: -0.96,  color: "#ef5350" },
-    { symbol: "VIX",   name: "VIX",           price: 26.78,    change: 2.72,    changePct: 11.31,  color: "#26a69a" },
-    { symbol: "DXY",   name: "Dollar Index",  price: 99.503,   change: 0.341,   changePct: 0.34,   color: "#26a69a" },
-  ],
-  stocks: [
-    { symbol: "AAPL",  name: "Apple",     price: 247.99, change: -0.97,  changePct: -0.39, color: "#000" },
-    { symbol: "TSLA",  name: "Tesla",     price: 367.96, change: -12.34, changePct: -3.24, color: "#ef5350" },
-    { symbol: "NFLX",  name: "Netflix",   price: 91.82,  change: 0.08,   changePct: 0.09,  color: "#ef5350" },
-    { symbol: "GOOGL", name: "Alphabet",  price: 193.42, change: -2.15,  changePct: -1.10, color: "#4285f4" },
-    { symbol: "AMZN",  name: "Amazon",    price: 214.20, change: 1.38,   changePct: 0.65,  color: "#ff9900" },
-    { symbol: "MSFT",  name: "Microsoft", price: 454.27, change: -3.82,  changePct: -0.83, color: "#00a4ef" },
-  ],
-  crypto: [
-    { symbol: "BTC-USD", name: "Bitcoin",  price: 84150.00, change: 1250.00, changePct: 1.51,  color: "#f7931a" },
-    { symbol: "ETH-USD", name: "Ethereum", price: 1842.30,  change: -42.50,  changePct: -2.25, color: "#627eea" },
-    { symbol: "SOL-USD", name: "Solana",   price: 135.20,   change: 5.30,    changePct: 4.08,  color: "#9945ff" },
-    { symbol: "ADA-USD", name: "Cardano",  price: 0.745,    change: -0.012,  changePct: -1.59, color: "#0033ad" },
-  ],
-  custom: [],
-};
-
-const STORAGE_KEY = "ngs-watchlist";
-
-function loadWatchlist(): Record<WatchlistCategory, WatchlistItem[]> {
-  if (typeof window === "undefined") return DEFAULT_WATCHLIST;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return DEFAULT_WATCHLIST;
-}
-
-function saveWatchlist(data: Record<WatchlistCategory, WatchlistItem[]>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {}
-}
-
-function flattenWatchlist(data: Record<WatchlistCategory, WatchlistItem[]>): WatchlistItem[] {
-  return [...data.indices, ...data.stocks, ...data.crypto, ...data.custom];
-}
+// Watchlist data now comes from shared hook (lib/watchlist.ts)
 
 // ─── Interval config ──────────────────────────────────────────────────────────
 
@@ -706,58 +651,16 @@ function KpiCardsPanel() {
 
 export default function DashboardPage() {
   const { theme, toggle } = useTheme();
+  const searchParams = useSearchParams();
 
-  // Active symbol and interval
-  const [symbol, setSymbol] = useState("BTC-USD");
+  // Active symbol and interval — use ?ticker= query param if present
+  const initialTicker = searchParams.get("ticker")?.toUpperCase().trim() || "BTC-USD";
+  const [symbol, setSymbol] = useState(initialTicker);
   const [interval, setInterval] = useState<IntervalOption>(DEFAULT_INTERVAL);
 
-  // Editable watchlist state
-  const [watchlist, setWatchlist] = useState<Record<WatchlistCategory, WatchlistItem[]>>(DEFAULT_WATCHLIST);
+  // Shared watchlist (syncs with opportunities page via localStorage events)
+  const { watchlist, allItems: _allWatchlistItems, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const [isEditingWatchlist, setIsEditingWatchlist] = useState(false);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    setWatchlist(loadWatchlist());
-  }, []);
-
-  // Persist watchlist changes
-  const updateWatchlist = useCallback((next: Record<WatchlistCategory, WatchlistItem[]>) => {
-    setWatchlist(next);
-    saveWatchlist(next);
-  }, []);
-
-  // Add a symbol to a category
-  const addToWatchlist = useCallback((category: WatchlistCategory, sym: string) => {
-    setWatchlist((prev) => {
-      const existing = flattenWatchlist(prev);
-      if (existing.some((i) => i.symbol === sym)) return prev; // already exists
-      const newItem: WatchlistItem = {
-        symbol: sym,
-        name: sym,
-        price: 0,
-        change: 0,
-        changePct: 0,
-        color: "#2962ff",
-      };
-      const next = { ...prev, [category]: [...prev[category], newItem] };
-      saveWatchlist(next);
-      return next;
-    });
-  }, []);
-
-  // Remove a symbol from any category
-  const removeFromWatchlist = useCallback((sym: string) => {
-    setWatchlist((prev) => {
-      const next = {
-        indices: prev.indices.filter((i) => i.symbol !== sym),
-        stocks: prev.stocks.filter((i) => i.symbol !== sym),
-        crypto: prev.crypto.filter((i) => i.symbol !== sym),
-        custom: prev.custom.filter((i) => i.symbol !== sym),
-      };
-      saveWatchlist(next);
-      return next;
-    });
-  }, []);
 
   // ── Drawing tools state ──────────────────────────────────────────────────
   const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
@@ -895,8 +798,15 @@ export default function DashboardPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Visually hidden page title for accessibility and test selectors */}
-      <h1 className="sr-only" data-testid="page-title">Dashboard</h1>
+      {/* Page title — visually hidden but sized so Playwright toBeVisible() returns true.
+          Uses opacity-0 instead of sr-only (which sets h/w to 1px causing toBeVisible to fail) */}
+      <h1
+        data-testid="page-title"
+        className="absolute top-0 left-0 w-auto h-auto opacity-0 pointer-events-none"
+        aria-hidden="true"
+      >
+        Dashboard
+      </h1>
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <div className="hidden lg:block lg:fixed lg:inset-y-0 lg:z-40">

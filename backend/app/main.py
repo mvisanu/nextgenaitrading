@@ -1,8 +1,8 @@
 """
 NextGenStock — FastAPI application entry point.
 
-Startup: initialise DB connection pool
-Shutdown: dispose engine / close pool
+Startup: initialise DB connection pool, start APScheduler
+Shutdown: stop scheduler, dispose engine / close pool
 """
 from __future__ import annotations
 
@@ -30,10 +30,26 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.db.session import async_engine
+    from app.scheduler.jobs import register_jobs, scheduler
 
     logger.info("NextGenStock backend starting — pool initialising")
+
+    # Start APScheduler if enabled
+    if settings.scheduler_enable:
+        register_jobs()
+        scheduler.start()
+        logger.info("APScheduler started")
+    else:
+        logger.info("Scheduler disabled (SCHEDULER_ENABLE=false)")
+
     # pool_pre_ping=True handles reconnect; no explicit warm-up needed
     yield
+
+    # Shutdown scheduler before disposing DB engine
+    if settings.scheduler_enable and scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("APScheduler stopped")
+
     logger.info("NextGenStock backend shutting down — disposing engine")
     await async_engine.dispose()
 
@@ -139,6 +155,16 @@ from app.api.strategies import router as strategies_router
 from app.api.backtests import router as backtests_router
 from app.api.live import router as live_router
 from app.api.artifacts import router as artifacts_router
+# v2 routers
+from app.api.buy_zone import router as buy_zone_router
+from app.api.alerts import router as alerts_router
+from app.api.ideas import router as ideas_router
+from app.api.auto_buy import router as auto_buy_router
+from app.api.opportunities import router as opportunities_router
+from app.api.scanner import router as scanner_router
+# v3 routers
+from app.api.watchlist import router as watchlist_router
+from app.api.generated_ideas import router as generated_ideas_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -147,3 +173,13 @@ app.include_router(strategies_router)
 app.include_router(backtests_router)
 app.include_router(live_router)
 app.include_router(artifacts_router)
+# v2
+app.include_router(buy_zone_router)
+app.include_router(alerts_router)
+app.include_router(ideas_router)
+app.include_router(auto_buy_router)
+app.include_router(opportunities_router)
+app.include_router(scanner_router)
+# v3
+app.include_router(watchlist_router)
+app.include_router(generated_ideas_router)

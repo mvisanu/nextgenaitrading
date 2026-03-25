@@ -1,0 +1,602 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - img [ref=e6]
+        - generic [ref=e13]: NextGenStock
+      - navigation [ref=e14]:
+        - link "Dashboard" [ref=e15] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e16]:
+            - img [ref=e17]
+            - generic [ref=e22]: Dashboard
+        - link "Strategies" [ref=e23] [cursor=pointer]:
+          - /url: /strategies
+          - generic [ref=e24]:
+            - img [ref=e25]
+            - generic [ref=e28]: Strategies
+        - link "Backtests" [ref=e29] [cursor=pointer]:
+          - /url: /backtests
+          - generic [ref=e30]:
+            - img [ref=e31]
+            - generic [ref=e33]: Backtests
+        - link "Live Trading" [ref=e34] [cursor=pointer]:
+          - /url: /live-trading
+          - generic [ref=e35]:
+            - img [ref=e36]
+            - generic [ref=e42]: Live Trading
+        - link "Artifacts" [ref=e43] [cursor=pointer]:
+          - /url: /artifacts
+          - generic [ref=e44]:
+            - img [ref=e45]
+            - generic [ref=e50]: Artifacts
+        - link "Strategy Samples" [ref=e51] [cursor=pointer]:
+          - /url: /strategy-samples
+          - generic [ref=e52]:
+            - img [ref=e53]
+            - generic [ref=e55]: Strategy Samples
+        - link "Trade Log" [ref=e56] [cursor=pointer]:
+          - /url: /trade-log
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - generic [ref=e61]: Trade Log
+        - 'link "Opportunities Scanner: market closed" [ref=e62] [cursor=pointer]':
+          - /url: /opportunities
+          - generic [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e66]:
+              - text: Opportunities
+              - 'generic "Scanner: market closed" [ref=e67]'
+        - link "Ideas" [ref=e68] [cursor=pointer]:
+          - /url: /ideas
+          - generic [ref=e69]:
+            - img [ref=e70]
+            - generic [ref=e72]: Ideas
+        - link "Alerts" [ref=e73] [cursor=pointer]:
+          - /url: /alerts
+          - generic [ref=e74]:
+            - img [ref=e75]
+            - generic [ref=e78]: Alerts
+        - link "Auto-Buy" [ref=e79] [cursor=pointer]:
+          - /url: /auto-buy
+          - generic [ref=e80]:
+            - img [ref=e81]
+            - generic [ref=e83]: Auto-Buy
+        - link "Learn to Trade" [ref=e84] [cursor=pointer]:
+          - /url: /learn
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e89]: Learn to Trade
+        - link "FAQ & Strategies" [ref=e90] [cursor=pointer]:
+          - /url: /faq
+          - generic [ref=e91]:
+            - img [ref=e92]
+            - generic [ref=e95]: FAQ & Strategies
+        - link "Profile" [ref=e96] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e97]:
+            - img [ref=e98]
+            - generic [ref=e101]: Profile
+      - generic [ref=e102]:
+        - generic "e2e-user-a@nextgenstock.io" [ref=e103]:
+          - generic [ref=e105]: E2
+          - generic: e2e-user-a@nextgenstock.io
+        - button "Sign out" [ref=e106] [cursor=pointer]:
+          - img [ref=e107]
+          - generic [ref=e110]: Sign out
+    - generic [ref=e111]:
+      - banner [ref=e112]:
+        - heading "Profile" [level=1] [ref=e114]
+      - main [ref=e115]:
+        - generic [ref=e116]:
+          - generic [ref=e117]:
+            - heading "User Profile" [level=3] [ref=e119]
+            - generic [ref=e121]:
+              - generic [ref=e122]:
+                - generic [ref=e123]:
+                  - text: Display Name
+                  - textbox "Your name" [ref=e124]: Updated 1774405626321
+                - generic [ref=e125]:
+                  - text: Timezone
+                  - textbox "America/New_York" [ref=e126]: America/Chicago
+                - generic [ref=e127]:
+                  - text: Default Symbol
+                  - textbox "BTC-USD" [ref=e128]: TSLA
+                - generic [ref=e129]:
+                  - text: Default Strategy Mode
+                  - combobox [ref=e130] [cursor=pointer]:
+                    - generic: Select mode...
+                    - img [ref=e131]
+                  - combobox [ref=e133]
+              - button "Save Profile" [ref=e134] [cursor=pointer]
+          - generic [ref=e135]:
+            - generic [ref=e136]:
+              - heading "Broker Credentials" [level=3] [ref=e137]
+              - button "Add Credential" [ref=e138] [cursor=pointer]:
+                - img
+                - text: Add Credential
+            - generic [ref=e140]:
+              - generic [ref=e141]:
+                - generic [ref=e142]:
+                  - generic [ref=e143]:
+                    - generic [ref=e144]: E2E Alpaca Paper
+                    - generic [ref=e145]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e146]:
+                  - button "Test" [ref=e147] [cursor=pointer]
+                  - button [ref=e148] [cursor=pointer]:
+                    - img
+              - generic [ref=e149]:
+                - generic [ref=e150]:
+                  - generic [ref=e151]:
+                    - generic [ref=e152]: E2E Robinhood Crypto
+                    - generic [ref=e153]: Robinhood · Crypto only
+                  - paragraph
+                - generic [ref=e154]:
+                  - button "Test" [ref=e155] [cursor=pointer]
+                  - button [ref=e156] [cursor=pointer]:
+                    - img
+              - generic [ref=e157]:
+                - generic [ref=e158]:
+                  - generic [ref=e159]:
+                    - generic [ref=e160]: E2E Alpaca Paper
+                    - generic [ref=e161]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e162]:
+                  - button "Test" [ref=e163] [cursor=pointer]
+                  - button [ref=e164] [cursor=pointer]:
+                    - img
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - generic [ref=e167]:
+                    - generic [ref=e168]: Updated Name 1774404839272
+                    - generic [ref=e169]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e170]:
+                  - button "Test" [ref=e171] [cursor=pointer]
+                  - button [ref=e172] [cursor=pointer]:
+                    - img
+              - generic [ref=e173]:
+                - generic [ref=e174]:
+                  - generic [ref=e175]:
+                    - generic [ref=e176]: E2E Alpaca Paper
+                    - generic [ref=e177]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e178]:
+                  - button "Test" [ref=e179] [cursor=pointer]
+                  - button [ref=e180] [cursor=pointer]:
+                    - img
+              - generic [ref=e181]:
+                - generic [ref=e182]:
+                  - generic [ref=e183]:
+                    - generic [ref=e184]: E2E Alpaca Paper
+                    - generic [ref=e185]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e186]:
+                  - button "Test" [ref=e187] [cursor=pointer]
+                  - button [ref=e188] [cursor=pointer]:
+                    - img
+              - generic [ref=e189]:
+                - generic [ref=e190]:
+                  - generic [ref=e191]:
+                    - generic [ref=e192]: E2E Alpaca Paper
+                    - generic [ref=e193]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e194]:
+                  - button "Test" [ref=e195] [cursor=pointer]
+                  - button [ref=e196] [cursor=pointer]:
+                    - img
+              - generic [ref=e197]:
+                - generic [ref=e198]:
+                  - generic [ref=e199]:
+                    - generic [ref=e200]: E2E Alpaca Paper
+                    - generic [ref=e201]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e202]:
+                  - button "Test" [ref=e203] [cursor=pointer]
+                  - button [ref=e204] [cursor=pointer]:
+                    - img
+              - generic [ref=e205]:
+                - generic [ref=e206]:
+                  - generic [ref=e207]:
+                    - generic [ref=e208]: E2E Alpaca Paper
+                    - generic [ref=e209]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e210]:
+                  - button "Test" [ref=e211] [cursor=pointer]
+                  - button [ref=e212] [cursor=pointer]:
+                    - img
+              - generic [ref=e213]:
+                - generic [ref=e214]:
+                  - generic [ref=e215]:
+                    - generic [ref=e216]: E2E Alpaca Paper
+                    - generic [ref=e217]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e218]:
+                  - button "Test" [ref=e219] [cursor=pointer]
+                  - button [ref=e220] [cursor=pointer]:
+                    - img
+              - generic [ref=e221]:
+                - generic [ref=e222]:
+                  - generic [ref=e223]:
+                    - generic [ref=e224]: E2E Alpaca Paper
+                    - generic [ref=e225]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e226]:
+                  - button "Test" [ref=e227] [cursor=pointer]
+                  - button [ref=e228] [cursor=pointer]:
+                    - img
+              - generic [ref=e229]:
+                - generic [ref=e230]:
+                  - generic [ref=e231]:
+                    - generic [ref=e232]: E2E Alpaca Paper
+                    - generic [ref=e233]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e234]:
+                  - button "Test" [ref=e235] [cursor=pointer]
+                  - button [ref=e236] [cursor=pointer]:
+                    - img
+              - generic [ref=e237]:
+                - generic [ref=e238]:
+                  - generic [ref=e239]:
+                    - generic [ref=e240]: E2E Alpaca Paper
+                    - generic [ref=e241]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e242]:
+                  - button "Test" [ref=e243] [cursor=pointer]
+                  - button [ref=e244] [cursor=pointer]:
+                    - img
+              - generic [ref=e245]:
+                - generic [ref=e246]:
+                  - generic [ref=e247]:
+                    - generic [ref=e248]: E2E Alpaca Paper
+                    - generic [ref=e249]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e250]:
+                  - button "Test" [ref=e251] [cursor=pointer]
+                  - button [ref=e252] [cursor=pointer]:
+                    - img
+              - generic [ref=e253]:
+                - generic [ref=e254]:
+                  - generic [ref=e255]:
+                    - generic [ref=e256]: E2E Alpaca Paper
+                    - generic [ref=e257]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e258]:
+                  - button "Test" [ref=e259] [cursor=pointer]
+                  - button [ref=e260] [cursor=pointer]:
+                    - img
+              - generic [ref=e261]:
+                - generic [ref=e262]:
+                  - generic [ref=e263]:
+                    - generic [ref=e264]: E2E Alpaca Paper
+                    - generic [ref=e265]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e266]:
+                  - button "Test" [ref=e267] [cursor=pointer]
+                  - button [ref=e268] [cursor=pointer]:
+                    - img
+              - generic [ref=e269]:
+                - generic [ref=e270]:
+                  - generic [ref=e271]:
+                    - generic [ref=e272]: E2E Alpaca Paper
+                    - generic [ref=e273]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e274]:
+                  - button "Test" [ref=e275] [cursor=pointer]
+                  - button [ref=e276] [cursor=pointer]:
+                    - img
+              - generic [ref=e277]:
+                - generic [ref=e278]:
+                  - generic [ref=e279]:
+                    - generic [ref=e280]: E2E Alpaca Paper
+                    - generic [ref=e281]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e282]:
+                  - button "Test" [ref=e283] [cursor=pointer]
+                  - button [ref=e284] [cursor=pointer]:
+                    - img
+              - generic [ref=e285]:
+                - generic [ref=e286]:
+                  - generic [ref=e287]:
+                    - generic [ref=e288]: E2E Alpaca Paper
+                    - generic [ref=e289]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e290]:
+                  - button "Test" [ref=e291] [cursor=pointer]
+                  - button [ref=e292] [cursor=pointer]:
+                    - img
+              - generic [ref=e293]:
+                - generic [ref=e294]:
+                  - generic [ref=e295]:
+                    - generic [ref=e296]: E2E Alpaca Paper
+                    - generic [ref=e297]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e298]:
+                  - button "Test" [ref=e299] [cursor=pointer]
+                  - button [ref=e300] [cursor=pointer]:
+                    - img
+              - generic [ref=e301]:
+                - generic [ref=e302]:
+                  - generic [ref=e303]:
+                    - generic [ref=e304]: E2E Alpaca Paper
+                    - generic [ref=e305]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e306]:
+                  - button "Test" [ref=e307] [cursor=pointer]
+                  - button [ref=e308] [cursor=pointer]:
+                    - img
+              - generic [ref=e309]:
+                - generic [ref=e310]:
+                  - generic [ref=e311]:
+                    - generic [ref=e312]: E2E Alpaca Paper
+                    - generic [ref=e313]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e314]:
+                  - button "Test" [ref=e315] [cursor=pointer]
+                  - button [ref=e316] [cursor=pointer]:
+                    - img
+              - generic [ref=e317]:
+                - generic [ref=e318]:
+                  - generic [ref=e319]:
+                    - generic [ref=e320]: E2E Alpaca Paper
+                    - generic [ref=e321]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e322]:
+                  - button "Test" [ref=e323] [cursor=pointer]
+                  - button [ref=e324] [cursor=pointer]:
+                    - img
+              - generic [ref=e325]:
+                - generic [ref=e326]:
+                  - generic [ref=e327]:
+                    - generic [ref=e328]: E2E Alpaca Paper
+                    - generic [ref=e329]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e330]:
+                  - button "Test" [ref=e331] [cursor=pointer]
+                  - button [ref=e332] [cursor=pointer]:
+                    - img
+              - generic [ref=e333]:
+                - generic [ref=e334]:
+                  - generic [ref=e335]:
+                    - generic [ref=e336]: E2E Alpaca Paper
+                    - generic [ref=e337]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e338]:
+                  - button "Test" [ref=e339] [cursor=pointer]
+                  - button [ref=e340] [cursor=pointer]:
+                    - img
+              - generic [ref=e341]:
+                - generic [ref=e342]:
+                  - generic [ref=e343]:
+                    - generic [ref=e344]: E2E Alpaca Paper
+                    - generic [ref=e345]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e346]:
+                  - button "Test" [ref=e347] [cursor=pointer]
+                  - button [ref=e348] [cursor=pointer]:
+                    - img
+              - generic [ref=e349]:
+                - generic [ref=e350]:
+                  - generic [ref=e351]:
+                    - generic [ref=e352]: E2E Alpaca Paper
+                    - generic [ref=e353]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e354]:
+                  - button "Test" [ref=e355] [cursor=pointer]
+                  - button [ref=e356] [cursor=pointer]:
+                    - img
+              - generic [ref=e357]:
+                - generic [ref=e358]:
+                  - generic [ref=e359]:
+                    - generic [ref=e360]: E2E Alpaca Paper
+                    - generic [ref=e361]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e362]:
+                  - button "Test" [ref=e363] [cursor=pointer]
+                  - button [ref=e364] [cursor=pointer]:
+                    - img
+              - generic [ref=e365]:
+                - generic [ref=e366]:
+                  - generic [ref=e367]:
+                    - generic [ref=e368]: E2E Alpaca Paper
+                    - generic [ref=e369]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e370]:
+                  - button "Test" [ref=e371] [cursor=pointer]
+                  - button [ref=e372] [cursor=pointer]:
+                    - img
+              - generic [ref=e373]:
+                - generic [ref=e374]:
+                  - generic [ref=e375]:
+                    - generic [ref=e376]: E2E Alpaca Paper
+                    - generic [ref=e377]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e378]:
+                  - button "Test" [ref=e379] [cursor=pointer]
+                  - button [ref=e380] [cursor=pointer]:
+                    - img
+              - generic [ref=e381]:
+                - generic [ref=e382]:
+                  - generic [ref=e383]:
+                    - generic [ref=e384]: E2E Alpaca Paper
+                    - generic [ref=e385]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e386]:
+                  - button "Test" [ref=e387] [cursor=pointer]
+                  - button [ref=e388] [cursor=pointer]:
+                    - img
+              - generic [ref=e389]:
+                - generic [ref=e390]:
+                  - generic [ref=e391]:
+                    - generic [ref=e392]: E2E Alpaca Paper
+                    - generic [ref=e393]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e394]:
+                  - button "Test" [ref=e395] [cursor=pointer]
+                  - button [ref=e396] [cursor=pointer]:
+                    - img
+              - generic [ref=e397]:
+                - generic [ref=e398]:
+                  - generic [ref=e399]:
+                    - generic [ref=e400]: E2E Robinhood Crypto
+                    - generic [ref=e401]: Robinhood · Crypto only
+                  - paragraph
+                - generic [ref=e402]:
+                  - button "Test" [ref=e403] [cursor=pointer]
+                  - button [ref=e404] [cursor=pointer]:
+                    - img
+              - generic [ref=e405]:
+                - generic [ref=e406]:
+                  - generic [ref=e407]:
+                    - generic [ref=e408]: E2E Alpaca Paper
+                    - generic [ref=e409]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e410]:
+                  - button "Test" [ref=e411] [cursor=pointer]
+                  - button [ref=e412] [cursor=pointer]:
+                    - img
+              - generic [ref=e413]:
+                - generic [ref=e414]:
+                  - generic [ref=e415]:
+                    - generic [ref=e416]: Updated Name 1774405675156
+                    - generic [ref=e417]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e418]:
+                  - button "Test" [ref=e419] [cursor=pointer]
+                  - button [ref=e420] [cursor=pointer]:
+                    - img
+              - generic [ref=e421]:
+                - generic [ref=e422]:
+                  - generic [ref=e423]:
+                    - generic [ref=e424]: E2E Alpaca Paper
+                    - generic [ref=e425]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e426]:
+                  - button "Test" [ref=e427] [cursor=pointer]
+                  - button [ref=e428] [cursor=pointer]:
+                    - img
+              - generic [ref=e429]:
+                - generic [ref=e430]:
+                  - generic [ref=e431]:
+                    - generic [ref=e432]: E2E Alpaca Paper
+                    - generic [ref=e433]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e434]:
+                  - button "Test" [ref=e435] [cursor=pointer]
+                  - button [ref=e436] [cursor=pointer]:
+                    - img
+              - generic [ref=e437]:
+                - generic [ref=e438]:
+                  - generic [ref=e439]:
+                    - generic [ref=e440]: E2E Alpaca Paper
+                    - generic [ref=e441]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e442]:
+                  - button "Test" [ref=e443] [cursor=pointer]
+                  - button [ref=e444] [cursor=pointer]:
+                    - img
+              - generic [ref=e445]:
+                - generic [ref=e446]:
+                  - generic [ref=e447]:
+                    - generic [ref=e448]: E2E Alpaca Paper
+                    - generic [ref=e449]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e450]:
+                  - button "Test" [ref=e451] [cursor=pointer]
+                  - button [ref=e452] [cursor=pointer]:
+                    - img
+              - generic [ref=e453]:
+                - generic [ref=e454]:
+                  - generic [ref=e455]:
+                    - generic [ref=e456]: E2E Alpaca Paper
+                    - generic [ref=e457]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e458]:
+                  - button "Test" [ref=e459] [cursor=pointer]
+                  - button [ref=e460] [cursor=pointer]:
+                    - img
+              - generic [ref=e461]:
+                - generic [ref=e462]:
+                  - generic [ref=e463]:
+                    - generic [ref=e464]: E2E Alpaca Paper
+                    - generic [ref=e465]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e466]:
+                  - button "Test" [ref=e467] [cursor=pointer]
+                  - button [ref=e468] [cursor=pointer]:
+                    - img
+              - generic [ref=e469]:
+                - generic [ref=e470]:
+                  - generic [ref=e471]:
+                    - generic [ref=e472]: E2E Alpaca Paper
+                    - generic [ref=e473]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e474]:
+                  - button "Test" [ref=e475] [cursor=pointer]
+                  - button [ref=e476] [cursor=pointer]:
+                    - img
+              - generic [ref=e477]:
+                - generic [ref=e478]:
+                  - generic [ref=e479]:
+                    - generic [ref=e480]: E2E Robinhood Crypto
+                    - generic [ref=e481]: Robinhood · Crypto only
+                  - paragraph
+                - generic [ref=e482]:
+                  - button "Test" [ref=e483] [cursor=pointer]
+                  - button [ref=e484] [cursor=pointer]:
+                    - img
+              - generic [ref=e485]:
+                - generic [ref=e486]:
+                  - generic [ref=e487]:
+                    - generic [ref=e488]: E2E Alpaca Paper
+                    - generic [ref=e489]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e490]:
+                  - button "Test" [ref=e491] [cursor=pointer]
+                  - button [ref=e492] [cursor=pointer]:
+                    - img
+              - generic [ref=e493]:
+                - generic [ref=e494]:
+                  - generic [ref=e495]:
+                    - generic [ref=e496]: E2E Alpaca Paper
+                    - generic [ref=e497]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e498]:
+                  - button "Test" [ref=e499] [cursor=pointer]
+                  - button [ref=e500] [cursor=pointer]:
+                    - img
+              - generic [ref=e501]:
+                - generic [ref=e502]:
+                  - generic [ref=e503]:
+                    - generic [ref=e504]: E2E Alpaca Paper
+                    - generic [ref=e505]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e506]:
+                  - button "Test" [ref=e507] [cursor=pointer]
+                  - button [ref=e508] [cursor=pointer]:
+                    - img
+              - generic [ref=e509]:
+                - generic [ref=e510]:
+                  - generic [ref=e511]:
+                    - generic [ref=e512]: E2E Alpaca Paper
+                    - generic [ref=e513]: Alpaca · Stocks & ETFs
+                  - paragraph
+                - generic [ref=e514]:
+                  - button "Test" [ref=e515] [cursor=pointer]
+                  - button [ref=e516] [cursor=pointer]:
+                    - img
+      - generic [ref=e517]:
+        - generic [ref=e518]: NextGenStock v1.0
+        - generic [ref=e519]: "|"
+        - generic [ref=e520]: Connected
+        - generic [ref=e522]: "|"
+        - generic [ref=e523]: e2e-user-a@nextgenstock.io
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e529] [cursor=pointer]:
+    - img [ref=e530]
+  - alert [ref=e533]
+```

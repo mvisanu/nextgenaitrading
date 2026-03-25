@@ -40,6 +40,7 @@ class AlpacaClient(AbstractBrokerClient):
         quantity: float,
         order_type: str = "market",
         dry_run: bool = True,
+        notional_usd: float | None = None,
     ) -> OrderResult:
         if dry_run:
             return OrderResult(
@@ -47,18 +48,34 @@ class AlpacaClient(AbstractBrokerClient):
                 status="simulated",
                 filled_price=None,
                 filled_quantity=quantity,
-                raw_response={"dry_run": True, "symbol": symbol, "side": side},
+                raw_response={
+                    "dry_run": True,
+                    "symbol": symbol,
+                    "side": side,
+                    "notional_usd": notional_usd,
+                    "estimated_quantity": quantity,
+                },
             )
 
         from alpaca.trading.enums import OrderSide, TimeInForce
         from alpaca.trading.requests import MarketOrderRequest
 
-        req = MarketOrderRequest(
-            symbol=symbol,
-            qty=quantity,
-            side=OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL,
-            time_in_force=TimeInForce.DAY,
-        )
+        order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+        # Alpaca supports notional (dollar-based) orders directly
+        if notional_usd and not quantity:
+            req = MarketOrderRequest(
+                symbol=symbol,
+                notional=notional_usd,
+                side=order_side,
+                time_in_force=TimeInForce.DAY,
+            )
+        else:
+            req = MarketOrderRequest(
+                symbol=symbol,
+                qty=quantity,
+                side=order_side,
+                time_in_force=TimeInForce.DAY,
+            )
         order = self.client.submit_order(req)
         raw = order.model_dump() if hasattr(order, "model_dump") else {}
         return OrderResult(

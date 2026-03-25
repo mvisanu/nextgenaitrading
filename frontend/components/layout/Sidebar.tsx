@@ -14,9 +14,15 @@ import {
   HelpCircle,
   User,
   LogOut,
+  Crosshair,
+  Lightbulb,
+  Bell,
+  Zap,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useAuth } from "./AppShell";
+import { scannerApi } from "@/lib/api";
 
 const navLinks = [
   {
@@ -55,6 +61,26 @@ const navLinks = [
     icon: ClipboardList,
   },
   {
+    href: "/opportunities",
+    label: "Opportunities",
+    icon: Crosshair,
+  },
+  {
+    href: "/ideas",
+    label: "Ideas",
+    icon: Lightbulb,
+  },
+  {
+    href: "/alerts",
+    label: "Alerts",
+    icon: Bell,
+  },
+  {
+    href: "/auto-buy",
+    label: "Auto-Buy",
+    icon: Zap,
+  },
+  {
     href: "/learn",
     label: "Learn to Trade",
     icon: GraduationCap,
@@ -70,6 +96,43 @@ const navLinks = [
     icon: User,
   },
 ];
+
+// ─── Scanner status indicator ─────────────────────────────────────────────────
+
+function ScannerStatusDot() {
+  const { data } = useQuery({
+    queryKey: ["scanner-status-sidebar"],
+    queryFn: scannerApi.status,
+    // Poll every 5 minutes; this is a low-priority status indicator
+    refetchInterval: 5 * 60_000,
+    // Don't block auth — query runs only when the page is loaded; no enabled guard
+    // because this component is only rendered for authenticated users (inside AppShell)
+  });
+
+  if (!data) return null;
+
+  const isActive = data.market_hours_active;
+  const hasQueue = data.tickers_in_queue > 0;
+
+  if (!isActive) {
+    return (
+      <span
+        title="Scanner: market closed"
+        className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/40 shrink-0"
+      />
+    );
+  }
+
+  return (
+    <span
+      title={`Scanner active — ${data.tickers_in_queue} ticker${data.tickers_in_queue !== 1 ? "s" : ""} in queue`}
+      className={cn(
+        "ml-1 inline-block h-1.5 w-1.5 rounded-full shrink-0",
+        hasQueue ? "bg-green-400 animate-pulse" : "bg-green-400/50"
+      )}
+    />
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -110,6 +173,7 @@ export function Sidebar() {
         {navLinks.map((link) => {
           const isActive =
             pathname === link.href || pathname.startsWith(link.href + "/");
+          const isOpportunities = link.href === "/opportunities";
           return (
             <Link key={link.href} href={link.href} title={link.label}>
               <span
@@ -122,8 +186,9 @@ export function Sidebar() {
                 )}
               >
                 <link.icon className="h-5 w-5 shrink-0" />
-                <span className="ml-3 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <span className="ml-3 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
                   {link.label}
+                  {isOpportunities && <ScannerStatusDot />}
                 </span>
               </span>
             </Link>

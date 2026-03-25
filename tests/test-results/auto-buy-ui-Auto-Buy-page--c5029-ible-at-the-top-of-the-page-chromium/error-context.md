@@ -1,0 +1,96 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [active]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - navigation [ref=e7]:
+            - button "previous" [disabled] [ref=e8]:
+              - img "previous" [ref=e9]
+            - generic [ref=e11]:
+              - generic [ref=e12]: 1/
+              - text: "1"
+            - button "next" [disabled] [ref=e13]:
+              - img "next" [ref=e14]
+          - img
+        - generic [ref=e16]:
+          - link "Next.js 16.2.0 (stale) Turbopack" [ref=e17] [cursor=pointer]:
+            - /url: https://nextjs.org/docs/messages/version-staleness
+            - img [ref=e18]
+            - generic "There is a newer version (16.2.1) available, upgrade recommended!" [ref=e20]: Next.js 16.2.0 (stale)
+            - generic [ref=e21]: Turbopack
+          - img
+      - dialog "Runtime TypeError" [ref=e23]:
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - generic [ref=e30]: Runtime TypeError
+              - generic [ref=e31]:
+                - button "Copy Error Info" [ref=e32] [cursor=pointer]:
+                  - img [ref=e33]
+                - button "No related documentation found" [disabled] [ref=e35]:
+                  - img [ref=e36]
+                - button "Attach Node.js inspector" [ref=e38] [cursor=pointer]:
+                  - img [ref=e39]
+            - generic [ref=e48]: Cannot read properties of undefined (reading 'map')
+          - generic [ref=e49]:
+            - generic [ref=e50]:
+              - paragraph [ref=e52]:
+                - img [ref=e54]
+                - generic [ref=e57]: app/auto-buy/page.tsx (355:54) @ <unknown>
+                - button "Open in editor" [ref=e58] [cursor=pointer]:
+                  - img [ref=e60]
+              - generic [ref=e63]:
+                - generic [ref=e64]: 353 | <TableCell>
+                - generic [ref=e65]: 354 | <div className="flex flex-wrap gap-1 max-w-xs">
+                - generic [ref=e66]: "> 355 | {entry.reason_codes_json.map((code, i) => ("
+                - generic [ref=e67]: "| ^"
+                - generic [ref=e68]: 356 | <span
+                - generic [ref=e69]: "357 | key={i}"
+                - generic [ref=e70]: "358 | className={cn("
+            - generic [ref=e71]:
+              - generic [ref=e72]:
+                - paragraph [ref=e73]:
+                  - text: Call Stack
+                  - generic [ref=e74]: "17"
+                - button "Show 14 ignore-listed frame(s)" [ref=e75] [cursor=pointer]:
+                  - text: Show 14 ignore-listed frame(s)
+                  - img [ref=e76]
+              - generic [ref=e78]:
+                - generic [ref=e79]:
+                  - text: <unknown>
+                  - button "Open <unknown> in editor" [ref=e80] [cursor=pointer]:
+                    - img [ref=e81]
+                - text: app/auto-buy/page.tsx (355:54)
+              - generic [ref=e83]:
+                - generic [ref=e84]: Array.map
+                - text: <anonymous>
+              - generic [ref=e85]:
+                - generic [ref=e86]:
+                  - text: AutoBuyPage
+                  - button "Open AutoBuyPage in editor" [ref=e87] [cursor=pointer]:
+                    - img [ref=e88]
+                - text: app/auto-buy/page.tsx (331:32)
+        - generic [ref=e90]: "1"
+        - generic [ref=e91]: "2"
+    - generic [ref=e96] [cursor=pointer]:
+      - button "Open Next.js Dev Tools" [ref=e97]:
+        - img [ref=e98]
+      - generic [ref=e101]:
+        - button "Open issues overlay" [ref=e102]:
+          - generic [ref=e103]:
+            - generic [ref=e104]: "0"
+            - generic [ref=e105]: "1"
+          - generic [ref=e106]: Issue
+        - button "Collapse issues badge" [ref=e107]:
+          - img [ref=e108]
+  - generic [ref=e111]:
+    - img [ref=e112]
+    - heading "This page couldn’t load" [level=1] [ref=e114]
+    - paragraph [ref=e115]: Reload to try again, or go back.
+    - generic [ref=e116]:
+      - button "Reload" [ref=e118] [cursor=pointer]
+      - button "Back" [ref=e119] [cursor=pointer]
+```

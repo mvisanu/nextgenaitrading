@@ -1,0 +1,46 @@
+How to use TradingView skills in claude code
+
+Using the skill is straightforward — you just reference it naturally in your message to Claude Code. Here are the different ways:
+Explicit invocation — mention the skill by name:
+
+Use the tradingview-strategy-research skill to find the best 
+swing trading strategies for US stocks right now
+
+Use the tradingview-strategy-research skill to convert this 
+TradingView MACD + RSI strategy into Pine Script
+
+Natural language — Claude Code auto-triggers the skill when it detects relevant keywords, no explicit mention needed:
+
+Find me the best momentum strategies on TradingView for AAPL
+
+Write Pine Script for a stochastic + EMA crossover strategy
+
+Build a backtestable hybrid strategy for BTC using CJDX and 
+God Hunter oscillator with ADX volatility filter
+
+For your NextGenStock project specifically, here are prompts that map directly to your 4 strategy modes:
+
+Use the tradingview-strategy-research skill to find the best 
+AI Pick strategy for BTC-USD on the 1D timeframe — I need 
+MACD + RSI + EMA variants I can backtest
+
+Use the tradingview-strategy-research skill to build a 
+Buy Low Sell High dip-cycle strategy for any symbol 
+on 1D — give me 3 variants in Pine Script
+
+Use the tradingview-strategy-research skill to research 
+the best conservative swing strategy with 7/8 confirmation 
+signals for TSLA on 1H
+
+For the composite NNFX hybrid from your skill spec:
+
+Use the tradingview-strategy-research skill to build the 
+full NNFX composite — CCI trend baseline, God Hunter 
+confirmation, CJDX golden cross, ADX volatility gate — 
+wire it into one Pine Script strategy for ETH
+
+Tips:
+
+The skill always summarizes first before writing code — don't skip that step, it catches logic gaps early
+If you want Python instead of Pine Script, just add: then convert it to Python using pandas_ta
+If you want it scoped to NextGenStock's symbol input, add: the symbol will be user-supplied, not hardcoded

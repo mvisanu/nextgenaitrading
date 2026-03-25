@@ -8,6 +8,7 @@ import json
 import logging
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.broker.factory import get_broker_client
@@ -42,7 +43,21 @@ async def execute_order(
             ),
         )
 
+    # Resolve quantity: either provided directly or estimated from notional USD
     quantity = payload.quantity or 0.0
+    estimated_price: float | None = None
+    if not payload.quantity and payload.notional_usd:
+        # Estimate quantity from latest market price
+        try:
+            from app.services.market_data import load_ohlcv_for_strategy
+            df = load_ohlcv_for_strategy(payload.symbol, "1d")
+            if len(df) > 0:
+                estimated_price = float(df["Close"].iloc[-1])
+                quantity = payload.notional_usd / estimated_price
+        except Exception:
+            # If price lookup fails, record the notional but use 0 quantity
+            logger.warning("Could not estimate price for %s, using 0 quantity", payload.symbol)
+
     error_msg: str | None = None
     broker_order_id: str | None = None
     filled_price: float | None = None
@@ -56,6 +71,7 @@ async def execute_order(
             symbol=payload.symbol,
             side=payload.side,
             quantity=quantity,
+            notional_usd=payload.notional_usd,
             order_type="market",
             dry_run=payload.dry_run,
         )
@@ -74,11 +90,13 @@ async def execute_order(
 
     broker_order = BrokerOrder(
         user_id=current_user.id,
-        strategy_run_id=payload.strategy_run_id,
+        # Guard: only set strategy_run_id if it was provided — a dangling FK from
+        # a failed/uncommitted signal-check run would cause an IntegrityError on commit.
+        strategy_run_id=payload.strategy_run_id if payload.strategy_run_id else None,
         symbol=payload.symbol,
         side=payload.side,
         order_type="market",
-        quantity=quantity,
+        quantity=quantity if quantity else None,
         notional_usd=payload.notional_usd,
         broker_order_id=broker_order_id,
         status=order_status,
@@ -90,8 +108,16 @@ async def execute_order(
         raw_response_json=json.dumps(raw_response) if raw_response else None,
     )
     db.add(broker_order)
-    await db.commit()
-    await db.refresh(broker_order)
+    try:
+        await db.commit()
+        await db.refresh(broker_order)
+    except IntegrityError as exc:
+        await db.rollback()
+        logger.error("DB integrity error persisting order for user_id=%d: %s", current_user.id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Order could not be saved — invalid strategy_run_id or data constraint violation.",
+        ) from exc
 
     if error_msg and not payload.dry_run:
         raise HTTPException(

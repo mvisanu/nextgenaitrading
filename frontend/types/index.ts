@@ -200,18 +200,27 @@ export interface SignalCheckRequest {
   credential_id: number;
 }
 
+export interface ConfirmationDetail {
+  name: string;
+  met: boolean;
+  value: string;
+}
+
 export interface SignalCheckResult {
   symbol: string;
   regime: string;
   signal: string;
   confirmation_count: number;
   strategy_run_id: number;
+  reason: string | null;
+  confirmation_details: ConfirmationDetail[];
 }
 
 export interface ExecuteOrderRequest {
   symbol: string;
   side: "buy" | "sell";
-  quantity: number;
+  quantity?: number;
+  notional_usd?: number;
   credential_id: number;
   dry_run: boolean;
   strategy_run_id?: number;
@@ -279,4 +288,381 @@ export interface ArtifactWithCode extends Artifact {
 export interface ApiError {
   detail: string;
   status: number;
+}
+
+// ─── Buy Zone ─────────────────────────────────────────────────────────────────
+
+export interface BuyZoneSnapshot {
+  id: number;
+  user_id: number | null;
+  ticker: string;
+  current_price: number;
+  buy_zone_low: number;
+  buy_zone_high: number;
+  confidence_score: number;
+  entry_quality_score: number;
+  expected_return_30d: number;
+  expected_return_90d: number;
+  expected_drawdown: number;
+  positive_outcome_rate_30d: number;
+  positive_outcome_rate_90d: number;
+  invalidation_price: number;
+  horizon_days: number;
+  explanation_json: string[];
+  feature_payload_json: Record<string, unknown>;
+  model_version: string;
+  created_at: string;
+}
+
+// ─── Theme Score ──────────────────────────────────────────────────────────────
+
+export interface ThemeScoreResult {
+  ticker: string;
+  theme_score_total: number;
+  theme_scores_by_category: Record<string, number>;
+  narrative_momentum_score: number;
+  sector_tailwind_score: number;
+  macro_alignment_score: number;
+  user_conviction_score: number;
+  explanation: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Price Alert Rules ────────────────────────────────────────────────────────
+
+export type AlertType =
+  | "entered_buy_zone"
+  | "near_buy_zone"
+  | "below_invalidation"
+  | "confidence_improved"
+  | "theme_score_increased"
+  | "macro_deterioration";
+
+export interface PriceAlertRule {
+  id: number;
+  user_id: number;
+  ticker: string;
+  alert_type: AlertType;
+  threshold_json: Record<string, unknown>;
+  cooldown_minutes: number;
+  market_hours_only: boolean;
+  enabled: boolean;
+  last_triggered_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAlertRequest {
+  ticker: string;
+  alert_type: AlertType;
+  threshold_json?: Record<string, unknown>;
+  cooldown_minutes?: number;
+  market_hours_only?: boolean;
+  enabled?: boolean;
+}
+
+export interface UpdateAlertRequest {
+  alert_type?: AlertType;
+  threshold_json?: Record<string, unknown>;
+  cooldown_minutes?: number;
+  market_hours_only?: boolean;
+  enabled?: boolean;
+}
+
+// ─── Watchlist Ideas ──────────────────────────────────────────────────────────
+
+export interface WatchlistIdeaTicker {
+  id: number;
+  idea_id: number;
+  ticker: string;
+  is_primary: boolean;
+  near_earnings: boolean;
+}
+
+export interface WatchlistIdea {
+  id: number;
+  user_id: number;
+  title: string;
+  thesis: string;
+  conviction_score: number;
+  watch_only: boolean;
+  tradable: boolean;
+  tags_json: string[];
+  metadata_json: Record<string, unknown>;
+  rank_score: number;
+  tickers: WatchlistIdeaTicker[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateIdeaRequest {
+  title: string;
+  thesis: string;
+  conviction_score: number;
+  watch_only?: boolean;
+  tradable?: boolean;
+  tags_json?: string[];
+  tickers?: { ticker: string; is_primary: boolean }[];
+}
+
+export interface UpdateIdeaRequest {
+  title?: string;
+  thesis?: string;
+  conviction_score?: number;
+  watch_only?: boolean;
+  tradable?: boolean;
+  tags_json?: string[];
+  tickers?: { ticker: string; is_primary: boolean }[];
+}
+
+// ─── Auto-Buy ─────────────────────────────────────────────────────────────────
+
+export type AutoBuyDecisionState =
+  | "candidate"
+  | "ready_to_alert"
+  | "ready_to_buy"
+  | "blocked_by_risk"
+  | "order_submitted"
+  | "order_filled"
+  | "order_rejected"
+  | "cancelled";
+
+export interface AutoBuySettings {
+  id: number;
+  user_id: number;
+  enabled: boolean;
+  paper_mode: boolean;
+  confidence_threshold: number;
+  max_trade_amount: number;
+  max_position_percent: number;
+  max_expected_drawdown: number;
+  allow_near_earnings: boolean;
+  allowed_account_ids_json: number[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateAutoBuySettingsRequest {
+  enabled?: boolean;
+  paper_mode?: boolean;
+  confidence_threshold?: number;
+  max_trade_amount?: number;
+  max_position_percent?: number;
+  max_expected_drawdown?: number;
+  allow_near_earnings?: boolean;
+  allowed_account_ids_json?: number[];
+}
+
+export interface AutoBuyDecisionLog {
+  id: number;
+  user_id: number;
+  ticker: string;
+  decision_state: AutoBuyDecisionState;
+  reason_codes_json: string[];
+  signal_payload_json: Record<string, unknown>;
+  order_payload_json: Record<string, unknown> | null;
+  dry_run: boolean;
+  created_at: string;
+}
+
+export interface AutoBuyDryRunResult {
+  ticker: string;
+  decision_state: AutoBuyDecisionState;
+  reason_codes: string[];
+  signal_payload: Record<string, unknown>;
+  order_payload: Record<string, unknown> | null;
+  dry_run: true;
+}
+
+// ─── Opportunities ────────────────────────────────────────────────────────────
+
+export interface OpportunityRow {
+  ticker: string;
+  alert_enabled: boolean;
+  created_at: string;
+
+  // Buy zone / pricing (from WatchlistOpportunityOut)
+  buy_zone_low: number | null;
+  buy_zone_high: number | null;
+  ideal_entry_price: number | null;
+  current_price: number | null;
+  distance_to_zone_pct: number | null;
+
+  // Confidence
+  backtest_confidence: number | null;
+  backtest_win_rate_90d: number | null;
+
+  // Signal
+  signal_strength: string | null;   // "STRONG_BUY" | "SUPPRESSED" | null
+  all_conditions_pass: boolean;
+  suppressed_reason: string | null;
+
+  // Individual condition flags
+  price_in_zone: boolean | null;
+  above_50d_ma: boolean | null;
+  above_200d_ma: boolean | null;
+  rsi_value: number | null;
+  rsi_confirms: boolean | null;
+  volume_confirms: boolean | null;
+  near_support: boolean | null;
+  trend_regime_bullish: boolean | null;
+  not_near_earnings: boolean | null;
+  no_duplicate_in_cooldown: boolean | null;
+
+  // Risk
+  invalidation_price: number | null;
+  expected_drawdown: number | null;
+  last_signal_at: string | null;
+}
+
+// ─── Scanner ─────────────────────────────────────────────────────────────────
+
+export interface EstimatedBuyPriceOut {
+  ticker: string;
+  estimated_buy_price: number | null;
+  current_price: number;
+  signal: string; // "buy" | "sell" | "hold" | "error"
+  regime: string | null;
+  confirmation_count: number;
+  min_confirmations: number;
+  confirmations_needed: string[];
+  buy_zone_low: number | null;
+  buy_zone_high: number | null;
+}
+
+export interface ScanResultOut extends EstimatedBuyPriceOut {
+  notification_sent: boolean;
+  scanned_at: string;
+}
+
+export interface GeneratedIdeaOut {
+  ticker: string;
+  title: string;
+  thesis: string;
+  signal: string;
+  regime: string | null;
+  confirmation_count: number;
+  momentum_20d: number;
+  momentum_60d: number;
+  volume_score: number;
+  theme_score: number | null;
+  composite_score: number;
+  current_price: number;
+  tags: string[];
+  generated_at: string;
+}
+
+// ─── V3: Watchlist (user_watchlist table) ─────────────────────────────────────
+
+export interface WatchlistEntry {
+  ticker: string;
+  user_id: number;
+  alert_enabled: boolean;
+  created_at: string;
+}
+
+// ─── V3: BuyNow Signal ────────────────────────────────────────────────────────
+
+export interface ConditionDetail {
+  key: string;
+  pass_: boolean;
+}
+
+export type SignalStatus = "STRONG_BUY" | "WATCHING" | "NOT_READY" | "PENDING";
+
+export interface BuyNowSignalOut {
+  id: number;
+  user_id: number;
+  ticker: string;
+  buy_zone_low: number;
+  buy_zone_high: number;
+  ideal_entry_price: number;
+  backtest_confidence: number;
+  backtest_win_rate_90d: number;
+  current_price: number;
+  price_in_zone: boolean;
+  above_50d_ma: boolean;
+  above_200d_ma: boolean;
+  rsi_value: number;
+  rsi_confirms: boolean;
+  volume_confirms: boolean;
+  near_support: boolean;
+  trend_regime_bullish: boolean;
+  all_conditions_pass: boolean;
+  signal_strength: "STRONG_BUY" | "SUPPRESSED";
+  suppressed_reason: string | null;
+  invalidation_price: number;
+  expected_drawdown: number;
+  condition_details: ConditionDetail[];
+  created_at: string;
+}
+
+// ─── V3: Scanner status ───────────────────────────────────────────────────────
+
+export interface ScannerStatus {
+  last_scan_at: string | null;
+  next_scan_at: string | null;
+  tickers_in_queue: number;
+  market_hours_active: boolean;
+}
+
+export interface RunNowResult {
+  tickers_scanned: number;
+  strong_buy_signals: number;
+  strong_buy_tickers: string[];
+  error_tickers: string[];
+}
+
+// ─── V3: Generated Ideas (DB feed) ───────────────────────────────────────────
+
+export type EntryPriority = "52W_LOW" | "WEEKLY_SUPPORT" | "BOTH" | "STANDARD";
+export type IdeaSource = "news" | "theme" | "technical" | "merged";
+
+export interface GeneratedIdeaRow {
+  id: number;
+  ticker: string;
+  company_name: string;
+  source: IdeaSource;
+  reason_summary: string;
+  news_headline: string | null;
+  news_url: string | null;
+  news_source: string | null;
+  catalyst_type: string | null;
+  current_price: number;
+  buy_zone_low: number | null;
+  buy_zone_high: number | null;
+  ideal_entry_price: number | null;
+  confidence_score: number;
+  historical_win_rate_90d: number | null;
+  theme_tags: string[];
+  megatrend_tags: string[];
+  moat_score: number;
+  moat_description: string | null;
+  financial_quality_score: number;
+  financial_flags: string[];
+  near_52w_low: boolean;
+  at_weekly_support: boolean;
+  entry_priority: EntryPriority;
+  idea_score: number;
+  generated_at: string;
+  expires_at: string;
+  added_to_watchlist: boolean;
+}
+
+// ─── V3: Extended OpportunityRow (signal-status fields added) ─────────────────
+
+// Extended fields added to OpportunityRow (declared below — kept as one interface)
+
+export interface AddToWatchlistResult {
+  ticker: string;
+  watchlist_entry_created: boolean;
+  alert_rule_created: boolean;
+  idea_id: number;
+}
+
+export interface LastScanResult {
+  last_scan_at: string | null;
+  ideas_generated: number;
+  next_scan_at: string | null;
 }

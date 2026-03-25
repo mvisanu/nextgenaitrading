@@ -15,6 +15,7 @@ from app.strategies.conservative import (
     _compute_confirmations,
     _identify_bull_bear,
     _safe_fit_hmm,
+    compute_confirmation_details,
 )
 import logging
 
@@ -61,6 +62,7 @@ class AggressiveStrategy(BaseStrategy):
         regime = "bull" if current_state == bull_state else "bear"
 
         conf_count, conf_list = _compute_confirmations(df, -1)
+        conf_details = compute_confirmation_details(df, -1)
         entry_eligible = regime == "bull" and conf_count >= self.min_confirmations
 
         signal: str
@@ -90,6 +92,7 @@ class AggressiveStrategy(BaseStrategy):
                 f"HMM regime={regime}, confirmations={conf_count}/{len(conf_list)}, "
                 f"trailing_stop={self.trailing_stop_pct*100:.0f}%"
             ),
+            confirmation_details=conf_details,
             bull_state_id=bull_state,
             bear_state_id=bear_state,
             current_state_id=current_state,

@@ -41,17 +41,28 @@ export async function apiRegister(
 }
 
 /**
- * Log in via the backend API and return the Set-Cookie headers so we can
- * inject the session into a browser context.
+ * Log in via the backend API by logging in with the request context (which
+ * stores cookies internally), then transferring those cookies to a new browser
+ * context using storageState().
  *
- * Returns an array of cookie objects suitable for `context.addCookies()`.
+ * Returns the Playwright storageState object for use with browser.newContext().
  */
 export async function apiLogin(
   request: APIRequestContext,
   email: string,
   password: string,
-  domain: string = "localhost"
-): Promise<{ name: string; value: string; domain: string; path: string }[]> {
+  _domain: string = "localhost"
+): Promise<
+  {
+    name: string;
+    value: string;
+    domain: string;
+    path: string;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: "Strict" | "Lax" | "None";
+  }[]
+> {
   const res = await request.post(`${API_URL}/auth/login`, {
     data: { email, password },
   });
@@ -59,30 +70,29 @@ export async function apiLogin(
     throw new Error(`apiLogin failed: ${res.status()} ${await res.text()}`);
   }
 
-  // Extract Set-Cookie values from the response headers
-  const raw = res.headers()["set-cookie"] ?? "";
-  const cookies: { name: string; value: string; domain: string; path: string }[] = [];
-
-  for (const part of raw.split(/,(?=[^ ])/)) {
-    const segments = part.split(";").map((s) => s.trim());
-    const [nameValue, ...attrs] = segments;
-    const eqIdx = nameValue.indexOf("=");
-    if (eqIdx < 0) continue;
-
-    const name = nameValue.slice(0, eqIdx).trim();
-    const value = nameValue.slice(eqIdx + 1).trim();
-
-    if (name !== ACCESS_COOKIE && name !== REFRESH_COOKIE) continue;
-
-    let path = "/";
-    for (const attr of attrs) {
-      if (attr.toLowerCase().startsWith("path=")) {
-        path = attr.slice(5);
-      }
-    }
-
-    cookies.push({ name, value, domain, path });
-  }
+  // Use Playwright's storageState to capture cookies set by the login response.
+  // This is more robust than parsing Set-Cookie headers manually (which breaks
+  // on cookies containing commas in their expires attribute).
+  const state = await request.storageState();
+  const cookies = state.cookies
+    .filter((c) => c.name === ACCESS_COOKIE || c.name === REFRESH_COOKIE)
+    .map((c) => ({
+      name: c.name,
+      value: c.value,
+      // For localhost, Playwright requires the domain to include leading dot or
+      // be exactly "localhost". Use the value from storageState when available.
+      // If empty, fall back to "localhost".
+      domain: c.domain || "localhost",
+      path: c.path || "/",
+      httpOnly: c.httpOnly ?? true,
+      secure: c.secure ?? false,
+      // Playwright's addCookies() expects "Strict" | "Lax" | "None"
+      sameSite: (c.sameSite === "None"
+        ? "None"
+        : c.sameSite === "Strict"
+        ? "Strict"
+        : "Lax") as "Strict" | "Lax" | "None",
+    }));
 
   return cookies;
 }
