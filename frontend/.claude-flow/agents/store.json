@@ -1,0 +1,33 @@
+{
+  "agents": {
+    "agent-1774442001966-2fjjkn": {
+      "agentId": "agent-1774442001966-2fjjkn",
+      "agentType": "coder",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic",
+        "task": "Refactor auto buy page make it easier to use"
+      },
+      "createdAt": "2026-03-25T12:33:21.973Z",
+      "model": "haiku",
+      "modelRoutedBy": "router"
+    },
+    "agent-1774442577466-vrv2aj": {
+      "agentId": "agent-1774442577466-vrv2aj",
+      "agentType": "coder",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic",
+        "task": "Refactor dashboard page make it easier to use"
+      },
+      "createdAt": "2026-03-25T12:42:57.473Z",
+      "model": "haiku",
+      "modelRoutedBy": "router"
+    }
+  },
+  "version": "3.0.0"
+}

@@ -41,21 +41,33 @@ interface PriceChartProps {
   onChartClick?: (point: ChartClickPoint) => void;
 }
 
-// Theme-dependent chart colours
+// Theme-dependent chart colours — refined for readability
 const CHART_THEMES = {
   dark: {
-    gridColor: "#1e222d",
-    textColor: "#787b86",
-    crosshairColor: "#555962",
-    crosshairLabelBg: "#2a2e39",
-    scaleColor: "#363a45",
+    gridColor: "#1a1e2e",
+    textColor: "#6b7280",
+    crosshairColor: "#4b5563",
+    crosshairLabelBg: "#1f2937",
+    scaleColor: "#2a2f3e",
+    upColor: "#22c55e",
+    downColor: "#ef4444",
+    upWick: "#22c55e",
+    downWick: "#ef4444",
+    volUp: "rgba(34,197,94,0.15)",
+    volDown: "rgba(239,68,68,0.15)",
   },
   light: {
-    gridColor: "#e0e3eb",
-    textColor: "#787b86",
-    crosshairColor: "#9598a1",
-    crosshairLabelBg: "#f0f3fa",
-    scaleColor: "#d0d3dc",
+    gridColor: "#f1f5f9",
+    textColor: "#94a3b8",
+    crosshairColor: "#94a3b8",
+    crosshairLabelBg: "#f8fafc",
+    scaleColor: "#e2e8f0",
+    upColor: "#16a34a",
+    downColor: "#dc2626",
+    upWick: "#16a34a",
+    downWick: "#dc2626",
+    volUp: "rgba(22,163,74,0.12)",
+    volDown: "rgba(220,38,38,0.12)",
   },
 } as const;
 
@@ -130,14 +142,14 @@ export function PriceChart({
 
     chartRef.current = chart;
 
-    // Candlestick series — TradingView teal/red palette
+    // Candlestick series — green/red with theme awareness
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#26a69a",
-      downColor: "#ef5350",
-      borderUpColor: "#26a69a",
-      borderDownColor: "#ef5350",
-      wickUpColor: "#26a69a",
-      wickDownColor: "#ef5350",
+      upColor: colors.upColor,
+      downColor: colors.downColor,
+      borderUpColor: colors.upColor,
+      borderDownColor: colors.downColor,
+      wickUpColor: colors.upWick,
+      wickDownColor: colors.downWick,
     });
 
     // Sort by time ascending and deduplicate (Lightweight Charts requires unique asc times)
@@ -171,15 +183,15 @@ export function PriceChart({
       );
     }
 
-    // Volume histogram — semi-transparent TV teal/red
+    // Volume histogram — soft semi-transparent bars
     const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: "#26a69a33",
+      color: colors.volUp,
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
     });
 
     chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
+      scaleMargins: { top: 0.82, bottom: 0 },
     });
 
     volumeSeries.setData(
@@ -188,7 +200,7 @@ export function PriceChart({
         .map((d) => ({
           time: d.time as Time,
           value: d.volume ?? 0,
-          color: d.close >= d.open ? "#26a69a33" : "#ef535033",
+          color: d.close >= d.open ? colors.volUp : colors.volDown,
         }))
     );
 

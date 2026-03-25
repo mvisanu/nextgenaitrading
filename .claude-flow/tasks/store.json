@@ -1,0 +1,20 @@
+{
+  "tasks": {
+    "task-1774439256726-7ne9g4": {
+      "taskId": "task-1774439256726-7ne9g4",
+      "type": "bug-fix",
+      "description": "Identify and fix all known bugs in the NextGenStock trading platform. Check backend (FastAPI), frontend (Next.js), E2E tests, and resolve any remaining failures documented in CLAUDE.md and test reports.",
+      "priority": "high",
+      "status": "in_progress",
+      "progress": 0,
+      "assignedTo": [
+        "agent-1774439219509-sorypn"
+      ],
+      "tags": [],
+      "createdAt": "2026-03-25T11:47:36.727Z",
+      "startedAt": "2026-03-25T11:47:47.669Z",
+      "completedAt": null
+    }
+  },
+  "version": "3.0.0"
+}

@@ -15,8 +15,24 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
+from app.core.rate_limit import limiter
+
+# ── CORS origin validation helper ─────────────────────────────────────────────
+_allowed_origins: set[str] = set()
+
+
+def _is_origin_allowed(origin: str | None) -> bool:
+    """Check if the given origin is in the configured CORS allow-list."""
+    if not origin:
+        return False
+    if not _allowed_origins:
+        _allowed_origins.update(settings.cors_origins_list)
+    return origin in _allowed_origins
+
 
 # ── Structured logging ─────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -29,7 +45,7 @@ logger = logging.getLogger(__name__)
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.db.session import async_engine
+    from app.db.session import get_engine
     from app.scheduler.jobs import register_jobs, scheduler
 
     logger.info("NextGenStock backend starting — pool initialising")
@@ -51,7 +67,9 @@ async def lifespan(app: FastAPI):
         logger.info("APScheduler stopped")
 
     logger.info("NextGenStock backend shutting down — disposing engine")
-    await async_engine.dispose()
+    engine = get_engine()
+    if engine is not None:
+        await engine.dispose()
 
 
 # ── App factory ───────────────────────────────────────────────────────────────
@@ -63,14 +81,18 @@ app = FastAPI(
     ),
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if settings.cors_origins == "http://localhost:3000" else None,
+    redoc_url="/redoc" if settings.cors_origins == "http://localhost:3000" else None,
 )
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -106,7 +128,7 @@ async def validation_exception_handler(
 
     headers: dict[str, str] = {}
     origin = request.headers.get("origin")
-    if origin:
+    if origin and _is_origin_allowed(origin):
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
         headers["Vary"] = "Origin"
@@ -129,7 +151,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     # in the allow-list, mirroring exactly what CORSMiddleware would have done.
     headers: dict[str, str] = {}
     origin = request.headers.get("origin")
-    if origin:
+    if origin and _is_origin_allowed(origin):
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
         headers["Vary"] = "Origin"

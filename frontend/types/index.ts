@@ -666,3 +666,98 @@ export interface LastScanResult {
   ideas_generated: number;
   next_scan_at: string | null;
 }
+
+// ── TradingView Screener + TA ──────────────────────────────────────
+
+export type AssetUniverse = "stocks" | "crypto" | "forex" | "etf";
+
+export interface ScreenerFilter {
+  field: string;
+  operator: string;
+  value?: number | string | (number | string)[];
+}
+
+export interface ScreenerRequest {
+  universe: AssetUniverse;
+  filters?: ScreenerFilter[];
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  limit?: number;
+  markets?: string[];
+  preset?: string;
+}
+
+export interface ScreenerRow {
+  symbol: string;
+  name: string;
+  exchange?: string;
+  close: number;
+  change: number;
+  change_pct: number;
+  volume: number;
+  market_cap?: number;
+  rsi?: number;
+  sma50?: number;
+  sma200?: number;
+  sector?: string;
+  recommendation?: string;
+  [key: string]: unknown;  // extra columns
+}
+
+export interface ScreenerResult {
+  rows: ScreenerRow[];
+  universe: AssetUniverse;
+  total: number;
+  timestamp: string;
+}
+
+export type TATimeframe = "5m" | "15m" | "1h" | "4h" | "1D" | "1W" | "1M";
+
+export interface TARequest {
+  symbol: string;
+  exchange?: string;
+  timeframe?: TATimeframe;
+}
+
+export interface TAIndicator {
+  name: string;
+  value: number | string | null;
+  signal?: "BUY" | "SELL" | "NEUTRAL";
+}
+
+export interface TAResult {
+  symbol: string;
+  exchange: string;
+  timeframe: string;
+  recommendation: "STRONG_BUY" | "BUY" | "NEUTRAL" | "SELL" | "STRONG_SELL";
+  buy_count: number;
+  sell_count: number;
+  neutral_count: number;
+  indicators: TAIndicator[];
+  moving_averages?: TAIndicator[];
+  oscillators?: TAIndicator[];
+  volume_data?: {
+    volume_ratio?: number;
+    price_change?: number;
+    confirmation?: string;
+  };
+  raw?: Record<string, unknown>;
+}
+
+export interface ScreenerPreset {
+  key: string;
+  name: string;
+  description: string;
+}
+
+export interface TopMoverRow {
+  symbol: string;
+  exchange: string;
+  close: number;
+  change: number;
+  change_pct: number;
+  volume: number;
+  bb_rating?: number;
+  rsi?: number;
+  [key: string]: unknown;
+}

@@ -24,6 +24,8 @@ import {
   Sparkles,
   Bell,
   ShoppingCart,
+  BarChart4,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Lang, tr } from "./translations";
@@ -684,7 +686,7 @@ export default function FAQPage() {
           </div>
         </Section>
 
-        {/* ── Ideas & Auto-Generated Suggestions ─────────────────────────── */}
+        {/* ── Ideas & Market Research ─────────────────────────────────────── */}
         <Section
           title={tr("sectionIdeas", lang)}
           icon={Sparkles}
@@ -692,6 +694,19 @@ export default function FAQPage() {
         >
           <div className="space-y-3">
             <HtmlP html={tr("ideasDesc", lang)} />
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("marketPulseTitle", lang)}
+            </h4>
+            <p className="text-xs">{tr("marketPulseDesc", lang)}</p>
+
+            <div className="bg-secondary/30 rounded-lg p-3 space-y-2 mt-1">
+              <h5 className="text-xs font-semibold text-foreground">{tr("redditTrendingTitle", lang)}</h5>
+              <HtmlP html={tr("redditTrendingDesc", lang)} />
+
+              <h5 className="text-xs font-semibold text-foreground mt-2">{tr("screenerSectionsTitle", lang)}</h5>
+              <HtmlP html={tr("screenerSectionsDesc", lang)} />
+            </div>
 
             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
               {tr("suggestedIdeasTitle", lang)}
@@ -809,6 +824,99 @@ export default function FAQPage() {
           </div>
         </Section>
 
+        {/* ── Screener & Technical Analysis ────────────────────────────── */}
+        <Section
+          title={tr("sectionScreenerTA", lang)}
+          icon={BarChart4}
+          accentColor="text-blue-400"
+        >
+          <div className="space-y-3">
+            <HtmlP html={tr("screenerTADesc", lang)} />
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("screenerWorkflowTitle", lang)}
+            </h4>
+            <div className="space-y-2">
+              {(["screenerStep1", "screenerStep2", "screenerStep3", "screenerStep4", "screenerStep5"] as const).map((key, i) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-blue-400 text-sm">{i + 1}.</span>
+                  <p className="text-xs"><Html html={tr(key, lang)} /></p>
+                </div>
+              ))}
+            </div>
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("screenerPresetsTitle", lang)}
+            </h4>
+            <HtmlP html={tr("screenerPresetsDesc", lang)} />
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("screenerTimeframesTitle", lang)}
+            </h4>
+            <p className="text-xs">{tr("screenerTimeframesDesc", lang)}</p>
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("screenerAnalystTitle", lang)}
+            </h4>
+            <p className="text-xs">{tr("screenerAnalystDesc", lang)}</p>
+          </div>
+        </Section>
+
+        {/* ── Broker Setup & API Keys ──────────────────────────────────── */}
+        <Section
+          title={tr("sectionBrokerSetup", lang)}
+          icon={KeyRound}
+          accentColor="text-amber-400"
+        >
+          <div className="space-y-3">
+            <HtmlP html={tr("brokerSetupDesc", lang)} />
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("brokerStepTitle", lang)}
+            </h4>
+            <div className="space-y-2">
+              {(["brokerStep1", "brokerStep2", "brokerStep3", "brokerStep4"] as const).map((key, i) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-amber-400 text-sm">{i + 1}.</span>
+                  <p className="text-xs"><Html html={tr(key, lang)} /></p>
+                </div>
+              ))}
+            </div>
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("brokerAddTitle", lang)}
+            </h4>
+            <div className="space-y-2">
+              {(["brokerAddStep1", "brokerAddStep2", "brokerAddStep3", "brokerAddStep4"] as const).map((key, i) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-amber-400 text-sm">{i + 1}.</span>
+                  <p className="text-xs"><Html html={tr(key, lang)} /></p>
+                </div>
+              ))}
+            </div>
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("brokerPaperVsLiveTitle", lang)}
+            </h4>
+            <HtmlP html={tr("brokerPaperVsLiveDesc", lang)} />
+
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+              {tr("brokerSecurityTitle", lang)}
+            </h4>
+            <HtmlP html={tr("brokerSecurityDesc", lang)} />
+          </div>
+
+          <div className="mt-4 space-y-0">
+            <FAQ q={tr("faqAlpacaFree", lang)}>
+              <HtmlP html={tr("faqAlpacaFreeAnswer", lang)} />
+            </FAQ>
+
+            <FAQ q={tr("faqAlpacaRegion", lang)}>
+              <HtmlP html={tr("faqAlpacaRegionAnswer", lang)} />
+            </FAQ>
+          </div>
+        </Section>
+
         {/* ── General FAQ ──────────────────────────────────────────────── */}
         <Section
           title={tr("sectionFaq", lang)}
@@ -877,12 +985,32 @@ export default function FAQPage() {
               <HtmlP html={tr("faqIdeasScanAnswer", lang)} />
             </FAQ>
 
+            <FAQ q={tr("faqMarketPulse", lang)}>
+              <HtmlP html={tr("faqMarketPulseAnswer", lang)} />
+            </FAQ>
+
+            <FAQ q={tr("faqRedditAccuracy", lang)}>
+              <HtmlP html={tr("faqRedditAccuracyAnswer", lang)} />
+            </FAQ>
+
             <FAQ q={tr("faqAutoBuySafe", lang)}>
               <HtmlP html={tr("faqAutoBuySafeAnswer", lang)} />
             </FAQ>
 
             <FAQ q={tr("faqAlertTypes", lang)}>
               <HtmlP html={tr("faqAlertTypesAnswer", lang)} />
+            </FAQ>
+
+            <FAQ q={tr("faqScreenerWhat", lang)}>
+              <HtmlP html={tr("faqScreenerWhatAnswer", lang)} />
+            </FAQ>
+
+            <FAQ q={tr("faqScreenerMarkets", lang)}>
+              <HtmlP html={tr("faqScreenerMarketsAnswer", lang)} />
+            </FAQ>
+
+            <FAQ q={tr("faqScreenerTA", lang)}>
+              <HtmlP html={tr("faqScreenerTAAnswer", lang)} />
             </FAQ>
           </div>
         </Section>

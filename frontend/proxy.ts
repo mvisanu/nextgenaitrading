@@ -23,7 +23,7 @@ const PROTECTED_PREFIXES = [
  */
 const AUTH_ROUTES = ["/login", "/register"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const hasToken = request.cookies.has("access_token");

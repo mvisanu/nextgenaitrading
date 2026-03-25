@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
@@ -1532,13 +1533,13 @@ function BacktestPanel({
                 positive={result.sharpeLike >= 1}
               />
             </div>
-            <a
+            <Link
               href="/backtests"
               className="flex items-center gap-1 text-xs text-primary hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
               View full results on Backtests page (Run #{result.runId})
-            </a>
+            </Link>
           </div>
         </>
       )}

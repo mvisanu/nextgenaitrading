@@ -4,6 +4,7 @@ import React, { createContext, useContext, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/lib/api";
+import { useSidebarPinned } from "@/lib/sidebar";
 import type { UserResponse } from "@/types";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
@@ -73,16 +74,17 @@ interface AppShellProps {
 
 export function AppShell({ children, title, actions }: AppShellProps) {
   const { user } = useAuth();
+  const { pinned } = useSidebarPinned();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop sidebar — 48px collapsed rail, expands to 200px on hover */}
+      {/* Desktop sidebar — 48px collapsed rail, expands to 200px on hover/pin */}
       <div className="hidden lg:block lg:fixed lg:inset-y-0 lg:z-40">
         <Sidebar />
       </div>
 
-      {/* Main content — offset by 48px (sidebar collapsed width) */}
-      <div className="flex flex-col flex-1 lg:pl-12 min-w-0">
+      {/* Main content — offset by sidebar width (48px collapsed, 200px pinned) */}
+      <div className={`flex flex-col flex-1 min-w-0 transition-[padding] duration-200 ${pinned ? "lg:pl-[200px]" : "lg:pl-12"}`}>
         {/* Top toolbar */}
         <header className="sticky top-0 z-30 flex h-[38px] shrink-0 items-center gap-2 border-b border-border bg-secondary px-3">
           {/* Mobile menu */}

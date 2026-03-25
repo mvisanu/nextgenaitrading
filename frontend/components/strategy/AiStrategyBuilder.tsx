@@ -605,7 +605,7 @@ export function AiStrategyBuilder() {
             AI Strategy Builder
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Describe your strategy idea in plain English. I'll build a runnable strategy with Pine Script.
+            Describe your strategy idea in plain English. I&apos;ll build a runnable strategy with Pine Script.
           </p>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">

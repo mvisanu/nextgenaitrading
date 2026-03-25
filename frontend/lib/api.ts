@@ -54,6 +54,14 @@ import type {
   LastScanResult,
   ScannerStatus,
   RunNowResult,
+  // Screener + TA types
+  ScreenerRequest,
+  ScreenerResult,
+  ScreenerPreset,
+  ScreenerRow,
+  TARequest,
+  TAResult,
+  TopMoverRow,
 } from "@/types";
 
 const BASE_URL =
@@ -389,4 +397,53 @@ export const generatedIdeasApi = {
   lastScan: () => get<LastScanResult>("/ideas/generated/last-scan"),
 
   runNow: () => post<{ generated: number; top_ticker: string | null }>("/ideas/generated/run-now"),
+};
+
+// ── TradingView Screener + TA ──────────────────────────────────────
+
+export const screenerTvApi = {
+  screen: (params: ScreenerRequest) =>
+    fetch("/api/tv-screener", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    }).then(r => r.json()) as Promise<ScreenerResult>,
+
+  presets: () =>
+    fetch("/api/tv-screener/presets").then(r => r.json()) as Promise<ScreenerPreset[]>,
+
+  fields: (assetType?: string) =>
+    fetch(`/api/tv-screener/fields${assetType ? `?type=${assetType}` : ""}`).then(r => r.json()) as Promise<string[]>,
+
+  lookup: (symbols: string[]) =>
+    fetch("/api/tv-screener/lookup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbols }),
+    }).then(r => r.json()) as Promise<ScreenerRow[]>,
+};
+
+export const taApi = {
+  analyze: (params: TARequest) =>
+    fetch("/api/tv-ta/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    }).then(r => r.json()) as Promise<TAResult>,
+
+  topGainers: (exchange?: string, timeframe?: string, limit?: number) =>
+    fetch(`/api/tv-ta/top-movers?direction=gainers&exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}&limit=${limit ?? 25}`)
+      .then(r => r.json()) as Promise<TopMoverRow[]>,
+
+  topLosers: (exchange?: string, timeframe?: string, limit?: number) =>
+    fetch(`/api/tv-ta/top-movers?direction=losers&exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}&limit=${limit ?? 25}`)
+      .then(r => r.json()) as Promise<TopMoverRow[]>,
+
+  volumeBreakouts: (exchange?: string, timeframe?: string) =>
+    fetch(`/api/tv-ta/volume-breakouts?exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}`)
+      .then(r => r.json()) as Promise<TopMoverRow[]>,
+
+  bollingerSqueeze: (exchange?: string, timeframe?: string) =>
+    fetch(`/api/tv-ta/bollinger-squeeze?exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "4h"}`)
+      .then(r => r.json()) as Promise<TopMoverRow[]>,
 };

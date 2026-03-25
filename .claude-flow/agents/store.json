@@ -1,0 +1,19 @@
+{
+  "agents": {
+    "agent-1774439219509-sorypn": {
+      "agentId": "agent-1774439219509-sorypn",
+      "agentType": "coder",
+      "status": "idle",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "provider": "anthropic",
+        "task": "fix all bugs"
+      },
+      "createdAt": "2026-03-25T11:46:59.516Z",
+      "model": "haiku",
+      "modelRoutedBy": "router"
+    }
+  },
+  "version": "3.0.0"
+}

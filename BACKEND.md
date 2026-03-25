@@ -1,4 +1,6 @@
-# NextGenStock — Backend Reference
+# NextGenStock — Backend Architecture & Handoff
+
+## Part 1: Core Trading Platform (V1)
 
 > **Disclaimer:** NextGenStock is educational software. Live trading with real broker
 > credentials carries real financial risk. The authors accept no liability for trading
@@ -6,7 +8,7 @@
 
 ---
 
-## Table of Contents
+### Table of Contents
 
 1. [Running the backend locally](#running-the-backend-locally)
 2. [Environment variables](#environment-variables)
@@ -17,15 +19,15 @@
 
 ---
 
-## Running the backend locally
+### Running the backend locally
 
-### Prerequisites
+#### Prerequisites
 
 - Python 3.12+
 - PostgreSQL 15+ running locally (or a Supabase connection string)
 - `pip` or a virtual environment manager
 
-### Setup steps
+#### Setup steps
 
 ```bash
 # 1. Create and activate a virtual environment
@@ -59,7 +61,7 @@ The API will be available at:
 
 ---
 
-## Environment variables
+### Environment variables
 
 All variables are loaded via `pydantic-settings` from `.env`.
 
@@ -82,7 +84,7 @@ All variables are loaded via `pydantic-settings` from `.env`.
 
 ---
 
-## Database migration instructions
+### Database migration instructions
 
 ```bash
 # Generate a migration after changing ORM models
@@ -108,9 +110,9 @@ some index additions or custom constraint details. Add them manually if needed.
 
 ---
 
-## API endpoint reference
+### API endpoint reference
 
-### Auth — `/auth`
+#### Auth — `/auth`
 
 | Method | Path | Auth | Request | Response |
 |---|---|---|---|---|
@@ -120,14 +122,14 @@ some index additions or custom constraint details. Add them manually if needed.
 | `POST` | `/auth/logout` | Cookie | — | `204 No Content`, cookies cleared |
 | `GET` | `/auth/me` | Cookie | — | `{id, email, is_active, created_at}` |
 
-### Profile — `/profile`
+#### Profile — `/profile`
 
 | Method | Path | Auth | Request | Response |
 |---|---|---|---|---|
 | `GET` | `/profile` | Yes | — | `{id, user_id, display_name, timezone, default_symbol, default_mode}` |
 | `PATCH` | `/profile` | Yes | `{display_name?, timezone?, default_symbol?, default_mode?}` | Updated profile |
 
-### Broker Credentials — `/broker/credentials`
+#### Broker Credentials — `/broker/credentials`
 
 | Method | Path | Auth | Request | Response |
 |---|---|---|---|---|
@@ -139,7 +141,7 @@ some index additions or custom constraint details. Add them manually if needed.
 
 **Note:** `api_key` in all responses is masked as `****(encrypted)`. Decrypted values are never returned.
 
-### Strategies — `/strategies`
+#### Strategies — `/strategies`
 
 | Method | Path | Auth | Request | Response |
 |---|---|---|---|---|
@@ -149,7 +151,7 @@ some index additions or custom constraint details. Add them manually if needed.
 | `GET` | `/strategies/runs/{id}` | Yes | — | `StrategyRunOut` |
 | `GET` | `/strategies/runs/{id}/decisions` | Yes | `?limit=100` | `[TradeDecisionOut]` |
 
-### Backtests — `/backtests`
+#### Backtests — `/backtests`
 
 | Method | Path | Auth | Request | Response |
 |---|---|---|---|---|
@@ -160,7 +162,7 @@ some index additions or custom constraint details. Add them manually if needed.
 | `GET` | `/backtests/{id}/leaderboard` | Yes | — | `[LeaderboardEntry]` ranked by `validation_score` desc |
 | `GET` | `/backtests/{id}/chart-data` | Yes | — | `{candles, signals, equity}` |
 
-### Live Trading — `/live`
+#### Live Trading — `/live`
 
 | Method | Path | Auth | Request | Response |
 |---|---|---|---|---|
@@ -171,7 +173,7 @@ some index additions or custom constraint details. Add them manually if needed.
 | `GET` | `/live/status` | Yes | `?credential_id=` | `AccountStatus` |
 | `GET` | `/live/chart-data` | Yes | `?symbol=&interval=` | `{candles}` |
 
-### Artifacts — `/artifacts`
+#### Artifacts — `/artifacts`
 
 | Method | Path | Auth | Request | Response |
 |---|---|---|---|---|
@@ -181,30 +183,30 @@ some index additions or custom constraint details. Add them manually if needed.
 
 ---
 
-## Architecture decisions
+### Architecture decisions
 
-### Auth — HTTP-only cookies + SHA-256 refresh token hash
+#### Auth — HTTP-only cookies + SHA-256 refresh token hash
 
 Access tokens (15 min) and refresh tokens (7 days) are issued as HTTP-only, SameSite=Lax cookies.
 Tokens are **never** exposed to JavaScript. The refresh token itself is never stored in the DB —
 only its SHA-256 hex hash is stored in `user_sessions.refresh_token_hash`. This means a DB breach
 does not expose refresh tokens. On refresh, the incoming token is hashed and compared.
 
-### Multi-tenancy
+#### Multi-tenancy
 
 Every user-owned table has a `user_id` FK with `ondelete="CASCADE"`. Every query in every service
 method is scoped with `WHERE user_id = current_user.id`. The `assert_ownership(record_user_id, current_user_id)`
 utility in `app/core/security.py` raises HTTP 403 if IDs don't match. It is called in every
 service function before returning or modifying a record.
 
-### Broker credential encryption
+#### Broker credential encryption
 
 Both `api_key` and `encrypted_secret_key` columns store Fernet-encrypted ciphertext.
 The `ENCRYPTION_KEY` env var is the Fernet symmetric key. Decryption happens only inside
 `broker/factory.py::get_broker_client()` at execution time, in-memory, never logged.
 API responses return `****(encrypted)` for the api_key field.
 
-### Strategy execution model
+#### Strategy execution model
 
 - **Conservative / Aggressive**: HMM (GaussianHMM, 2 states) fitted on 730 days of log-returns,
   ATR, and volume ratio. Bull/bear state identified by comparing state mean returns. 8 confirmation
@@ -218,7 +220,7 @@ API responses return `****(encrypted)` for the api_key field.
   Dip entry (RSI < oversold AND price < BB lower), cycle exit (RSI > 65 OR price > BB upper).
   Same ranking and artifact generation as AI Pick.
 
-### Backtesting engine
+#### Backtesting engine
 
 The engine in `app/backtesting/engine.py` operates on a pre-computed signal list aligned with the
 OHLCV DataFrame. Features:
@@ -228,19 +230,19 @@ OHLCV DataFrame. Features:
 - Trailing stop: tracks highest price seen since entry, exits when price drops X% from peak
 - `validation_score = validation_return / (1 + max_drawdown / 100)` — risk-adjusted ranking
 
-### Async everywhere
+#### Async everywhere
 
 All route handlers and service functions are `async`. The database layer uses `AsyncSession` with
 `async_sessionmaker` and `asyncpg` driver. No sync calls block the event loop.
 
-### 4h timeframe resampling
+#### 4h timeframe resampling
 
 yfinance does not natively support `4h` as an interval. When `timeframe="4h"` is requested,
 the market data service fetches `1h` bars and resamples to 4h using pandas `resample("4h").agg(...)`.
 
 ---
 
-## Deviations from spec
+### Deviations from spec
 
 | # | Deviation | Reason |
 |---|---|---|
@@ -252,3 +254,1166 @@ the market data service fetches `1h` bars and resamples to 4h using pandas `resa
 | 6 | `assert_ownership` placed in `core/security.py` (not a separate util file) | Consistent with TASKS.md clarification "OQ-20: assert_ownership placement". |
 | 7 | `GET /strategies/runs/{id}/decisions` endpoint added (not in original spec) | Required by frontend to render per-bar signal markers on the price chart. |
 | 8 | Pine Script approximates HMM regime as EMA alignment | HMM requires a Python runtime and cannot be ported to Pine Script. EMA short > EMA long is the closest deterministic approximation. The Pine Script includes a comment explaining this. |
+
+---
+
+## Part 2: Buy Zone, Alerts, Auto-Buy & Ideas (V2)
+
+**Version:** 2.0
+**Date:** 2026-03-24
+**Extends:** Part 1 (V1)
+**Status:** Implemented
+
+---
+
+### Overview
+
+This section covers all v2 backend additions to NextGenStock. Five features were implemented on top of the existing 14-table, 60-file v1 backend:
+
+| Feature | Description |
+|---------|-------------|
+| A — Intelligent Buy Zone Estimator | Seven-layer weighted pipeline producing zone ranges, confidence scores, forward return estimates, and human-readable explanations |
+| B — Smart Price Alert Engine | Six alert types evaluated on a 5-minute schedule with cooldown and market-hours filtering |
+| C — Optional Auto-Buy Execution | Nine-safeguard decision engine, disabled by default, paper mode default, full audit log |
+| D — Theme / World Trend Scoring Engine | Ten supported themes, sector mapping + user tag blending, 6-hour refresh |
+| E — Idea Pipeline and Conviction Watchlist | CRUD idea cards with thesis, theme tags, linked tickers, conviction slider, auto-ranking |
+
+**Key architectural decisions:**
+- All new tables follow the existing `user_id` FK pattern (multi-tenancy non-negotiable)
+- `StockThemeScore` has no `user_id` — it is system-wide and shared to reduce computation
+- `StockBuyZoneSnapshot.user_id` is nullable — NULL = system-wide; per-user recalculate always writes a user-scoped row
+- Auto-buy is `enabled=False` by default; the frontend must present a confirmation dialog before calling PATCH `/api/auto-buy/settings` with `enabled=True`
+- APScheduler runs in-process inside the FastAPI lifespan on the Render web dyno
+- `feature_payload_json` is persisted for auditability but **never** returned in API responses (FR-A07)
+- Language rule enforced throughout: no "guaranteed profit", "safe entry", "certain to go up" — use "historically favorable", "confidence score", "positive outcome rate"
+
+---
+
+### Stack and Dependencies
+
+All v1 dependencies retained. One new addition:
+
+```
+apscheduler>=3.10.0   # AsyncIOScheduler for background jobs
+```
+
+Add to `backend/requirements.txt` (already done).
+
+---
+
+### New Database Tables (7)
+
+#### ERD Summary
+
+```
+users (existing)
+  ├── stock_buy_zone_snapshots (user_id nullable FK)
+  ├── watchlist_ideas (user_id FK)
+  │     └── watchlist_idea_tickers (idea_id FK)
+  ├── price_alert_rules (user_id FK)
+  ├── auto_buy_settings (user_id FK, unique)
+  └── auto_buy_decision_logs (user_id FK)
+
+stock_theme_scores (no user_id — system-wide)
+```
+
+#### Table Descriptions
+
+| Table | Purpose |
+|-------|---------|
+| `stock_buy_zone_snapshots` | Persisted buy zone calculation results per ticker (and optionally per user) |
+| `stock_theme_scores` | System-wide theme alignment scores per ticker; updated every 6 hours |
+| `watchlist_ideas` | User-owned investment thesis cards with conviction scores and theme tags |
+| `watchlist_idea_tickers` | Tickers linked to an idea (many-to-one); includes `near_earnings` flag |
+| `price_alert_rules` | Per-user, per-ticker alert configurations with cooldown and market-hours filtering |
+| `auto_buy_settings` | Per-user auto-buy configuration (one row per user; unique constraint on `user_id`) |
+| `auto_buy_decision_logs` | Immutable audit trail of every auto-buy evaluation with full safeguard breakdown |
+
+#### Key Column Notes
+
+- `watchlist_idea_tickers.near_earnings` — manual boolean flag (OQ-02 resolution; live earnings calendar deferred to v3)
+- `auto_buy_settings.enabled` — `False` by default; must be explicitly toggled
+- `auto_buy_settings.paper_mode` — `True` by default; real execution requires explicit opt-in
+- `auto_buy_settings` has `UniqueConstraint("user_id")` — exactly one row per user
+- `stock_buy_zone_snapshots.feature_payload_json` — stores raw OHLCV inputs for auditability, never returned in API responses
+
+#### Migration
+
+Single migration file chains from the v1 head:
+
+```
+backend/alembic/versions/a1b2c3d4e5f6_v2_features.py
+  down_revision: 8fc51a5529bd (v1 initial schema)
+```
+
+Run:
+```bash
+cd backend
+alembic upgrade head    # applies v2 migration on top of v1
+alembic downgrade -1    # drops all 7 v2 tables (reversible)
+```
+
+---
+
+### New ORM Models
+
+| File | Classes |
+|------|---------|
+| `backend/app/models/buy_zone.py` | `StockBuyZoneSnapshot` |
+| `backend/app/models/theme_score.py` | `StockThemeScore` |
+| `backend/app/models/idea.py` | `WatchlistIdea`, `WatchlistIdeaTicker` |
+| `backend/app/models/alert.py` | `PriceAlertRule` |
+| `backend/app/models/auto_buy.py` | `AutoBuySettings`, `AutoBuyDecisionLog` |
+
+All models follow the existing SQLAlchemy 2.x `Mapped[]` / `mapped_column()` pattern. All are registered in `models/__init__.py` and `db/base.py` for Alembic discovery.
+
+---
+
+### New Pydantic Schemas
+
+| File | Schemas |
+|------|---------|
+| `backend/app/schemas/buy_zone.py` | `BuyZoneOut` |
+| `backend/app/schemas/theme_score.py` | `ThemeScoreOut` |
+| `backend/app/schemas/idea.py` | `IdeaCreate`, `IdeaUpdate`, `IdeaOut`, `TickerIn`, `TickerOut` |
+| `backend/app/schemas/alert.py` | `AlertCreate`, `AlertUpdate`, `AlertOut` |
+| `backend/app/schemas/auto_buy.py` | `AutoBuySettingsOut`, `AutoBuySettingsUpdate`, `AutoBuyDecisionLogOut`, `DryRunRequest`, `OpportunityOut` |
+
+**Note:** `BuyZoneOut` excludes `feature_payload_json` — raw inputs are stored in the DB only and never surfaced in any API response.
+
+---
+
+### New Services
+
+#### `buy_zone_service.py`
+
+Orchestrates the seven-layer buy zone scoring pipeline.
+
+**Layers and weights:**
+
+| Layer | Weight | Function |
+|-------|--------|----------|
+| Trend quality | 0.20 | `_score_trend_quality` — EMA-50 vs EMA-200 relationship |
+| Pullback quality | 0.20 | `_score_pullback_quality` — depth from 20-day high |
+| Support proximity | 0.20 | `_score_support_proximity` — distance from EMA-200 |
+| Volatility normalisation | 0.10 | `_score_volatility_normalization` — ATR ratio vs baseline |
+| Historical analog win rate | 0.20 | Delegated to `analog_scoring_service` |
+| Drawdown penalty | 0.05 | Penalises setups with high historical MAE |
+| Theme alignment bonus | 0.05 | Reads from `StockThemeScore` table |
+
+**Key functions:**
+- `calculate_buy_zone(ticker, db, user_id)` — full pipeline, persists snapshot
+- `get_or_calculate_buy_zone(ticker, db, user_id, max_age_minutes)` — returns cached if fresh, else recalculates
+
+#### `analog_scoring_service.py`
+
+Pure functions for historical pattern matching. Zero DB calls.
+
+- `find_analog_matches(df, top_n)` — finds top_n historical windows by Euclidean distance in 4-factor feature space (RSI, ATR ratio, trend slope, pullback depth)
+- `score_analogs(matches)` — aggregates forward returns into win rate score and explanation string
+- Minimum 5 analog matches required; below that, confidence is capped at 0.40
+
+#### `theme_scoring_service.py`
+
+Blends sector mapping, curated ticker-to-theme overrides, and user-assigned idea tags.
+
+- `compute_theme_score(ticker, user_id, db)` — computes and persists/updates `StockThemeScore`
+- `TICKER_THEME_OVERRIDES` — hardcoded for ~30 well-known tickers; extensible
+- `SECTOR_TO_THEMES` — maps yfinance sector strings to theme lists
+
+#### `alert_engine_service.py`
+
+Stateless evaluation of all enabled `PriceAlertRule` records.
+
+- `evaluate_rule(rule, db)` — evaluates one rule, dispatches notification if triggered
+- `evaluate_all_alerts(db)` — batch evaluation, returns summary dict
+- Cooldown logic via `_is_in_cooldown(rule)`
+- Market-hours filtering via `_is_market_hours()` (NYSE 09:30–16:00 ET)
+
+#### `notification_service.py`
+
+Abstract notification channel pattern.
+
+- `NotificationChannel` — abstract base
+- `InAppNotification` — writes structured log entry (v2 implementation)
+- `EmailNotification` — stub; active if `NOTIFICATION_EMAIL_ENABLED=true`
+- `WebhookNotification` — stub; active if `NOTIFICATION_WEBHOOK_ENABLED=true` and `NOTIFICATION_WEBHOOK_URL` set
+- `dispatch_notification(user_id, subject, body, metadata)` — routes through all active channels
+
+#### `auto_buy_engine.py`
+
+Nine-safeguard decision engine.
+
+**Synchronous safeguards** (run in `run_safeguards`):
+1. `price_inside_buy_zone`
+2. `confidence_above_threshold`
+3. `drawdown_within_limit`
+4. `liquidity_filter` (price >= $1)
+5. `spread_filter` (v2: always passes; v3: real bid-ask check)
+6. `not_near_earnings`
+7. `position_size_limit`
+
+**Async safeguards** (added in `run_full_safeguards`):
+8. `no_duplicate_order` (24-hour lookback on `BrokerOrder`)
+9. `daily_risk_budget` (today's total vs 3x `max_trade_amount`)
+
+**Key functions:**
+- `evaluate_auto_buy(ticker, user, db, dry_run, credential_id)` — full pipeline, always persists `AutoBuyDecisionLog`
+- `evaluate_all_auto_buy(db)` — batch evaluation for all enabled users
+
+**Decision states:** `candidate`, `ready_to_alert`, `ready_to_buy`, `blocked_by_risk`, `order_submitted`, `order_filled`, `order_rejected`, `cancelled`
+
+---
+
+### New API Routers
+
+All new routers are mounted under `/api` prefix in `main.py`. All require `Depends(get_current_user)`.
+
+#### `GET /api/stocks/{ticker}/buy-zone`
+
+Returns the latest buy zone snapshot. Auto-recalculates if older than 60 minutes.
+
+**Response:** `BuyZoneOut` (excludes `feature_payload_json`)
+
+**Errors:**
+- `422` — ticker not found in yfinance or insufficient data
+
+---
+
+#### `POST /api/stocks/{ticker}/recalculate-buy-zone`
+
+Force full pipeline recalculation. Always writes a user-scoped snapshot row.
+
+**Response:** `BuyZoneOut`
+
+---
+
+#### `GET /api/stocks/{ticker}/theme-score`
+
+Returns current theme score. Auto-computes on first request if no record exists.
+
+**Response:** `ThemeScoreOut`
+
+---
+
+#### `POST /api/stocks/{ticker}/theme-score/recompute`
+
+Force recompute theme score.
+
+**Response:** `ThemeScoreOut`
+
+---
+
+#### `GET /api/alerts`
+
+List all alert rules for the current user.
+
+**Response:** `list[AlertOut]`
+
+---
+
+#### `POST /api/alerts`
+
+Create a new alert rule.
+
+**Request body:** `AlertCreate`
+```json
+{
+  "ticker": "NVDA",
+  "alert_type": "entered_buy_zone",
+  "threshold": {},
+  "cooldown_minutes": 60,
+  "market_hours_only": true
+}
+```
+
+**Valid alert_type values:** `entered_buy_zone`, `near_buy_zone`, `below_invalidation`, `confidence_improved`, `theme_score_increased`, `macro_deterioration`
+
+**Response:** `AlertOut` (201 Created)
+
+---
+
+#### `PATCH /api/alerts/{id}`
+
+Partial update. Only provided fields are changed.
+
+**Request body:** `AlertUpdate` (all fields optional)
+
+**Errors:**
+- `403` — rule belongs to another user
+- `404` — rule not found
+
+---
+
+#### `DELETE /api/alerts/{id}`
+
+Permanently delete an alert rule. Returns 204 No Content.
+
+---
+
+#### `GET /api/ideas`
+
+List all ideas sorted by composite rank score descending.
+
+**Rank formula:**
+```
+rank_score = (theme_score_total × 0.35) + (entry_quality_score × 0.35)
+           + (conviction_score/10 × 0.20) + (alert_readiness_bonus × 0.10)
+```
+
+**Response:** `list[IdeaOut]` (includes computed `rank_score`)
+
+---
+
+#### `POST /api/ideas`
+
+Create a new idea with optional linked tickers.
+
+**Request body:** `IdeaCreate`
+```json
+{
+  "title": "AI Infrastructure Cycle",
+  "thesis": "Data center buildout will drive sustained demand...",
+  "conviction_score": 8,
+  "watch_only": false,
+  "tradable": true,
+  "tags": ["ai", "semiconductors"],
+  "tickers": [
+    {"ticker": "NVDA", "is_primary": true},
+    {"ticker": "AMD", "is_primary": false}
+  ]
+}
+```
+
+**Tags must be from SUPPORTED_THEMES:** `ai`, `renewable_energy`, `power_infrastructure`, `data_centers`, `space_economy`, `aerospace`, `defense`, `robotics`, `semiconductors`, `cybersecurity`
+
+---
+
+#### `PATCH /api/ideas/{id}`
+
+Partial update. When `tickers` is provided, replaces all linked tickers.
+
+---
+
+#### `DELETE /api/ideas/{id}`
+
+Delete idea and all linked tickers (cascade). Returns 204.
+
+---
+
+#### `GET /api/auto-buy/settings`
+
+Return current user's auto-buy settings. Creates defaults if none exist.
+
+**Response:** `AutoBuySettingsOut`
+
+---
+
+#### `PATCH /api/auto-buy/settings`
+
+Update settings. **Frontend must present confirmation dialog before sending `enabled=true`.**
+
+**Request body:** `AutoBuySettingsUpdate` (all fields optional)
+
+---
+
+#### `GET /api/auto-buy/decision-log`
+
+Paginated decision log. Query params: `page` (default 1), `page_size` (default 50, max 200).
+
+**Response:** `list[AutoBuyDecisionLogOut]`
+
+Each entry includes `reason_codes`: list of `{check, result}` dicts where `result` is `"PASSED"` or `"FAILED: <reason>"`.
+
+---
+
+#### `POST /api/auto-buy/dry-run/{ticker}`
+
+Simulate the full nine-safeguard pipeline without executing any order.
+
+**Request body:** `DryRunRequest` (optional `credential_id`)
+
+**Response:** `AutoBuyDecisionLogOut`
+
+---
+
+#### `GET /api/opportunities`
+
+Ranked opportunity list across all user's watchlist tickers.
+
+**Query params:**
+- `theme` — filter by theme tag
+- `min_confidence` — filter by minimum confidence score
+- `alert_active` — filter by alert presence
+- `limit` — max results (default 100, max 100)
+
+**Response:** `list[OpportunityOut]`
+
+---
+
+### Background Scheduler
+
+APScheduler `AsyncIOScheduler` runs in-process, started in the FastAPI lifespan.
+
+| Job | Interval | Function |
+|-----|----------|----------|
+| `refresh_buy_zones` | 60 min | Refresh all buy zone snapshots older than 60 min |
+| `refresh_theme_scores` | 360 min | Refresh all theme scores |
+| `evaluate_alerts` | 5 min | Evaluate all enabled alert rules |
+| `evaluate_auto_buy` | 5 min | Evaluate auto-buy for all enabled users |
+
+All jobs use `coalesce=True, max_instances=1` to prevent pile-up.
+
+**Disable scheduler for testing:**
+```bash
+SCHEDULER_ENABLE=false uvicorn app.main:app --reload
+```
+
+---
+
+### Environment Variables (New in v2)
+
+Add to `backend/.env`:
+
+```env
+# Scheduler
+SCHEDULER_ENABLE=true
+BUY_ZONE_REFRESH_MINUTES=60
+THEME_SCORE_REFRESH_MINUTES=360
+ALERT_EVAL_MINUTES=5
+AUTO_BUY_EVAL_MINUTES=5
+
+# Notifications (v2: in-app only; email/webhook are stubs)
+NOTIFICATION_EMAIL_ENABLED=false
+NOTIFICATION_WEBHOOK_ENABLED=false
+NOTIFICATION_WEBHOOK_URL=
+```
+
+---
+
+### New Files Summary
+
+```
+backend/app/
+  models/
+    buy_zone.py              StockBuyZoneSnapshot ORM model
+    theme_score.py           StockThemeScore ORM model
+    idea.py                  WatchlistIdea + WatchlistIdeaTicker ORM models
+    alert.py                 PriceAlertRule ORM model
+    auto_buy.py              AutoBuySettings + AutoBuyDecisionLog ORM models
+  schemas/
+    buy_zone.py              BuyZoneOut
+    theme_score.py           ThemeScoreOut
+    idea.py                  IdeaCreate, IdeaUpdate, IdeaOut, TickerIn, TickerOut
+    alert.py                 AlertCreate, AlertUpdate, AlertOut
+    auto_buy.py              AutoBuySettingsOut, AutoBuySettingsUpdate, AutoBuyDecisionLogOut,
+                             DryRunRequest, OpportunityOut
+  api/
+    buy_zone.py              /api/stocks/{ticker}/buy-zone + theme-score
+    alerts.py                /api/alerts CRUD
+    ideas.py                 /api/ideas CRUD
+    auto_buy.py              /api/auto-buy settings + log + dry-run
+    opportunities.py         /api/opportunities
+  services/
+    buy_zone_service.py      Seven-layer scoring pipeline
+    analog_scoring_service.py  Historical pattern matching (pure functions)
+    theme_scoring_service.py   Theme alignment scoring
+    alert_engine_service.py    Alert evaluation and dispatch
+    notification_service.py    Notification channel abstraction
+    auto_buy_engine.py         Nine-safeguard decision engine
+  scheduler/
+    __init__.py
+    jobs.py                  APScheduler job registry
+    tasks/
+      __init__.py
+      refresh_buy_zones.py
+      refresh_theme_scores.py
+      evaluate_alerts.py
+      evaluate_auto_buy.py
+backend/alembic/versions/
+  a1b2c3d4e5f6_v2_features.py  All 7 new tables, chains from v1 head
+backend/tests/v2/
+  test_analog_scoring.py     RSI/ATR/feature/analog matching tests
+  test_buy_zone_service.py   Layer scoring function tests
+  test_alert_engine.py       Alert type trigger condition tests
+  test_auto_buy_engine.py    Safeguard unit tests
+```
+
+**Modified files:**
+- `backend/requirements.txt` — added `apscheduler>=3.10.0`
+- `backend/app/core/config.py` — added scheduler and notification settings
+- `backend/app/models/__init__.py` — registered 5 new model files
+- `backend/app/db/base.py` — imported new model modules for Alembic
+- `backend/app/main.py` — wired scheduler into lifespan, registered 5 new routers
+
+---
+
+### Setup and Migration
+
+```bash
+# 1. Install new dependency
+cd backend
+pip install apscheduler>=3.10.0
+
+# Or reinstall all:
+pip install -r requirements.txt
+
+# 2. Add new env vars to backend/.env (see above section)
+
+# 3. Apply migration (requires Docker Postgres running)
+docker compose up -d
+alembic upgrade head
+
+# 4. Start backend
+uvicorn app.main:app --reload
+```
+
+---
+
+### Testing
+
+```bash
+cd backend
+# Run v2 unit tests only
+python -m pytest tests/v2/ -v
+
+# Run with coverage
+python -m pytest tests/v2/ --cov=app/services --cov-report=term-missing
+```
+
+Test files are in `backend/tests/v2/`. Each test file covers one service module.
+Tests mock all external dependencies (yfinance, broker clients, DB sessions).
+
+---
+
+### Known Constraints and Deviations
+
+| Item | Detail |
+|------|--------|
+| Spread filter (safeguard #5) | Always passes in v2. Real bid-ask spread check requires live quote API — deferred to v3 |
+| Earnings calendar | `near_earnings` is a manual boolean flag on `WatchlistIdeaTicker`. Live earnings calendar (Polygon.io) is deferred to v3 |
+| Email/Webhook notifications | Classes are wired and importable but stub only. Set env vars to activate when SMTP/webhook is configured |
+| Theme score history | No history table for theme scores; `macro_deterioration` and `theme_score_increased` alerts use a `prev_theme_score` value stored in `threshold_json` at rule creation time. Full delta tracking deferred to v3 |
+| Analog scoring performance | Uses in-memory rolling computation on 5-year daily OHLCV. For large tickers, buy zone calculation may take 3–8 seconds (within p95 target of 8s per PRD2) |
+| APScheduler on Render | Runs in-process on the web dyno. On dyno restart, scheduler restarts automatically. A separate Background Worker is deferred to v3 if in-process proves unstable |
+| `feature_payload_json` | Stores raw OHLCV indicators for auditability. Never returned in any API response (FR-A07) |
+
+---
+
+### Open Questions for Frontend
+
+1. **Auto-buy confirmation dialog** — The PATCH `/api/auto-buy/settings` endpoint with `enabled=true` must be preceded by a user confirmation dialog: *"Enabling auto-buy may result in real orders being placed. Confirm you understand the risks."* The backend does not block the request — the frontend owns this gate.
+
+2. **Buy zone staleness indicator** — `BuyZoneOut.created_at` is provided. The frontend should display a staleness badge (e.g., "Updated 45 min ago") and offer a manual recalculate button that calls `POST /recalculate-buy-zone`.
+
+3. **Near-earnings flag UX** — `WatchlistIdeaTicker.near_earnings` is set manually by the user in the ideas UI. Consider a toggle or date picker in the ticker form. The auto-buy engine reads this flag per-ticker.
+
+4. **Opportunity page rank sorting** — The `rank_score` field in `OpportunityOut` is the composite score used for default sorting. Frontend can implement client-side secondary sorts (by confidence, by theme, by distance to zone) without additional API calls.
+
+5. **Alert threshold for `near_buy_zone`** — The `threshold_json` for `near_buy_zone` expects `{"proximity_pct": 2.0}`. The alerts UI should show a numeric input for this value when the user selects the `near_buy_zone` type.
+
+6. **Decision log badge colors** — Suggested badge color mapping:
+   - `order_filled` — green
+   - `ready_to_buy` / `ready_to_alert` — amber
+   - `blocked_by_risk` / `order_rejected` — red
+   - `candidate` / `cancelled` — gray
+   - `order_submitted` — blue
+
+---
+
+### Language Rules (Enforced)
+
+The following phrases are banned in all API responses, UI text, and code comments:
+
+| Banned | Required replacement |
+|--------|---------------------|
+| "guaranteed profit" | "historically favorable outcome" |
+| "no chance of loss" | "lower-risk area based on past data" |
+| "safe entry" | "high-probability entry zone" |
+| "certain to go up" | "positive outcome rate of X%" |
+| "buy now" (as command) | "entered buy zone" |
+
+A `# LANGUAGE RULE` comment is present in `buy_zone_service.py` and `auto_buy_engine.py` to remind future contributors.
+
+---
+
+## Part 3: Watchlist Scanner, Buy Signals & Idea Engine (V3)
+
+**Version:** 3.0
+**Date:** 2026-03-24
+**Depends on:** V1 (auth, strategies, backtests, live trading) + V2 (buy zone, alerts, auto-buy, themes, ideas, scheduler)
+**Status:** Complete — 127 unit tests passing
+
+---
+
+### Overview
+
+V3 adds three connected capabilities to NextGenStock:
+
+1. **Watchlist Scanner** — users maintain a personal ticker list on the Opportunities page. Each ticker gets a persistent estimated buy zone and a live 5-minute technical scan. When all 10 conditions pass simultaneously, a "STRONG BUY" signal fires and dispatches an immediate in-app + email notification.
+
+2. **Auto-Idea Engine** — the Ideas page is upgraded to a fully automated feed. Three background scanners run every 60 minutes during market hours: a news RSS scanner, a theme scanner, and a technical universe scanner. Results are merged, scored, and surfaced as ranked idea cards with one-click "Add to Watchlist."
+
+3. **Buy Signal Audit Trail** — every scanner evaluation (pass or fail) is written to `buy_now_signals`, giving users a transparent record of which conditions passed and which caused suppression.
+
+**LANGUAGE RULE:** No backend text implies guaranteed profits. Always use "historically favorable", "high-probability entry zone", "confidence score", "positive outcome rate".
+
+---
+
+### Stack and Dependencies Added
+
+| Dependency | Purpose | Version |
+|---|---|---|
+| `feedparser` | RSS XML parsing for news scanner | >= 6.0.10 |
+| `httpx` | Async RSS feed fetching (already present) | >= 0.27.0 |
+| `pytz` | DST-aware ET timezone for market hours | >= 2024.1 |
+
+All other V3 code reuses V1/V2 dependencies.
+
+---
+
+### New Database Tables
+
+#### `user_watchlist`
+
+Per-user direct ticker list for the V3 Opportunities page watchlist.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `user_id` | INTEGER FK → users.id CASCADE | Indexed |
+| `ticker` | VARCHAR(20) | Indexed |
+| `alert_enabled` | BOOLEAN | Default True; controls notification dispatch |
+| `created_at` | TIMESTAMPTZ | Server default now() |
+
+Unique constraint: `(user_id, ticker)`.
+
+---
+
+#### `buy_now_signals`
+
+Persistent audit trail of every 10-condition gate evaluation.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `user_id` | INTEGER FK → users.id CASCADE | Indexed |
+| `ticker` | VARCHAR(20) | Indexed |
+| `buy_zone_low` | NUMERIC(12,4) | From StockBuyZoneSnapshot |
+| `buy_zone_high` | NUMERIC(12,4) | |
+| `ideal_entry_price` | NUMERIC(12,4) | (buy_zone_low + buy_zone_high) / 2 baseline |
+| `backtest_confidence` | NUMERIC(6,4) | |
+| `backtest_win_rate_90d` | NUMERIC(6,4) | |
+| `current_price` | NUMERIC(12,4) | Live price at evaluation time |
+| `price_in_zone` | BOOLEAN | Condition 1 |
+| `above_50d_ma` | BOOLEAN | Condition 2 |
+| `above_200d_ma` | BOOLEAN | Condition 3 |
+| `rsi_value` | NUMERIC(6,2) | |
+| `rsi_confirms` | BOOLEAN | Condition 4 (RSI 30–55) |
+| `volume_confirms` | BOOLEAN | Condition 5 |
+| `near_support` | BOOLEAN | Condition 6 (within 1.5x ATR of EMA-200) |
+| `trend_regime_bullish` | BOOLEAN | Condition 7 |
+| `not_near_earnings` | BOOLEAN | Condition 8 (defaults True per OQ-03) |
+| `no_duplicate_in_cooldown` | BOOLEAN | Condition 9 |
+| `all_conditions_pass` | BOOLEAN | Indexed; True = STRONG BUY |
+| `signal_strength` | VARCHAR(20) | "STRONG_BUY" or "SUPPRESSED" |
+| `suppressed_reason` | VARCHAR(100) NULLABLE | First failing condition name |
+| `invalidation_price` | NUMERIC(12,4) | |
+| `expected_drawdown` | NUMERIC(6,4) | |
+| `created_at` | TIMESTAMPTZ | Indexed |
+
+Rows pruned after `settings.signal_prune_days` days (default 30).
+
+---
+
+#### `generated_ideas`
+
+System-wide auto-generated idea cards (no user_id).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `ticker` | VARCHAR(20) | Indexed |
+| `company_name` | VARCHAR(200) | |
+| `source` | VARCHAR(20) | "news" \| "theme" \| "technical"; Indexed |
+| `reason_summary` | VARCHAR(500) | Why flagged |
+| `news_headline` | VARCHAR(500) NULLABLE | |
+| `news_url` | VARCHAR(1000) NULLABLE | |
+| `news_source` | VARCHAR(100) NULLABLE | |
+| `catalyst_type` | VARCHAR(50) NULLABLE | "earnings" \| "policy" \| "sector_rotation" \| "technical" |
+| `current_price` | NUMERIC(12,4) | |
+| `buy_zone_low` | NUMERIC(12,4) NULLABLE | |
+| `buy_zone_high` | NUMERIC(12,4) NULLABLE | |
+| `ideal_entry_price` | NUMERIC(12,4) NULLABLE | |
+| `confidence_score` | NUMERIC(6,4) | |
+| `historical_win_rate_90d` | NUMERIC(6,4) NULLABLE | |
+| `theme_tags` | JSON | e.g. ["ai", "semiconductors"] |
+| `megatrend_tags` | JSON | Subset: ["ai", "robotics", "longevity"] |
+| `moat_score` | NUMERIC(6,4) | 0.0–1.0 |
+| `moat_description` | VARCHAR(300) NULLABLE | |
+| `financial_quality_score` | NUMERIC(6,4) | 0.0–1.0 |
+| `financial_flags` | JSON | Quality observations |
+| `near_52w_low` | BOOLEAN | |
+| `at_weekly_support` | BOOLEAN | |
+| `entry_priority` | VARCHAR(20) | "52W_LOW" \| "WEEKLY_SUPPORT" \| "BOTH" \| "STANDARD" |
+| `idea_score` | NUMERIC(6,4) | Indexed; composite rank score |
+| `generated_at` | TIMESTAMPTZ | Indexed; used for MAX() last-scan query |
+| `expires_at` | TIMESTAMPTZ | Indexed; ideas expire after 24h |
+| `added_to_watchlist` | BOOLEAN | Flipped to True on "Add to Watchlist" click |
+
+Rows replaced on each generator run. Expired rows pruned at start of each run.
+
+---
+
+### Alembic Migrations
+
+| File | Revision ID | Table Added |
+|---|---|---|
+| `b1c2d3e4f5a6_v3_user_watchlist.py` | b1c2d3e4f5a6 | `user_watchlist` |
+| `c2d3e4f5a6b1_v3_buy_now_signals.py` | c2d3e4f5a6b1 | `buy_now_signals` |
+| `d3e4f5a6b1c2_v3_generated_ideas.py` | d3e4f5a6b1c2 | `generated_ideas` |
+
+Chain: `a1b2c3d4e5f6` (V2 head) → `b1c2d3e4f5a6` → `c2d3e4f5a6b1` → `d3e4f5a6b1c2`
+
+```bash
+alembic upgrade head
+```
+
+All migrations implement `downgrade()`.
+
+---
+
+### New API Endpoints
+
+All V3 endpoints require `Depends(get_current_user)` and are scoped to the authenticated user.
+
+#### Watchlist API (`/api/watchlist`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/watchlist` | List user's V3 watchlist items |
+| POST | `/api/watchlist` | Add ticker; triggers background buy zone calc |
+| DELETE | `/api/watchlist/{ticker}` | Remove ticker (signals retained for audit) |
+| PATCH | `/api/watchlist/{ticker}/alert` | Toggle alert on/off |
+
+**POST /api/watchlist request:**
+```json
+{ "ticker": "NVDA" }
+```
+
+**POST /api/watchlist response (201):**
+```json
+{ "id": 1, "ticker": "NVDA", "alert_enabled": true, "created_at": "..." }
+```
+
+**PATCH /api/watchlist/{ticker}/alert request:**
+```json
+{ "enabled": false }
+```
+
+---
+
+#### Opportunities Watchlist View (`/api/opportunities/watchlist`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/opportunities/watchlist` | V3 enriched watchlist with signal status |
+
+Returns `list[WatchlistOpportunityOut]` — each row includes all 10 condition flags, buy zone, ideal entry, distance to zone, confidence, win rate, and signal status.
+
+Sorted: STRONG_BUY first, then by `backtest_confidence` descending.
+
+---
+
+#### Generated Ideas API (`/api/ideas/generated`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/ideas/generated` | List current idea cards (sorted by idea_score) |
+| GET | `/api/ideas/generated/last-scan` | Timestamp + count of last generator run |
+| POST | `/api/ideas/generated/{id}/add-to-watchlist` | One-click add to watchlist + create alert rule |
+
+**GET /api/ideas/generated query params:**
+- `source`: "news" | "theme" | "technical"
+- `theme`: tag string (e.g. "ai", "defense")
+- `limit`: 1–100 (default 50)
+
+**POST /api/ideas/generated/{id}/add-to-watchlist response (201):**
+```json
+{
+  "ticker": "NVDA",
+  "watchlist_item_id": 42,
+  "alert_rule_id": 17,
+  "message": "NVDA added to watchlist. Alert created for buy zone entry."
+}
+```
+
+Returns 410 Gone if the idea has expired.
+
+---
+
+#### Scanner API Extensions (`/api/scanner`)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/scanner/status` | Last scan time, ticker count, next interval |
+| POST | `/api/scanner/run-now` | Manually trigger V3 live scan synchronously |
+
+**GET /api/scanner/status response:**
+```json
+{
+  "last_scan_at": "2026-03-24T14:35:00Z",
+  "ticker_count": 5,
+  "next_scan_interval_minutes": 5
+}
+```
+
+**POST /api/scanner/run-now response:**
+```json
+{
+  "scanned": 5,
+  "strong_buy_tickers": ["NVDA"],
+  "error_tickers": []
+}
+```
+
+Manual trigger bypasses the market hours guard.
+
+---
+
+### New Services
+
+#### `utils/market_hours.py`
+
+```python
+def is_market_hours(now: datetime | None = None) -> bool
+```
+
+DST-aware US/Eastern timezone check. Returns True 9:30 AM–3:59 PM ET, Mon–Fri. All V3 scheduler tasks use this as their market hours guard.
+
+---
+
+#### `services/megatrend_filter_service.py`
+
+```python
+def get_megatrend_tags(ticker: str) -> list[str]
+def compute_megatrend_fit_score(tags: list[str]) -> float  # 1.0 | 0.5 | 0.0
+def get_priority_megatrend_tags(tags: list[str]) -> list[str]
+```
+
+Pre-seeded ticker → tag map. Priority megatrends: `ai`, `robotics`, `longevity` → score 1.0. Other themes → 0.5. No match → 0.0.
+
+---
+
+#### `services/moat_scoring_service.py`
+
+```python
+def score_moat(ticker: str) -> MoatResult
+def get_moat_badge(score: float) -> str  # "Strong" | "Moderate" | "Low"
+```
+
+`HIGH_MOAT_TICKERS` seed dict covers: NVDA (0.85), ISRG (0.90), ASML (0.95), ILMN (0.80), MSFT (0.80), TSM (0.85), V (0.80), MA (0.80), LLY (0.75), NVO (0.75), AAPL (0.85), GOOGL (0.80), AMZN (0.80), META (0.75). Falls back to yfinance market-cap heuristic for unknown tickers.
+
+---
+
+#### `services/financial_quality_service.py`
+
+```python
+def score_financial_quality(ticker: str) -> FinancialQualityResult
+def get_financial_quality_label(score: float, available: bool) -> str
+```
+
+Reads `revenueGrowth`, `earningsGrowth`, `grossMargins`, `operatingMargins` from yfinance `.info`. Each positive criterion adds 0.25. Returns 0.5 + `financials_unavailable` flag when fewer than 2 fields are available.
+
+---
+
+#### `services/entry_priority_service.py`
+
+```python
+def check_entry_priority(ticker: str) -> EntryPriorityResult
+```
+
+Checks two conditions:
+- **Near 52-week low**: `current_price <= fiftyTwoWeekLow * 1.10` → +0.15 boost
+- **At weekly support**: `abs(current_price - swing_low) <= 2 * weekly_ATR` on 1W chart → +0.10 boost
+
+Both can be true simultaneously (max +0.25 total).
+
+---
+
+#### `services/news_scanner_service.py`
+
+```python
+async def scan_news() -> list[NewsItem]
+```
+
+Fetches 5 free RSS feeds (Yahoo Finance, WSJ, CNN, Federal Reserve, EIA). For each feed: extracts headlines, runs ticker extraction via `$TICKER` pattern + company-name map + "TICKER stock" pattern, maps to theme tags. Returns items sorted by `relevance_score` descending. Fails gracefully — any feed error skipped silently.
+
+---
+
+#### `services/buy_signal_service.py`
+
+```python
+async def evaluate_buy_signal(
+    ticker: str, user_id: int, db: AsyncSession, alert_enabled: bool = True
+) -> BuyNowSignal
+```
+
+Evaluates the 10-condition gate. Every evaluation is persisted to `buy_now_signals`. Dispatches notification if all_conditions_pass=True and alert_enabled=True.
+
+**The 10 conditions (ALL must pass for STRONG_BUY):**
+
+1. `price_inside_backtest_buy_zone` — current price within `[buy_zone_low, buy_zone_high]`
+2. `above_50d_moving_average` — price > 50-day SMA
+3. `above_200d_moving_average` — price > 200-day SMA
+4. `rsi_not_overbought` — RSI between 30 and 55
+5. `volume_declining_on_pullback` — recent vol avg < prior vol avg on a down-move
+6. `near_proven_support_level` — within 1.5× ATR of EMA-200
+7. `trend_regime_not_bearish` — buy zone confidence_score >= 0.50
+8. `backtest_confidence_above_threshold` — confidence_score >= 0.65
+9. `not_near_earnings` — defaults True (live lookup deferred to V4; tooltip notes this)
+10. `no_duplicate_signal_in_cooldown` — no STRONG_BUY in last 4 hours for this user+ticker
+
+---
+
+#### `services/v3_idea_generator_service.py`
+
+```python
+async def run_idea_generator(db: AsyncSession) -> list[GeneratedIdea]
+def compute_idea_score(c: IdeaCandidate) -> float
+```
+
+Orchestrates all three idea sources. Deduplicates by ticker (merges source labels and takes best scores). Persists top 50 ideas to `generated_ideas` (replaces previous batch). Purges expired rows.
+
+**idea_score formula:**
+```
+confidence_score        * 0.25
+megatrend_fit_score     * 0.20
+moat_score              * 0.15
+financial_quality_score * 0.15
+technical_setup_score   * 0.15
+news_relevance_score    * 0.10
++ near_52w_low boost    +0.15
++ at_weekly_support     +0.10
+capped at 1.0
+```
+
+**Scan universe (IDEA_UNIVERSE — ETFs excluded):**
+AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA, JPM, BAC, GS, V, MA, ETN, NEE, XOM, CVX, LMT, RTX, NOC, GD, AMD, INTC, AVGO, TSM, AMAT, ASML, ASTS, RKLB, LLY, NVO, REGN, CRSP, ILMN, PLTR, ISRG
+
+---
+
+#### `services/live_scanner_service.py`
+
+```python
+async def scan_user_watchlist(user_id: int, db: AsyncSession) -> list[LiveScanResult]
+```
+
+Batch wrapper for `evaluate_buy_signal()`. Processes every ticker in the user's `user_watchlist`. Per-ticker failures are captured and returned as `LiveScanResult(error=...)` without aborting the rest.
+
+---
+
+### Scheduler Tasks
+
+All V3 jobs are registered in `scheduler/jobs.py` on the shared APScheduler instance.
+
+| Job ID | Task | Interval | Guard |
+|---|---|---|---|
+| `run_live_scanner` | `run_live_scanner()` | Every 5 min | `is_market_hours()` |
+| `run_idea_generator` | `run_idea_generator_job()` | Every 60 min | `is_market_hours()` |
+| `run_news_scanner` | `run_news_scanner()` | Every 60 min | `is_market_hours()` |
+| `prune_old_signals` | `prune_old_signals()` | Daily at 02:00 UTC | None |
+
+All jobs use `coalesce=True, max_instances=1`.
+
+---
+
+### Config Settings Added
+
+| Env Variable | Default | Description |
+|---|---|---|
+| `LIVE_SCANNER_MINUTES` | `5` | V3 live scanner interval (minutes) |
+| `IDEA_GENERATOR_MINUTES` | `60` | V3 idea generator interval (minutes) |
+| `SIGNAL_PRUNE_DAYS` | `30` | Days to retain buy_now_signals rows |
+
+These extend `app/core/config.py`'s `Settings` class.
+
+---
+
+### Integration Points with V1/V2
+
+| V1/V2 Module | How V3 Uses It |
+|---|---|
+| `buy_zone_service.calculate_buy_zone()` | Powers buy zone on watchlist add and background enrichment |
+| `buy_zone_service.get_or_calculate_buy_zone()` | Used by buy_signal_service and idea generator with 60-min/240-min stale check |
+| `analog_scoring_service` | 90-day win rate via buy zone snapshot (`positive_outcome_rate_90d`) |
+| `theme_scoring_service` | Theme tags in DB used by _scan_theme_source() |
+| `notification_service.dispatch_notification()` | Called by buy_signal_service when all_conditions_pass=True |
+| `models/alert.py PriceAlertRule` | Created on "Add to Watchlist" (type: entered_buy_zone) |
+| `scheduler/jobs.py` | V3 jobs added to shared scheduler instance — no second scheduler |
+| `api/opportunities.py` | Extended with GET /api/opportunities/watchlist V3 endpoint |
+| `api/scanner.py` | Extended with GET /api/scanner/status and POST /api/scanner/run-now |
+
+---
+
+### File Map — New V3 Files
+
+```
+backend/app/
+  utils/
+    __init__.py
+    market_hours.py
+
+  models/
+    user_watchlist.py       # UserWatchlist ORM
+    buy_signal.py           # BuyNowSignal ORM
+    generated_idea.py       # GeneratedIdea ORM
+
+  schemas/
+    watchlist.py            # WatchlistAddRequest, WatchlistItemOut, WatchlistOpportunityOut, etc.
+    generated_idea.py       # GeneratedIdeaOut, LastScanOut, AddToWatchlistResponse
+
+  services/
+    megatrend_filter_service.py
+    moat_scoring_service.py
+    financial_quality_service.py
+    entry_priority_service.py
+    news_scanner_service.py
+    buy_signal_service.py
+    live_scanner_service.py
+    v3_idea_generator_service.py   # V3 DB-backed orchestrator (distinct from V2 idea_generator_service.py)
+
+  api/
+    watchlist.py            # POST/DELETE/PATCH /api/watchlist
+    generated_ideas.py      # GET/POST /api/ideas/generated
+
+  scheduler/tasks/
+    run_live_scanner.py
+    run_news_scanner.py
+    run_idea_generator.py
+    prune_old_signals.py
+
+alembic/versions/
+  b1c2d3e4f5a6_v3_user_watchlist.py
+  c2d3e4f5a6b1_v3_buy_now_signals.py
+  d3e4f5a6b1c2_v3_generated_ideas.py
+
+tests/v3/
+  __init__.py
+  test_market_hours.py
+  test_megatrend_filter.py
+  test_moat_scoring.py
+  test_financial_quality.py
+  test_entry_priority.py
+  test_news_scanner.py
+  test_buy_signal_service.py
+  test_idea_score.py
+  test_technical_scanner.py
+```
+
+---
+
+### Modified V2/V1 Files
+
+| File | Change |
+|---|---|
+| `backend/requirements.txt` | Added `feedparser>=6.0.10`, `pytz>=2024.1` |
+| `backend/app/core/config.py` | Added `live_scanner_minutes`, `idea_generator_minutes`, `signal_prune_days` |
+| `backend/app/db/base.py` | Added imports for `user_watchlist`, `buy_signal`, `generated_idea` |
+| `backend/app/models/__init__.py` | Added `UserWatchlist`, `BuyNowSignal`, `GeneratedIdea` exports |
+| `backend/app/api/opportunities.py` | Added `GET /api/opportunities/watchlist` endpoint |
+| `backend/app/api/scanner.py` | Added `GET /api/scanner/status`, `POST /api/scanner/run-now` |
+| `backend/app/scheduler/jobs.py` | Registered 4 new V3 jobs |
+| `backend/app/main.py` | Registered `watchlist_router` and `generated_ideas_router` |
+
+---
+
+### Setup and Migration
+
+```bash
+# 1. Install new dependencies
+cd backend
+pip install -r requirements.txt
+
+# 2. Run V3 migrations (requires Docker Postgres running)
+alembic upgrade head
+
+# 3. Start backend
+uvicorn app.main:app --reload
+
+# 4. Run V3 unit tests
+pytest tests/v3/ -v
+```
+
+---
+
+### Testing
+
+```bash
+# V3 unit tests only (127 tests, no DB or network required)
+cd backend
+pytest tests/v3/ -v
+
+# All tests (V1 + V2 + V3)
+pytest tests/ -v
+```
+
+**Test coverage per module:**
+
+| Test File | Service Covered | Tests |
+|---|---|---|
+| `test_market_hours.py` | `utils/market_hours.py` | 12 |
+| `test_megatrend_filter.py` | `megatrend_filter_service.py` | 19 |
+| `test_moat_scoring.py` | `moat_scoring_service.py` | 15 |
+| `test_financial_quality.py` | `financial_quality_service.py` | 13 |
+| `test_entry_priority.py` | `entry_priority_service.py` | 13 |
+| `test_news_scanner.py` | `news_scanner_service.py` | 18 |
+| `test_buy_signal_service.py` | `buy_signal_service.py` | 19 |
+| `test_idea_score.py` | `v3_idea_generator_service.compute_idea_score` | 13 |
+| `test_technical_scanner.py` | `v3_idea_generator_service._compute_technical_setup_score` | 6 |
+
+All yfinance, httpx, feedparser, and DB calls are mocked — tests run without network.
+
+---
+
+### Known Limitations and Stubs
+
+1. **`not_near_earnings` condition** defaults to `True` (passes gate) per OQ-03. Live earnings calendar lookup is deferred to V4. The signal tooltip notes: "Earnings check: manual flag only (live lookup in V4)."
+
+2. **News RSS feeds** may have availability issues. Any feed that fails to load is skipped silently. If all feeds fail on a given run, the news source produces zero candidates (idea gen continues with theme and technical sources).
+
+3. **`InAppNotification`** in `notification_service.py` writes to the structured log (V2 behavior). V3 spec mentions persisting to an `in_app_notifications` table — this is not yet implemented. The notification content is correct and present in logs. Upgrade to a WebSocket/DB channel in V4.
+
+4. **V2 `idea_generator_service.py` is not modified.** The V2 `GET /api/scanner/ideas` endpoint (in-process cache, `composite_score` formula) continues to work unchanged. V3's `GET /api/ideas/generated` uses a separate DB table and `idea_score` formula. These are two distinct scoring paths — do not merge.
+
+5. **`moat_scoring_service.py` yfinance heuristic** is a rough proxy based on market cap. It is not a fundamental analysis and should be flagged as such in the UI ("Moat estimate based on market cap — not a fundamental assessment").
+
+6. **`financial_quality_service.py`** skips quarters where yfinance returns `None` for individual fields. If fewer than 2 fields are available, `financials_available=False` and the UI should show "Financials unavailable."
+
+7. **Scan universe** (`IDEA_UNIVERSE`) contains 35 stocks. Expand by modifying `SCAN_UNIVERSE` in `v3_idea_generator_service.py` — no schema changes required.
+
+---
+
+### Open Questions for Frontend
+
+1. **BuyNowBadge tooltip**: The `WatchlistOpportunityOut` schema exposes all 10 condition boolean flags. The frontend should render a per-condition pass/fail tooltip on hover. Condition display names are:
+   - `price_in_zone` → "Price inside buy zone"
+   - `above_50d_ma` → "Above 50-day MA"
+   - `above_200d_ma` → "Above 200-day MA"
+   - `rsi_confirms` → "RSI 30–55 (pullback zone)"
+   - `volume_confirms` → "Volume declining on pullback"
+   - `near_support` → "Near proven support level"
+   - `trend_regime_bullish` → "Trend regime not bearish"
+   - `not_near_earnings` → "No earnings within 5 days (manual flag only — V4)"
+   - `no_duplicate_in_cooldown` → "No duplicate signal in 4-hour cooldown"
+   - `backtest_confidence` (from `backtest_confidence >= 0.65`) → "Backtest confidence ≥ 65%"
+
+2. **Distance to zone color coding**: `distance_to_zone_pct` is positive when price is above zone (not yet in — show in red/amber) and negative when in or below zone (show in green).
+
+3. **Idea card "Added" state**: When `added_to_watchlist=True` on a `GeneratedIdeaOut`, disable the "Add to Watchlist" button and show a checkmark.
+
+4. **Last scan relative timestamp**: `GET /api/ideas/generated/last-scan` returns an ISO datetime. Calculate "X minutes ago" on the frontend.
+
+5. **Toast on Add to Watchlist**: The API returns `message` field — display it as a success toast. Display 410 Gone responses as an "Idea expired" toast.
+
+6. **Manual scan trigger**: `POST /api/scanner/run-now` bypasses market hours — safe to expose in the UI at any time. Show a loading spinner during execution; display `strong_buy_tickers` in the toast on completion.

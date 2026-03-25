@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff, PanelRightClose, PanelRightOpen, ChevronUp, Crosshair, Lightbulb, BarChart4 } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { useAuth } from "@/components/layout/AppShell";
 import { PriceChart, type DrawingMode, type ChartClickPoint } from "@/components/charts/PriceChart";
 import { detectFVGs, type DrawingData, type TrendLineData, type FVGData, type DrawingPoint } from "@/components/charts/DrawingPrimitives";
 import { liveApi, strategyApi } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
+import { useSidebarPinned } from "@/lib/sidebar";
 import { useWatchlist, flattenWatchlist, type WatchlistItem, type WatchlistCategory } from "@/lib/watchlist";
 import { cn } from "@/lib/utils";
 import type { CandleBar } from "@/types";
@@ -574,6 +576,7 @@ function DashboardUserStatus() {
 // ─── KPI Cards panel ─────────────────────────────────────────────────────────
 
 function KpiCardsPanel() {
+  const [expanded, setExpanded] = useState(false);
   const { data: runs = [] } = useQuery({
     queryKey: ["strategies", "runs"],
     queryFn: () => strategyApi.listRuns(10),
@@ -586,71 +589,100 @@ function KpiCardsPanel() {
   ).length;
 
   return (
-    <div className="shrink-0 border-b border-border bg-card/50 px-3 py-2">
-      {/* KPI cards row */}
-      <div className="flex items-center gap-3 mb-2">
-        <div className="card flex flex-col px-3 py-1.5 rounded border border-border bg-secondary/50 min-w-[100px]" data-testid="kpi-card">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Runs</span>
-          <span className="text-sm font-semibold text-foreground">{totalRuns}</span>
-        </div>
-        <div className="card flex flex-col px-3 py-1.5 rounded border border-border bg-secondary/50 min-w-[100px]" data-testid="kpi-card">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">BUY Signals</span>
-          <span className="text-sm font-semibold text-[#26a69a]">{winningRuns}</span>
-        </div>
-        <div className="card flex flex-col px-3 py-1.5 rounded border border-border bg-secondary/50 min-w-[120px]" data-testid="kpi-card">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Last Symbol</span>
-          <span className="text-sm font-semibold text-foreground font-mono">{lastRun?.symbol ?? "—"}</span>
-        </div>
-        <div className="card flex flex-col px-3 py-1.5 rounded border border-border bg-secondary/50 min-w-[100px]" data-testid="kpi-card">
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Last Signal</span>
-          <span className={`text-sm font-semibold ${lastRun?.current_signal === "BUY" ? "text-[#26a69a]" : lastRun?.current_signal === "SELL" ? "text-[#ef5350]" : "text-muted-foreground"}`}>
-            {lastRun?.current_signal ?? "—"}
-          </span>
+    <div className="shrink-0 border-b border-border bg-card/50">
+      {/* Compact KPI strip — always visible */}
+      <div className="flex items-center px-3 h-8 gap-3">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          title={expanded ? "Collapse" : "Show recent runs"}
+        >
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        <div className="flex items-center gap-3 overflow-x-auto">
+          <div className="flex items-center gap-1.5 shrink-0" data-testid="kpi-card">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Runs</span>
+            <span className="text-xs font-semibold text-foreground tabular-nums">{totalRuns}</span>
+          </div>
+          <div className="w-px h-3 bg-border shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0" data-testid="kpi-card">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">BUY</span>
+            <span className="text-xs font-semibold text-[#26a69a] tabular-nums">{winningRuns}</span>
+          </div>
+          <div className="w-px h-3 bg-border shrink-0" />
+          <div className="flex items-center gap-1.5 shrink-0" data-testid="kpi-card">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Last</span>
+            <span className="text-xs font-semibold text-foreground font-mono">{lastRun?.symbol ?? "\u2014"}</span>
+            {lastRun?.current_signal && (
+              <span className={cn("text-xs font-semibold", lastRun.current_signal === "BUY" ? "text-[#26a69a]" : lastRun.current_signal === "SELL" ? "text-[#ef5350]" : "text-muted-foreground")}>
+                {lastRun.current_signal}
+              </span>
+            )}
+          </div>
+          <div className="w-px h-3 bg-border shrink-0" />
+          {/* Quick links */}
+          <div className="flex items-center gap-1 shrink-0" data-testid="kpi-card">
+            <Link href="/strategies" className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-primary hover:bg-secondary/80 transition-colors">
+              <TrendingUp className="h-3 w-3" />
+              Strategies
+            </Link>
+            <Link href="/screener" className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-primary hover:bg-secondary/80 transition-colors">
+              <BarChart4 className="h-3 w-3" />
+              Screener
+            </Link>
+            <Link href="/opportunities" className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-primary hover:bg-secondary/80 transition-colors">
+              <Crosshair className="h-3 w-3" />
+              Opportunities
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* Recent strategy runs */}
-      <div data-testid="recent-runs">
-        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Recent Strategy Runs</h2>
-        {runs.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground">No strategy runs yet. <a href="/strategies" className="text-primary hover:underline">Run a strategy</a> to see results here.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="text-muted-foreground border-b border-border">
-                  <th className="text-left pb-0.5 pr-3">Symbol</th>
-                  <th className="text-left pb-0.5 pr-3">Mode</th>
-                  <th className="text-left pb-0.5 pr-3">Timeframe</th>
-                  <th className="text-left pb-0.5">Signal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {runs.slice(0, 5).map((r) => (
-                  <tr key={r.id} className="border-b border-border/50">
-                    <td className="pr-3 py-0.5 font-mono font-semibold text-foreground">{r.symbol}</td>
-                    <td className="pr-3 py-0.5 text-muted-foreground">{r.mode_name}</td>
-                    <td className="pr-3 py-0.5 text-muted-foreground">{r.timeframe}</td>
-                    <td className="py-0.5">
-                      <span className={r.current_signal === "BUY" ? "text-[#26a69a]" : r.current_signal === "SELL" ? "text-[#ef5350]" : "text-muted-foreground"}>
-                        {r.current_signal ?? "—"}
-                      </span>
-                    </td>
+      {/* Expandable recent runs table */}
+      {expanded && (
+        <div className="px-3 pb-2" data-testid="recent-runs">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Recent Strategy Runs</h2>
+          {runs.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">No strategy runs yet. <Link href="/strategies" className="text-primary hover:underline">Run a strategy</Link> to see results here.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="text-muted-foreground border-b border-border">
+                    <th className="text-left pb-0.5 pr-3">Symbol</th>
+                    <th className="text-left pb-0.5 pr-3">Mode</th>
+                    <th className="text-left pb-0.5 pr-3">Timeframe</th>
+                    <th className="text-left pb-0.5">Signal</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {runs.slice(0, 5).map((r) => (
+                    <tr key={r.id} className="border-b border-border/50">
+                      <td className="pr-3 py-0.5 font-mono font-semibold text-foreground">{r.symbol}</td>
+                      <td className="pr-3 py-0.5 text-muted-foreground">{r.mode_name}</td>
+                      <td className="pr-3 py-0.5 text-muted-foreground">{r.timeframe}</td>
+                      <td className="py-0.5">
+                        <span className={r.current_signal === "BUY" ? "text-[#26a69a]" : r.current_signal === "SELL" ? "text-[#ef5350]" : "text-muted-foreground"}>
+                          {r.current_signal ?? "\u2014"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { theme, toggle } = useTheme();
+  const { pinned: sidebarPinned } = useSidebarPinned();
   const searchParams = useSearchParams();
 
   // Active symbol and interval — use ?ticker= query param if present
@@ -662,12 +694,14 @@ export default function DashboardPage() {
   const { watchlist, allItems: _allWatchlistItems, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const [isEditingWatchlist, setIsEditingWatchlist] = useState(false);
 
-  // ── Drawing tools state ──────────────────────────────────────────────────
+  // ── Panel & drawing tools state ─────────────────────────────────────────
+  const [showWatchlist, setShowWatchlist] = useState(true);
   const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
   const [drawings, setDrawings] = useState<DrawingData[]>([]);
   const [pendingPoint, setPendingPoint] = useState<DrawingPoint | null>(null);
   const [showFVG, setShowFVG] = useState(false);
   const [showDrawings, setShowDrawings] = useState(true);
+  const [showDrawingTools, setShowDrawingTools] = useState(false);
 
   const DRAWING_STORAGE_KEY = "ngs-drawings";
 
@@ -761,7 +795,7 @@ export default function DashboardPage() {
     queryFn: () => liveApi.chartData(chartSymbol, interval.value),
   });
 
-  const candles = chartPayload?.candles ?? [];
+  const candles = useMemo(() => chartPayload?.candles ?? [], [chartPayload]);
   const lastCandle = candles[candles.length - 1];
   const prevCandle = candles[candles.length - 2];
 
@@ -813,8 +847,8 @@ export default function DashboardPage() {
         <Sidebar />
       </div>
 
-      {/* ── Main content area (offset by 48px collapsed sidebar) ─────────── */}
-      <div className="flex flex-col flex-1 lg:pl-12 min-w-0 overflow-hidden">
+      {/* ── Main content area (offset by sidebar width) ─────────── */}
+      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[padding] duration-200 ${sidebarPinned ? "lg:pl-[200px]" : "lg:pl-12"}`}>
 
         {/* ── Top toolbar (40px) ────────────────────────────────────────── */}
         <header className="flex h-10 shrink-0 items-center border-b border-border bg-secondary px-2 gap-1 z-20">
@@ -868,70 +902,90 @@ export default function DashboardPage() {
           {/* Divider */}
           <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
 
-          {/* Drawing tools */}
+          {/* Drawing tools toggle */}
           <button
-            onClick={() => toggleDrawingMode("trendline")}
-            title="Draw trend line (click two points)"
+            onClick={() => setShowDrawingTools((v) => !v)}
+            title="Drawing tools"
             className={cn(
               "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
-              drawingMode === "trendline"
-                ? "bg-primary text-primary-foreground"
+              showDrawingTools || drawingMode !== "none"
+                ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
             )}
           >
             <TrendingUp className="h-3.5 w-3.5" />
-            <span>Trend Line</span>
+            <span>Draw</span>
+            <ChevronDown className="h-3 w-3" />
           </button>
 
-          <button
-            onClick={() => toggleDrawingMode("fvg")}
-            title="Draw Fair Value Gap zone (click two corners)"
-            className={cn(
-              "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
-              drawingMode === "fvg"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-            )}
-          >
-            <SquareDashed className="h-3.5 w-3.5" />
-            <span>FVG</span>
-          </button>
-
-          <button
-            onClick={() => setShowFVG((v) => !v)}
-            title={showFVG ? "Hide auto-detected FVGs" : "Show auto-detected FVGs"}
-            className={cn(
-              "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
-              showFVG
-                ? "bg-[#26a69a]/20 text-[#26a69a]"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-            )}
-          >
-            <SquareDashed className="h-3.5 w-3.5" />
-            <span>Auto FVG</span>
-          </button>
-
-          {drawings.length > 0 && (
+          {/* Drawing tools expanded */}
+          {showDrawingTools && (
             <>
               <button
-                onClick={() => setShowDrawings((v) => !v)}
-                title={showDrawings ? "Hide drawings" : "Show drawings"}
+                onClick={() => toggleDrawingMode("trendline")}
+                title="Draw trend line (click two points)"
                 className={cn(
-                  "flex items-center justify-center h-7 w-7 rounded transition-colors shrink-0",
-                  showDrawings
-                    ? "text-primary hover:bg-secondary/80"
+                  "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+                  drawingMode === "trendline"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 )}
               >
-                {showDrawings ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                <TrendingUp className="h-3.5 w-3.5" />
+                <span>Trend Line</span>
               </button>
+
               <button
-                onClick={clearAllDrawings}
-                title="Clear all drawings"
-                className="flex items-center justify-center h-7 w-7 rounded text-muted-foreground hover:text-red-400 hover:bg-secondary/80 transition-colors shrink-0"
+                onClick={() => toggleDrawingMode("fvg")}
+                title="Draw Fair Value Gap zone (click two corners)"
+                className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+                  drawingMode === "fvg"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                )}
               >
-                <Eraser className="h-3.5 w-3.5" />
+                <SquareDashed className="h-3.5 w-3.5" />
+                <span>FVG</span>
               </button>
+
+              <button
+                onClick={() => setShowFVG((v) => !v)}
+                title={showFVG ? "Hide auto-detected FVGs" : "Show auto-detected FVGs"}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+                  showFVG
+                    ? "bg-[#26a69a]/20 text-[#26a69a]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                )}
+              >
+                <SquareDashed className="h-3.5 w-3.5" />
+                <span>Auto FVG</span>
+              </button>
+
+              {drawings.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setShowDrawings((v) => !v)}
+                    title={showDrawings ? "Hide drawings" : "Show drawings"}
+                    className={cn(
+                      "flex items-center justify-center h-7 w-7 rounded transition-colors shrink-0",
+                      showDrawings
+                        ? "text-primary hover:bg-secondary/80"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                    )}
+                  >
+                    {showDrawings ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  </button>
+                  <button
+                    onClick={clearAllDrawings}
+                    title="Clear all drawings"
+                    className="flex items-center justify-center h-7 w-7 rounded text-muted-foreground hover:text-red-400 hover:bg-secondary/80 transition-colors shrink-0"
+                  >
+                    <Eraser className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
             </>
           )}
 
@@ -956,6 +1010,15 @@ export default function DashboardPage() {
             ) : (
               <Moon className="h-4 w-4" />
             )}
+          </button>
+
+          {/* Watchlist panel toggle */}
+          <button
+            onClick={() => setShowWatchlist((v) => !v)}
+            title={showWatchlist ? "Hide watchlist" : "Show watchlist"}
+            className="flex items-center justify-center h-7 w-7 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0"
+          >
+            {showWatchlist ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
           </button>
 
           {/* Settings icon */}
@@ -1040,7 +1103,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Watchlist panel (~25%, 320px) ───────────────────────────── */}
-          <div
+          {showWatchlist && <div
             className="flex flex-col shrink-0 bg-card overflow-hidden"
             style={{ width: 320 }}
           >
@@ -1107,7 +1170,7 @@ export default function DashboardPage() {
 
             {/* Symbol detail panel */}
             <SymbolDetail item={selectedItem} />
-          </div>
+          </div>}
         </div>
 
         {/* ── Bottom status bar (24px) ──────────────────────────────────── */}
@@ -1123,5 +1186,13 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardContent />
+    </Suspense>
   );
 }

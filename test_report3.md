@@ -2,14 +2,26 @@
 
 ## Summary
 
-- **Total tests executed:** 127 backend unit tests + TypeScript compilation check + code audit
-- **Backend unit tests passed:** 127 / 127
+- **Total tests executed:** 127 backend unit tests + TypeScript compilation check + code audit (2026-03-24) + 416 unit tests (2026-03-25)
+- **Backend unit tests passed:** 416 / 416 (as of 2026-03-25)
 - **Backend unit tests failed:** 0
 - **TypeScript compilation errors:** 0
 - **Lint:** `.eslintrc.json` added — `next lint` now functional (2 pre-existing errors, 1 warning in unrelated files)
 - **Integration tests (T3-36, T3-37):** Not written — BLOCKED (files do not exist)
 - **E2E tests (T3-38, T3-39):** Not written — BLOCKED (files do not exist)
-- **Test run date:** 2026-03-24
+- **Test run date:** 2026-03-25 (latest fix session)
+
+---
+
+## [RESOLVED] BUG-002 — 19 tests in test_generated_ideas_api.py failing with ModuleNotFoundError: asyncpg
+
+**Root cause:** `app/db/session.py` called `create_async_engine()` at module import time. Importing any API module that depends on `auth/dependencies.py` → `db/session.py` would trigger asyncpg validation even in unit tests that mock the DB. Unit test environments do not have asyncpg installed.
+
+**Fixed in:** `backend/app/db/session.py`, `backend/app/main.py`
+
+**Resolution:** Made engine and session factory creation lazy — deferred to first actual DB call via `_get_session_factory()`. Added `AsyncSessionLocal` proxy callable and `get_engine()` helper. Updated `main.py` lifespan to use `get_engine()` instead of importing `async_engine` directly.
+
+**Tests:** `tests/v3/test_generated_ideas_api.py` — all 24 tests passing. Full suite: 416/416 passing.
 
 ---
 

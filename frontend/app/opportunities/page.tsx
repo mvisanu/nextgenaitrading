@@ -3,207 +3,139 @@
 /**
  * /opportunities — V3 Watchlist + Buy Zone + Live Scanner
  *
- * Layout: Dashboard watchlist sidebar (right, 300px) + V3 WatchlistTable (main).
- * The sidebar uses the shared useWatchlist hook from lib/watchlist.ts,
- * synced with the dashboard via localStorage events.
+ * Refactored layout: full-width scanner table with status strip header,
+ * onboarding empty state, and streamlined add/scan controls.
  *
  * Protected route: requires authentication.
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ChevronDown,
-  ChevronRight,
-  Plus,
-  Check,
-  X,
-  Trash2,
-  Pencil,
-  Star,
+  Crosshair,
+  Radar,
+  TrendingUp,
+  Eye,
+  AlertTriangle,
 } from "lucide-react";
 import { AppShell, useAuth } from "@/components/layout/AppShell";
 import { WatchlistTable } from "@/components/opportunities/WatchlistTable";
 import { opportunitiesApi } from "@/lib/api";
-import {
-  useWatchlist,
-  type WatchlistItem,
-  type WatchlistCategory,
-} from "@/lib/watchlist";
 import { cn } from "@/lib/utils";
 
-// ─── Watchlist sidebar components (mirroring dashboard) ─────────────────────
+// ─── Status summary strip ───────────────────────────────────────────────────
 
-function WatchlistRow({
-  item,
-  isEditing,
-  onRemove,
-}: {
-  item: WatchlistItem;
-  isEditing: boolean;
-  onRemove: () => void;
-}) {
-  const positive = item.change >= 0;
-  const changeColor = positive ? "#26a69a" : "#ef5350";
+function StatusStrip({ rows }: { rows: import("@/types").OpportunityRow[] }) {
+  const stats = useMemo(() => {
+    const total = rows.length;
+    const strongBuy = rows.filter((r) => r.signal_strength === "STRONG_BUY").length;
+    const watching = rows.filter(
+      (r) => r.signal_strength && r.signal_strength !== "STRONG_BUY" && r.signal_strength !== "SUPPRESSED"
+    ).length;
+    const pending = rows.filter((r) => r.signal_strength == null).length;
+    return { total, strongBuy, watching, pending };
+  }, [rows]);
+
+  if (stats.total === 0) return null;
 
   return (
-    <div
-      className={cn(
-        "group flex items-center w-full px-2 text-left transition-colors",
-        "hover:bg-secondary/60"
+    <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-card/50 border border-border rounded-lg text-xs">
+      <div className="flex items-center gap-1.5">
+        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-muted-foreground">Tracking</span>
+        <span className="font-semibold text-foreground tabular-nums">{stats.total}</span>
+      </div>
+
+      {stats.strongBuy > 0 && (
+        <div className="flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          </span>
+          <span className="text-green-400 font-semibold tabular-nums">{stats.strongBuy}</span>
+          <span className="text-muted-foreground">STRONG BUY</span>
+        </div>
       )}
-      style={{ height: 28 }}
-    >
-      {isEditing ? (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          className="shrink-0 mr-1 text-red-400 hover:text-red-300 transition-colors"
-          title="Remove"
-        >
-          <Trash2 className="h-3 w-3" />
-        </button>
-      ) : (
-        <span
-          className="shrink-0 rounded-full mr-1.5"
-          style={{ width: 8, height: 8, background: item.color }}
-        />
+
+      {stats.watching > 0 && (
+        <div className="flex items-center gap-1.5">
+          <Crosshair className="h-3 w-3 text-muted-foreground" />
+          <span className="text-foreground font-semibold tabular-nums">{stats.watching}</span>
+          <span className="text-muted-foreground">watching</span>
+        </div>
       )}
-      <span className="font-mono font-semibold text-[11px] text-foreground w-[52px] truncate shrink-0">
-        {item.symbol}
-      </span>
-      <span className="font-mono text-[11px] text-foreground ml-auto shrink-0 tabular-nums">
-        {item.price.toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}
-      </span>
-      <span
-        className="font-mono text-[11px] ml-1.5 shrink-0 tabular-nums w-[42px] text-right"
-        style={{ color: changeColor }}
-      >
-        {positive ? "+" : ""}
-        {item.change.toFixed(2)}
-      </span>
-      <span
-        className="font-mono text-[11px] ml-1.5 shrink-0 tabular-nums w-[44px] text-right"
-        style={{ color: changeColor }}
-      >
-        {positive ? "+" : ""}
-        {item.changePct.toFixed(2)}%
-      </span>
+
+      {stats.pending > 0 && (
+        <div className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-amber-400/60 shrink-0" />
+          <span className="text-amber-400 font-semibold tabular-nums">{stats.pending}</span>
+          <span className="text-muted-foreground">calculating</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function WatchlistSection({
-  title,
-  items,
-  isEditing,
-  onRemove,
-  onAdd,
-}: {
-  title: string;
-  items: WatchlistItem[];
-  isEditing: boolean;
-  onRemove: (symbol: string) => void;
-  onAdd: (symbol: string) => void;
-}) {
-  const [open, setOpen] = useState(true);
-  const [showAddInput, setShowAddInput] = useState(false);
-  const [addValue, setAddValue] = useState("");
-  const addInputRef = useRef<HTMLInputElement>(null);
+// ─── Onboarding empty state ─────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (showAddInput && addInputRef.current) addInputRef.current.focus();
-  }, [showAddInput]);
-
-  function handleAddSubmit() {
-    const sym = addValue.trim().toUpperCase();
-    if (sym) {
-      onAdd(sym);
-      setAddValue("");
-      setShowAddInput(false);
-    }
-  }
-
+function OnboardingGuide() {
   return (
-    <div>
-      <div className="flex items-center w-full px-2 py-1 hover:bg-secondary/40 transition-colors">
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="flex items-center flex-1"
-        >
-          {open ? (
-            <ChevronDown className="h-3 w-3 text-muted-foreground mr-1 shrink-0" />
-          ) : (
-            <ChevronRight className="h-3 w-3 text-muted-foreground mr-1 shrink-0" />
-          )}
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {title}
-          </span>
-          <span className="text-[10px] text-muted-foreground/60 ml-1">
-            {items.length}
-          </span>
-        </button>
-        {open && (
-          <button
-            onClick={() => setShowAddInput((v) => !v)}
-            className="text-muted-foreground hover:text-primary transition-colors shrink-0"
-            title="Add symbol"
+    <div className="flex flex-col items-center justify-center py-16 px-4 max-w-lg mx-auto text-center">
+      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+        <Radar className="h-6 w-6 text-primary" />
+      </div>
+      <h2 className="text-lg font-semibold text-foreground mb-2">
+        Live Scanner & Buy Signals
+      </h2>
+      <p className="text-sm text-muted-foreground mb-6">
+        Add tickers to your watchlist and the scanner will continuously evaluate 10 conditions
+        to find high-probability entry zones.
+      </p>
+
+      <div className="w-full space-y-3 text-left">
+        {[
+          {
+            step: "1",
+            icon: TrendingUp,
+            title: "Add tickers",
+            desc: "Type a symbol (e.g. AAPL, NVDA) in the input above and click Add.",
+          },
+          {
+            step: "2",
+            icon: Radar,
+            title: "Scanner runs automatically",
+            desc: "Every 5 minutes during market hours, the scanner checks all 10 buy conditions.",
+          },
+          {
+            step: "3",
+            icon: Crosshair,
+            title: "Get STRONG BUY signals",
+            desc: "When all 10 conditions pass, you get a STRONG BUY signal with entry zone details.",
+          },
+        ].map((item) => (
+          <div
+            key={item.step}
+            className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card/50"
           >
-            <Plus className="h-3 w-3" />
-          </button>
-        )}
+            <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <span className="text-xs font-bold text-primary">{item.step}</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">{item.title}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {open && showAddInput && (
-        <div className="flex items-center gap-1 px-2 py-1">
-          <input
-            ref={addInputRef}
-            value={addValue}
-            onChange={(e) => setAddValue(e.target.value.toUpperCase())}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddSubmit();
-              if (e.key === "Escape") {
-                setShowAddInput(false);
-                setAddValue("");
-              }
-            }}
-            placeholder="AAPL, BTC-USD..."
-            className="flex-1 bg-background border border-border rounded px-1.5 py-0.5 text-[11px] font-mono text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary"
-          />
-          <button
-            onClick={handleAddSubmit}
-            disabled={!addValue.trim()}
-            className="text-primary hover:text-primary/80 disabled:text-muted-foreground transition-colors"
-          >
-            <Check className="h-3 w-3" />
-          </button>
-          <button
-            onClick={() => {
-              setShowAddInput(false);
-              setAddValue("");
-            }}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </div>
-      )}
-
-      {open &&
-        items.map((item) => (
-          <WatchlistRow
-            key={item.symbol}
-            item={item}
-            isEditing={isEditing}
-            onRemove={() => onRemove(item.symbol)}
-          />
-        ))}
+      <div className="flex items-start gap-2 mt-6 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-left">
+        <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+        <p className="text-[11px] text-muted-foreground">
+          Signals are based on historical backtest data and technical indicators.
+          This is not financial advice. Always do your own research.
+        </p>
+      </div>
     </div>
   );
 }
@@ -213,13 +145,6 @@ function WatchlistSection({
 export default function OpportunitiesPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const [isEditingWatchlist, setIsEditingWatchlist] = useState(false);
-
-  const {
-    watchlist,
-    addToWatchlist,
-    removeFromWatchlist,
-  } = useWatchlist();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -240,92 +165,38 @@ export default function OpportunitiesPage() {
 
   if (authLoading || !user) return null;
 
+  const hasData = opportunities.length > 0;
+
   return (
     <AppShell title="Opportunities">
       <h1 data-testid="page-title" className="sr-only">
         Opportunities
       </h1>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* ── Main content: V3 scanner table ─────────────────────────────── */}
-        <div className="flex-1 min-w-0 overflow-auto p-4">
+      <div className="space-y-4">
+        {/* Status summary */}
+        <StatusStrip rows={opportunities} />
+
+        {/* Scanner table or onboarding */}
+        {!isLoading && !hasData ? (
+          <>
+            {/* Show add ticker input above the onboarding guide */}
+            <WatchlistTable
+              rows={opportunities}
+              isLoading={isLoading}
+              onRefetch={refetch}
+            />
+          </>
+        ) : (
           <WatchlistTable
             rows={opportunities}
             isLoading={isLoading}
             onRefetch={refetch}
           />
-        </div>
+        )}
 
-        {/* ── Watchlist sidebar (synced with dashboard) ──────────────────── */}
-        <div
-          className="flex flex-col shrink-0 bg-card border-l border-border overflow-hidden"
-          style={{ width: 300 }}
-        >
-          <div className="flex items-center px-2 h-8 shrink-0 border-b border-border bg-secondary/50">
-            <Star className="h-3.5 w-3.5 text-yellow-500 mr-1.5" />
-            <span className="text-[11px] font-semibold text-foreground flex-1">
-              Watchlist
-            </span>
-            <button
-              onClick={() => setIsEditingWatchlist((v) => !v)}
-              className={cn(
-                "mr-2 transition-colors",
-                isEditingWatchlist
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title={isEditingWatchlist ? "Done editing" : "Edit watchlist"}
-            >
-              {isEditingWatchlist ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                <Pencil className="h-3 w-3" />
-              )}
-            </button>
-            <span className="font-mono text-[10px] text-muted-foreground w-[52px] text-right shrink-0">
-              Last
-            </span>
-            <span className="font-mono text-[10px] text-muted-foreground w-[42px] text-right ml-1.5 shrink-0">
-              Chg
-            </span>
-            <span className="font-mono text-[10px] text-muted-foreground w-[44px] text-right ml-1.5 shrink-0">
-              Chg%
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <WatchlistSection
-              title="Indices"
-              items={watchlist.indices}
-              isEditing={isEditingWatchlist}
-              onRemove={removeFromWatchlist}
-              onAdd={(sym) => addToWatchlist("indices", sym)}
-            />
-            <WatchlistSection
-              title="Stocks"
-              items={watchlist.stocks}
-              isEditing={isEditingWatchlist}
-              onRemove={removeFromWatchlist}
-              onAdd={(sym) => addToWatchlist("stocks", sym)}
-            />
-            <WatchlistSection
-              title="Crypto"
-              items={watchlist.crypto}
-              isEditing={isEditingWatchlist}
-              onRemove={removeFromWatchlist}
-              onAdd={(sym) => addToWatchlist("crypto", sym)}
-            />
-            {(watchlist.custom.length > 0 || isEditingWatchlist) && (
-              <WatchlistSection
-                title="Custom"
-                items={watchlist.custom}
-                isEditing={isEditingWatchlist}
-                onRemove={removeFromWatchlist}
-                onAdd={(sym) => addToWatchlist("custom", sym)}
-              />
-            )}
-          </div>
-        </div>
+        {/* Show onboarding below when empty */}
+        {!isLoading && !hasData && <OnboardingGuide />}
       </div>
     </AppShell>
   );
