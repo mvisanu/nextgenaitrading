@@ -73,7 +73,7 @@ describe("StrategyForm — conservative mode", () => {
 
   it("shows leverage field for conservative mode", () => {
     render(<StrategyForm {...defaultProps} />);
-    expect(screen.getByLabelText(/Leverage Override/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Leverage/i)).toBeInTheDocument();
   });
 
   it("dry-run switch is checked by default", () => {
@@ -144,7 +144,7 @@ describe("StrategyForm — conservative mode", () => {
     render(<StrategyForm {...defaultProps} />);
 
     await userEvent.type(screen.getByLabelText(/Symbol/i), "AAPL");
-    const leverageInput = screen.getByLabelText(/Leverage Override/i);
+    const leverageInput = screen.getByLabelText(/Leverage/i);
     await userEvent.clear(leverageInput);
     await userEvent.type(leverageInput, "-1");
 
@@ -171,7 +171,7 @@ describe("StrategyForm — aggressive mode", () => {
 
   it("shows leverage field for aggressive mode", () => {
     render(<StrategyForm mode="aggressive" onSubmit={jest.fn()} />);
-    expect(screen.getByLabelText(/Leverage Override/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Leverage/i)).toBeInTheDocument();
   });
 
   it("shows button labeled 'Run Aggressive'", () => {
@@ -183,7 +183,7 @@ describe("StrategyForm — aggressive mode", () => {
 describe("StrategyForm — ai-pick mode (optimizer)", () => {
   it("DOES NOT show leverage field for ai-pick", () => {
     render(<StrategyForm mode="ai-pick" onSubmit={jest.fn()} />);
-    expect(screen.queryByLabelText(/Leverage Override/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Leverage/i)).not.toBeInTheDocument();
   });
 
   it("shows variant description for ai-pick", () => {
@@ -200,7 +200,7 @@ describe("StrategyForm — ai-pick mode (optimizer)", () => {
 describe("StrategyForm — buy-low-sell-high mode (optimizer)", () => {
   it("DOES NOT show leverage field for buy-low-sell-high", () => {
     render(<StrategyForm mode="buy-low-sell-high" onSubmit={jest.fn()} />);
-    expect(screen.queryByLabelText(/Leverage Override/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Leverage/i)).not.toBeInTheDocument();
   });
 
   it("shows 8 dip/cycle variants description", () => {

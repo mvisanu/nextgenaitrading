@@ -10,7 +10,14 @@ import userEvent from "@testing-library/user-event";
 import ProfilePage from "@/app/profile/page";
 import type { BrokerCredential, UserProfile } from "@/types";
 
-// Mock AppShell
+// Mock next/navigation
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/profile",
+}));
+
+// Mock AppShell + useAuth
 jest.mock("@/components/layout/AppShell", () => ({
   AppShell: ({ children, title }: any) => (
     <div>
@@ -18,6 +25,11 @@ jest.mock("@/components/layout/AppShell", () => ({
       {children}
     </div>
   ),
+  useAuth: () => ({
+    user: { id: 1, email: "test@nextgenstock.io" },
+    isLoading: false,
+    logout: jest.fn(),
+  }),
 }));
 
 // Mock next/link

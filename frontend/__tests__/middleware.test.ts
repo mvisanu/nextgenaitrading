@@ -1,7 +1,7 @@
 /**
  * @jest-environment node
  *
- * Tests for middleware.ts
+ * Tests for proxy.ts (formerly middleware.ts)
  * Covers: protected route redirect when no cookie, public route redirect when
  *         authenticated, pass-through for unmatched paths.
  *
@@ -9,7 +9,7 @@
  * is available from Node's built-in globals (Node 18+).
  */
 
-import { middleware } from "@/middleware";
+import { proxy as middleware } from "@/proxy";
 import { NextRequest } from "next/server";
 
 // Helper to create a NextRequest with optional access_token cookie
@@ -119,11 +119,21 @@ describe("middleware — unauthenticated access to public routes", () => {
 // ─── Unmatched paths ──────────────────────────────────────────────────────────
 
 describe("middleware — unmatched / root paths", () => {
-  it("passes through root / without token (not in protected list)", () => {
+  it("redirects root / to /login without token", () => {
     const req = makeRequest("/", false);
     const res = middleware(req);
 
-    expect(res.status).toBe(200);
+    // proxy.ts redirects / → /login (unauthenticated) or /dashboard (authenticated)
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/login");
+  });
+
+  it("redirects root / to /dashboard with token", () => {
+    const req = makeRequest("/", true);
+    const res = middleware(req);
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/dashboard");
   });
 
   it("passes through unknown path /foobar without token", () => {

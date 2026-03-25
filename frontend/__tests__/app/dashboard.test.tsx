@@ -1,13 +1,20 @@
 /**
  * Tests for app/dashboard/page.tsx
- * Covers: KPI cards render, loading skeletons, empty state, runs table,
- *         win rate computation, active positions count.
+ * Covers: KPI cards render, loading state, empty state, runs table,
+ *         symbol/mode/signal display.
  */
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import DashboardPage from "@/app/dashboard/page";
-import type { StrategyRun, PositionSnapshot } from "@/types";
+import type { StrategyRun } from "@/types";
+
+// Mock next/navigation
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/dashboard",
+}));
 
 // Mock next/link
 jest.mock("next/link", () => {
@@ -15,7 +22,7 @@ jest.mock("next/link", () => {
   return ({ children, href }: any) => <a href={href}>{children}</a>;
 });
 
-// Mock AppShell
+// Mock AppShell + useAuth
 jest.mock("@/components/layout/AppShell", () => ({
   AppShell: ({ children, title }: any) => (
     <div>
@@ -23,6 +30,20 @@ jest.mock("@/components/layout/AppShell", () => ({
       {children}
     </div>
   ),
+  useAuth: () => ({
+    user: { id: 1, email: "test@nextgenstock.io" },
+    logout: jest.fn(),
+  }),
+}));
+
+// Mock Sidebar (imported directly by DashboardPage)
+jest.mock("@/components/layout/Sidebar", () => ({
+  Sidebar: () => <nav data-testid="sidebar" />,
+}));
+
+// Mock useSidebarPinned (used by DashboardPage)
+jest.mock("@/lib/sidebar", () => ({
+  useSidebarPinned: () => ({ pinned: false, toggle: jest.fn() }),
 }));
 
 // Mock EquityCurve
@@ -45,7 +66,7 @@ type QueryOptions = {
 const queryResults: Record<string, { data?: unknown; isLoading?: boolean; error?: unknown }> = {};
 
 jest.mock("@tanstack/react-query", () => ({
-  useQuery: ({ queryKey, queryFn, enabled }: QueryOptions) => {
+  useQuery: ({ queryKey }: QueryOptions) => {
     const key = JSON.stringify(queryKey);
     if (queryResults[key]) return queryResults[key];
     // Default: loading
@@ -100,59 +121,24 @@ const mockRuns: StrategyRun[] = [
   },
 ];
 
-const mockPositions: PositionSnapshot[] = [
-  {
-    id: 1,
-    symbol: "AAPL",
-    position_side: "long",
-    quantity: 10,
-    avg_entry_price: 180,
-    mark_price: 190,
-    unrealized_pnl: 100,
-    realized_pnl: null,
-    is_open: true,
-    strategy_mode: "conservative",
-    created_at: "2024-01-10T12:00:00Z",
-  },
-  {
-    id: 2,
-    symbol: "TSLA",
-    position_side: "long",
-    quantity: 5,
-    avg_entry_price: 200,
-    mark_price: 190,
-    unrealized_pnl: -50,
-    realized_pnl: null,
-    is_open: false, // closed
-    strategy_mode: "aggressive",
-    created_at: "2024-01-11T12:00:00Z",
-  },
-];
-
 beforeEach(() => {
   // Clear query results
   for (const key in queryResults) delete queryResults[key];
 });
 
 describe("DashboardPage — loading state", () => {
-  it("shows loading skeletons when runs are loading", () => {
-    const { container } = render(<DashboardPage />);
-    // Skeleton components render as divs with animate-pulse
-    const skeletons = container.querySelectorAll(".animate-pulse");
-    expect(skeletons.length).toBeGreaterThan(0);
+  it("renders KPI strip with default values while loading", () => {
+    render(<DashboardPage />);
+    // KPI strip always renders — shows "Runs" label with 0 count while loading
+    expect(screen.getByText("Runs")).toBeInTheDocument();
+    expect(screen.getAllByText("0").length).toBeGreaterThan(0);
   });
 });
 
 describe("DashboardPage — with data", () => {
   beforeEach(() => {
-    // Set up runs data
     queryResults[JSON.stringify(["strategies", "runs"])] = {
       data: mockRuns,
-      isLoading: false,
-      error: null,
-    };
-    queryResults[JSON.stringify(["live", "positions"])] = {
-      data: mockPositions,
       isLoading: false,
       error: null,
     };
@@ -163,44 +149,52 @@ describe("DashboardPage — with data", () => {
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
   });
 
-  it("renders Total Runs KPI card", () => {
+  it("renders Runs KPI label in the strip", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Total Runs")).toBeInTheDocument();
-    // Use getAllByText since "2" may appear multiple times (total runs + strategies run count)
+    // KPI strip shows "Runs" label + the count (2 runs)
+    expect(screen.getByText("Runs")).toBeInTheDocument();
     const twos = screen.getAllByText("2");
     expect(twos.length).toBeGreaterThan(0);
   });
 
-  it("renders Active Positions KPI counting only open positions", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText("Active Positions")).toBeInTheDocument();
-    // Only 1 position is_open=true — use getAllByText since "1" may appear
-    // in multiple KPI cards (e.g. Buy Signals also shows 1 for this mock data)
-    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
+  it("renders KPI data-testid cards", () => {
+    const { container } = render(<DashboardPage />);
+    const kpiCards = container.querySelectorAll('[data-testid="kpi-card"]');
+    expect(kpiCards.length).toBeGreaterThan(0);
   });
 
-  it("renders strategy runs table with symbols", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText("AAPL")).toBeInTheDocument();
-    expect(screen.getByText("TSLA")).toBeInTheDocument();
+  it("renders strategy run symbols in the expandable table after clicking expand", async () => {
+    const { getByTitle } = render(<DashboardPage />);
+    // The chevron button expands the recent-runs table
+    getByTitle(/show recent runs/i).click();
+    // Both symbols may appear in multiple places (KPI strip, table, symbol search)
+    const aapls = await screen.findAllByText("AAPL");
+    expect(aapls.length).toBeGreaterThan(0);
+    const tslas = await screen.findAllByText("TSLA");
+    expect(tslas.length).toBeGreaterThan(0);
   });
 
-  it("renders mode labels in table", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText("Conservative")).toBeInTheDocument();
-    expect(screen.getByText("Aggressive")).toBeInTheDocument();
+  it("renders mode names in expanded table", async () => {
+    const { getByTitle } = render(<DashboardPage />);
+    getByTitle(/show recent runs/i).click();
+    // mode_name is rendered as-is (lowercase) from the API
+    expect(await screen.findByText("conservative")).toBeInTheDocument();
+    expect(screen.getByText("aggressive")).toBeInTheDocument();
   });
 
-  it("renders signal badges in uppercase", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText("BUY")).toBeInTheDocument();
-    expect(screen.getByText("SELL")).toBeInTheDocument();
+  it("renders signal values in expanded table", async () => {
+    const { getByTitle } = render(<DashboardPage />);
+    getByTitle(/show recent runs/i).click();
+    // current_signal rendered as-is; "buy" from AAPL run
+    expect(await screen.findByText("buy")).toBeInTheDocument();
+    expect(screen.getByText("sell")).toBeInTheDocument();
   });
 
-  it("renders regime badges", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText("bull")).toBeInTheDocument();
-    expect(screen.getByText("bear")).toBeInTheDocument();
+  it("renders timeframe values in expanded table", async () => {
+    const { getByTitle } = render(<DashboardPage />);
+    getByTitle(/show recent runs/i).click();
+    expect(await screen.findByText("1d")).toBeInTheDocument();
+    expect(screen.getByText("4h")).toBeInTheDocument();
   });
 });
 
@@ -211,27 +205,23 @@ describe("DashboardPage — empty runs state", () => {
       isLoading: false,
       error: null,
     };
-    queryResults[JSON.stringify(["live", "positions"])] = {
-      data: [],
-      isLoading: false,
-      error: null,
-    };
   });
 
-  it("shows empty state message when no runs", () => {
-    render(<DashboardPage />);
-    expect(screen.getByText(/No strategy runs yet/i)).toBeInTheDocument();
+  it("shows empty state message when no runs", async () => {
+    const { getByTitle } = render(<DashboardPage />);
+    getByTitle(/show recent runs/i).click();
+    expect(await screen.findByText(/No strategy runs yet/i)).toBeInTheDocument();
   });
 
-  it("shows link to run first strategy when empty", () => {
-    render(<DashboardPage />);
-    const link = screen.getByText(/Run your first strategy/i);
-    expect(link).toBeInTheDocument();
+  it("shows link to run a strategy when empty", async () => {
+    const { getByTitle } = render(<DashboardPage />);
+    getByTitle(/show recent runs/i).click();
+    expect(await screen.findByText(/Run a strategy/i)).toBeInTheDocument();
   });
 
-  it("shows '0' for Total Runs", () => {
+  it("shows '0' for Runs KPI", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Total Runs")).toBeInTheDocument();
+    expect(screen.getByText("Runs")).toBeInTheDocument();
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
   });
 });

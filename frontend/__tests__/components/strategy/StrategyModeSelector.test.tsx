@@ -67,10 +67,10 @@ describe("StrategyModeSelector", () => {
         {(mode) => <span>Mode: {mode}</span>}
       </StrategyModeSelector>
     );
-    expect(screen.getByRole("tab", { name: "Conservative" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Aggressive" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "AI Pick" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Buy Low / Sell High" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Conservative/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Aggressive/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /AI Pick/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Buy Low/i })).toBeInTheDocument();
   });
 
   it("shows conservative content by default", () => {
@@ -98,7 +98,7 @@ describe("StrategyModeSelector", () => {
       </StrategyModeSelector>
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: "Aggressive" }));
+    await userEvent.click(screen.getByRole("tab", { name: /Aggressive/i }));
     expect(screen.getByText("Mode: aggressive")).toBeInTheDocument();
   });
 
@@ -109,7 +109,7 @@ describe("StrategyModeSelector", () => {
       </StrategyModeSelector>
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: "AI Pick" }));
+    await userEvent.click(screen.getByRole("tab", { name: /AI Pick/i }));
     expect(screen.getByText("Mode: ai-pick")).toBeInTheDocument();
   });
 
@@ -120,7 +120,7 @@ describe("StrategyModeSelector", () => {
       </StrategyModeSelector>
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: "Buy Low / Sell High" }));
+    await userEvent.click(screen.getByRole("tab", { name: /Buy Low/i }));
     expect(screen.getByText("Mode: buy-low-sell-high")).toBeInTheDocument();
   });
 
@@ -130,7 +130,7 @@ describe("StrategyModeSelector", () => {
         {() => null}
       </StrategyModeSelector>
     );
-    expect(screen.getByRole("tab", { name: "Conservative" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /Conservative/i })).toHaveAttribute("aria-selected", "true");
   });
 
   it("non-default tabs are aria-selected=false by default", () => {
@@ -139,6 +139,6 @@ describe("StrategyModeSelector", () => {
         {() => null}
       </StrategyModeSelector>
     );
-    expect(screen.getByRole("tab", { name: "Aggressive" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: /Aggressive/i })).toHaveAttribute("aria-selected", "false");
   });
 });

@@ -28,6 +28,7 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def login(
     payload: LoginRequest,
     request: Request,
@@ -39,6 +40,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("10/minute")
 async def refresh(
     request: Request,
     response: Response,
@@ -49,13 +51,17 @@ async def refresh(
     return TokenResponse(message="Refreshed", user_id=user.id, email=user.email)
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/logout")
 async def logout(
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
     refresh_token: Annotated[Optional[str], Cookie()] = None,
-) -> None:
+) -> Response:
     await service.logout(db, response, refresh_token)
+    # Return the DI `response` object (not a new one) so that the
+    # Set-Cookie: Max-Age=0 headers written by _clear_auth_cookies() are preserved.
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
 
 
 @router.get("/me", response_model=UserOut)

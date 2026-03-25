@@ -154,12 +154,12 @@ describe("RegisterPage — Zod schema validation", () => {
 });
 
 describe("RegisterPage — mutation behaviour", () => {
-  it("shows success toast and redirects to /login on success", () => {
+  it("shows success toast and redirects to /dashboard on success", () => {
     render(<RegisterPage />);
     mockOnSuccess?.({});
 
-    expect(mockToastSuccess).toHaveBeenCalledWith("Account created! Please sign in.");
-    expect(mockPush).toHaveBeenCalledWith("/login");
+    expect(mockToastSuccess).toHaveBeenCalledWith("Account created! Welcome to NextGenStock.");
+    expect(mockPush).toHaveBeenCalledWith("/dashboard");
   });
 
   it("shows error toast on registration failure", () => {

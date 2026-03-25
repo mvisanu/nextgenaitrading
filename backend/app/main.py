@@ -15,7 +15,6 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
@@ -50,6 +49,13 @@ async def lifespan(app: FastAPI):
 
     logger.info("NextGenStock backend starting — pool initialising")
 
+    # Production safety checks
+    if not settings.cookie_secure and "localhost" not in settings.cors_origins:
+        logger.warning(
+            "SECURITY WARNING: COOKIE_SECURE=false but CORS origins don't include "
+            "localhost. Set COOKIE_SECURE=true for production deployments."
+        )
+
     # Start APScheduler if enabled
     if settings.scheduler_enable:
         register_jobs()
@@ -81,22 +87,47 @@ app = FastAPI(
     ),
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/docs" if settings.cors_origins == "http://localhost:3000" else None,
-    redoc_url="/redoc" if settings.cors_origins == "http://localhost:3000" else None,
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
 )
 
 # ── Rate limiting ─────────────────────────────────────────────────────────────
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    """Return 429 with CORS headers so the browser doesn't misreport it as a CORS error.
+
+    slowapi's default handler bypasses CORSMiddleware (known FastAPI/Starlette behaviour
+    for @app.exception_handler callbacks), so we inject the CORS headers manually — the
+    same pattern used for the RequestValidationError and unhandled Exception handlers.
+    """
+    headers: dict[str, str] = {}
+    origin = request.headers.get("origin")
+    if origin and _is_origin_allowed(origin):
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Vary"] = "Origin"
+
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": str(exc.detail)},
+        headers=headers,
+    )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
+# When allow_credentials=True the CORS spec forbids Access-Control-Allow-Headers: *.
+# Starlette reflects back the request headers instead, but being explicit is safer
+# and more portable.  Set-Cookie cannot appear in expose_headers (forbidden header).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    expose_headers=["Set-Cookie"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept", "Authorization", "X-Requested-With"],
+    expose_headers=[],
+    max_age=600,
 )
 
 # ── Global exception handlers ─────────────────────────────────────────────────
@@ -205,3 +236,8 @@ app.include_router(scanner_router)
 # v3
 app.include_router(watchlist_router)
 app.include_router(generated_ideas_router)
+
+# Test-only utilities (only mounted in debug mode)
+if settings.debug:
+    from app.api.test_reset import router as test_reset_router
+    app.include_router(test_reset_router)

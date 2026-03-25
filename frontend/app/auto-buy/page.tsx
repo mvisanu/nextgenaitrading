@@ -396,7 +396,10 @@ export default function AutoBuyPage() {
           ) : settings ? (
             <div className="space-y-3 pt-2">
               {/* Disclaimer */}
-              <Alert className="border-amber-500/30 bg-amber-500/5">
+              <Alert
+                data-testid="risk-disclaimer"
+                className="border-amber-500/30 bg-amber-500/5"
+              >
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
                 <AlertDescription className="text-xs text-muted-foreground">
                   Auto-buy may place real orders in your brokerage account. Past
@@ -503,19 +506,21 @@ export default function AutoBuyPage() {
 
             <div className="flex gap-2 items-center">
               <Input
+                data-testid="dry-run-ticker"
                 value={dryRunTicker}
                 onChange={(e) => setDryRunTicker(e.target.value.toUpperCase())}
                 placeholder="AAPL"
                 className="max-w-[120px] h-9"
               />
               <Button
+                data-testid="dry-run-btn"
                 onClick={() => runDryRun()}
                 disabled={isDryRunning || !dryRunTicker.trim()}
                 size="sm"
                 className="h-9"
               >
                 <Play className="h-3.5 w-3.5 mr-1.5" />
-                {isDryRunning ? "Running..." : "Run Simulation"}
+                {isDryRunning ? "Running..." : "Dry Run"}
               </Button>
             </div>
 
@@ -524,6 +529,7 @@ export default function AutoBuyPage() {
         </StepCard>
 
         {/* ── Step 4: Decision Log ──────────────────────────────────── */}
+        <div data-testid="decision-log">
         <StepCard
           step={4}
           title="Decision Log"
@@ -659,6 +665,7 @@ export default function AutoBuyPage() {
             )}
           </div>
         </StepCard>
+        </div>
       </div>
 
       {/* Enable auto-buy confirmation dialog */}
@@ -884,7 +891,7 @@ function ThresholdSettings({
                         type="checkbox"
                         checked={isAllowed}
                         onChange={(e) => {
-                          const current = settings.allowed_account_ids_json;
+                          const current = settings.allowed_account_ids_json ?? [];
                           const updated = e.target.checked
                             ? [...current, cred.id]
                             : current.filter((id) => id !== cred.id);

@@ -96,10 +96,11 @@ const mockVariants: VariantBacktestResult[] = [
 ];
 
 describe("ResultsPanel — KPI cards", () => {
-  it("renders Total Return KPI", () => {
-    render(<ResultsPanel summary={mockSummary} />);
-    expect(screen.getByText("Total Return")).toBeInTheDocument();
-    expect(screen.getByText("+15.50%")).toBeInTheDocument();
+  it("renders Return KPI label", () => {
+    render(<ResultsPanel summary={mockSummary} trades={mockTrades} />);
+    expect(screen.getByText("Return")).toBeInTheDocument();
+    // With one winning trade (leveraged_return_pct=8.75), "Return" KPI shows +8.75%
+    expect(screen.getAllByText("+8.75%").length).toBeGreaterThan(0);
   });
 
   it("renders Max Drawdown KPI", () => {
@@ -152,23 +153,27 @@ describe("ResultsPanel — signal/regime badges", () => {
 describe("ResultsPanel — trade table", () => {
   it("shows trade table when trades are provided", () => {
     render(<ResultsPanel summary={mockSummary} trades={mockTrades} />);
-    expect(screen.getByText("Trades (1)")).toBeInTheDocument();
+    // Header includes "Trade Actions (1)" with count
+    expect(screen.getByText(/Trade Actions \(1\)/)).toBeInTheDocument();
   });
 
   it("shows trade entry/exit prices", () => {
     render(<ResultsPanel summary={mockSummary} trades={mockTrades} />);
-    expect(screen.getByText("$185.50")).toBeInTheDocument();
-    expect(screen.getByText("$192.00")).toBeInTheDocument();
+    // Prices appear in both mobile card and desktop table
+    expect(screen.getAllByText("$185.50").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("$192.00").length).toBeGreaterThan(0);
   });
 
-  it("shows trade return pct", () => {
+  it("shows trade leveraged return pct", () => {
     render(<ResultsPanel summary={mockSummary} trades={mockTrades} />);
-    expect(screen.getByText("+3.50%")).toBeInTheDocument();
+    // leveraged_return_pct=8.75 drives the balance computation (+8.75%)
+    expect(screen.getByText("+8.75%")).toBeInTheDocument();
   });
 
   it("shows exit reason", () => {
     render(<ResultsPanel summary={mockSummary} trades={mockTrades} />);
-    expect(screen.getByText("trailing_stop")).toBeInTheDocument();
+    // exit_reason appears in mobile card and desktop table
+    expect(screen.getAllByText("trailing_stop").length).toBeGreaterThan(0);
   });
 
   it("does not show trade table when trades array is empty", () => {

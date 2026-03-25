@@ -9,7 +9,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LiveTradingPage from "@/app/live-trading/page";
 
-// Mock AppShell
+// Mock next/navigation
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/live-trading",
+}));
+
+// Mock AppShell + useAuth
 jest.mock("@/components/layout/AppShell", () => ({
   AppShell: ({ children, title }: any) => (
     <div>
@@ -17,6 +24,11 @@ jest.mock("@/components/layout/AppShell", () => ({
       {children}
     </div>
   ),
+  useAuth: () => ({
+    user: { id: 1, email: "test@nextgenstock.io" },
+    isLoading: false,
+    logout: jest.fn(),
+  }),
 }));
 
 // Mock PriceChart
@@ -118,54 +130,52 @@ beforeEach(() => {
 });
 
 describe("LiveTradingPage — risk disclaimer", () => {
-  it("always renders the financial risk disclaimer", () => {
+  it("always renders the risk disclaimer", () => {
     render(<LiveTradingPage />);
-    expect(
-      screen.getByText("Financial Risk Disclaimer")
-    ).toBeInTheDocument();
+    // Compact disclaimer at bottom of the form
+    expect(screen.getByText(/Educational software/i)).toBeInTheDocument();
   });
 
-  it("disclaimer contains the educational software text", () => {
+  it("disclaimer mentions real trading risk", () => {
     render(<LiveTradingPage />);
-    expect(
-      screen.getByText(/This platform is educational software/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/risk of total loss/i)).toBeInTheDocument();
   });
 
-  it("disclaimer mentions paper-trade first", () => {
+  it("disclaimer mentions past performance", () => {
     render(<LiveTradingPage />);
-    expect(screen.getByText(/paper-trade first/i)).toBeInTheDocument();
+    expect(screen.getByText(/Past performance/i)).toBeInTheDocument();
   });
 });
 
-describe("LiveTradingPage — dry-run default", () => {
-  it("dry-run switch is checked (ON) by default", () => {
-    render(<LiveTradingPage />);
-    const switches = screen.getAllByRole("switch");
-    // The dry-run switch is the one with id="dry-run"
-    const dryRunSwitch = document.getElementById("dry-run") as HTMLInputElement;
-    expect(dryRunSwitch?.checked).toBe(true);
-  });
-
+describe("LiveTradingPage — paper mode default", () => {
   it("does NOT show LIVE MODE ACTIVE banner by default", () => {
     render(<LiveTradingPage />);
     expect(screen.queryByText("LIVE MODE ACTIVE")).not.toBeInTheDocument();
   });
 
-  it("execute button shows 'Execute (Dry Run)' label by default", () => {
+  it("execute button shows paper trade label by default", () => {
     render(<LiveTradingPage />);
-    expect(screen.getByText("Execute (Dry Run)")).toBeInTheDocument();
+    expect(screen.getByText("Execute Paper Trade")).toBeInTheDocument();
+  });
+
+  it("Paper mode button is shown in the mode selector", () => {
+    render(<LiveTradingPage />);
+    expect(screen.getByText("Paper")).toBeInTheDocument();
+    expect(screen.getByText("Dry Run")).toBeInTheDocument();
+    expect(screen.getByText("Live")).toBeInTheDocument();
   });
 });
 
 describe("LiveTradingPage — confirmation dialog before live mode", () => {
-  it("opens confirmation dialog when dry-run is toggled off", async () => {
-    render(<LiveTradingPage />);
-    const dryRunSwitch = document.getElementById("dry-run") as HTMLInputElement;
-    expect(dryRunSwitch).not.toBeNull();
+  async function clickLiveButton() {
+    // Find and click the "Live" mode button to trigger the confirmation dialog
+    const liveButton = screen.getByRole("button", { name: /^Live$/i });
+    await userEvent.click(liveButton);
+  }
 
-    // Toggle off (unchecking dry-run = enable live)
-    await userEvent.click(dryRunSwitch);
+  it("opens confirmation dialog when Live mode is selected", async () => {
+    render(<LiveTradingPage />);
+    await clickLiveButton();
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -175,8 +185,7 @@ describe("LiveTradingPage — confirmation dialog before live mode", () => {
 
   it("does NOT switch to live mode if Cancel is clicked", async () => {
     render(<LiveTradingPage />);
-    const dryRunSwitch = document.getElementById("dry-run") as HTMLInputElement;
-    await userEvent.click(dryRunSwitch);
+    await clickLiveButton();
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -192,8 +201,7 @@ describe("LiveTradingPage — confirmation dialog before live mode", () => {
 
   it("enables live mode and shows LIVE banner when confirmed", async () => {
     render(<LiveTradingPage />);
-    const dryRunSwitch = document.getElementById("dry-run") as HTMLInputElement;
-    await userEvent.click(dryRunSwitch);
+    await clickLiveButton();
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -210,8 +218,7 @@ describe("LiveTradingPage — confirmation dialog before live mode", () => {
 
   it("shows LIVE MODE warning toast when confirmed", async () => {
     render(<LiveTradingPage />);
-    const dryRunSwitch = document.getElementById("dry-run") as HTMLInputElement;
-    await userEvent.click(dryRunSwitch);
+    await clickLiveButton();
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -230,8 +237,7 @@ describe("LiveTradingPage — confirmation dialog before live mode", () => {
 
   it("shows destructive execute button when live mode is enabled", async () => {
     render(<LiveTradingPage />);
-    const dryRunSwitch = document.getElementById("dry-run") as HTMLInputElement;
-    await userEvent.click(dryRunSwitch);
+    await clickLiveButton();
 
     await waitFor(() => screen.getByRole("dialog"));
     await userEvent.click(

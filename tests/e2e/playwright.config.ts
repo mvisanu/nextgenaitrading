@@ -14,6 +14,9 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 const API_URL = process.env.PLAYWRIGHT_API_URL ?? "http://localhost:8000";
 
 export default defineConfig({
+  // ── Global setup (runs once before all tests) ─────────────────────────────
+  globalSetup: "./global-setup",
+
   // ── Discovery ──────────────────────────────────────────────────────────────
   testDir: "./specs",
   fullyParallel: false,   // single worker — shares one DB; avoids cross-test pollution
