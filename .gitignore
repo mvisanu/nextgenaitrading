@@ -52,6 +52,10 @@ docker-compose.override.yml
 # Keep migrations, ignore generated SQL dumps
 *.sql
 
+# ── Playwright ────────────────────────────────────────────────────────────────
+tests/e2e/playwright-report/
+tests/test-results/
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 *.log
 error.txt

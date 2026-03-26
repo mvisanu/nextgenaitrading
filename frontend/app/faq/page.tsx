@@ -130,12 +130,23 @@ function FAQ({
 
 // ─── HTML helper (for translated strings with markup) ────────────────────────
 
+function sanitize(dirty: string): string {
+  // Lazy-load DOMPurify only on client to keep SSR safe
+  if (typeof window === "undefined") return dirty;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const DOMPurify = require("isomorphic-dompurify");
+  return DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: ["strong", "span", "em", "br", "code"],
+    ALLOWED_ATTR: ["class"],
+  });
+}
+
 function Html({ html }: { html: string }) {
-  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+  return <span dangerouslySetInnerHTML={{ __html: sanitize(html) }} />;
 }
 
 function HtmlP({ html }: { html: string }) {
-  return <p dangerouslySetInnerHTML={{ __html: html }} />;
+  return <p dangerouslySetInnerHTML={{ __html: sanitize(html) }} />;
 }
 
 // ─── Comparison Table ────────────────────────────────────────────────────────
@@ -1011,6 +1022,10 @@ export default function FAQPage() {
 
             <FAQ q={tr("faqScreenerTA", lang)}>
               <HtmlP html={tr("faqScreenerTAAnswer", lang)} />
+            </FAQ>
+
+            <FAQ q={tr("faqBbSqueeze", lang)}>
+              <HtmlP html={tr("faqBbSqueezeAnswer", lang)} />
             </FAQ>
           </div>
         </Section>
