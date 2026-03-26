@@ -64,7 +64,9 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const hasSession = !!user;
+  // Also accept dev_token cookie for local development (set via /test/token)
+  const devToken = request.cookies.get("dev_token")?.value;
+  const hasSession = !!user || !!devToken;
 
   // Redirect authenticated users away from auth pages
   if (

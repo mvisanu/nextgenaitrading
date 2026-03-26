@@ -193,6 +193,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 | Cross-origin auth (Vercel ↔ Render) | Replaced by Supabase Auth (see below) |
 | Mobile responsiveness | Complete — all pages phone-friendly (hamburger menus, scrollable tables, responsive grids) |
 | Supabase Auth migration | Complete — magic link login, Bearer token API auth, backend JWT verification, auto-provisioning |
+| Supabase Auth E2E tests (48 cases) | Written in `tests/e2e/specs/supabase-auth.spec.ts`; covers magic link forms, route protection, Bearer token 401s, legacy endpoint removal, callback error handling |
 
 ### Running E2E Tests
 ```bash
@@ -375,6 +376,7 @@ Replaced password-based JWT auth with Supabase Auth magic links (passwordless):
 - **`backend/app/core/config.py`**: Added `supabase_url`, `supabase_anon_key`, `supabase_jwt_secret`, `supabase_service_role_key`
 - **`AUTH.md`**: Documents the complete Supabase auth flow, setup steps, and env vars
 - **Packages added**: `@supabase/ssr`, `@supabase/supabase-js` (frontend)
+- **`tests/e2e/specs/supabase-auth.spec.ts`** (NEW): 48 E2E tests covering AUTH.md — magic link forms (no password fields), route protection (10 protected routes), Bearer token 401s, auth callback error handling, legacy endpoint removal (register/login/refresh/logout → 404), navigation links, validation errors, callbackUrl param, educational disclaimers
 
 ### Git Status
 All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25. Webull-style dashboard timeline (bottom period bar + intraday time axis fix) added 2026-03-26. Supabase Auth migration added 2026-03-26 — uncommitted.

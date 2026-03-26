@@ -70,9 +70,11 @@ const BASE_URL =
 // ─── Low-level fetch wrapper ──────────────────────────────────────────────────
 
 /**
- * Get the current Supabase access token for API calls.
+ * Get the current access token for API calls.
+ * Checks Supabase session first, then falls back to dev token cookie.
  */
 async function getAuthHeaders(): Promise<Record<string, string>> {
+  // 1. Try Supabase session
   try {
     const supabase = getSupabaseBrowserClient();
     const {
@@ -84,6 +86,15 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   } catch {
     // No session available
   }
+
+  // 2. Fall back to dev token (set by /test/token dev login)
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(/(?:^|;\s*)dev_token=([^;]+)/);
+    if (match) {
+      return { Authorization: `Bearer ${decodeURIComponent(match[1])}` };
+    }
+  }
+
   return {};
 }
 
@@ -167,23 +178,52 @@ function del<T>(path: string): Promise<T> {
 
 export const authApi = {
   me: async (): Promise<UserResponse | null> => {
-    const supabase = getSupabaseBrowserClient();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error || !user) return null;
-    return {
-      id: user.id,
-      email: user.email ?? "",
-      is_active: true,
-      created_at: user.created_at,
-    };
+    // Try Supabase session first
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (!error && user) {
+        return {
+          id: user.id,
+          email: user.email ?? "",
+          is_active: true,
+          created_at: user.created_at,
+        };
+      }
+    } catch {
+      // Fall through to dev token
+    }
+
+    // Fall back to dev token — fetch from backend /auth/me
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(/(?:^|;\s*)dev_token=([^;]+)/);
+      if (match) {
+        try {
+          const res = await fetch(`${BASE_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${decodeURIComponent(match[1])}` },
+          });
+          if (res.ok) {
+            return await res.json();
+          }
+        } catch {
+          // Token expired or invalid
+        }
+      }
+    }
+
+    return null;
   },
 
   logout: async (): Promise<{ ok: boolean }> => {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
+    // Also clear dev token
+    if (typeof document !== "undefined") {
+      document.cookie = "dev_token=; path=/; max-age=0; SameSite=Lax";
+    }
     return { ok: true };
   },
 };

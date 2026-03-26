@@ -21,6 +21,9 @@ import { getErrorMessage } from "@/lib/utils";
 import { Loader2, Zap, Mail, CheckCircle } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const IS_DEV = process.env.NODE_ENV === "development";
+
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
@@ -34,6 +37,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -41,6 +45,33 @@ export default function LoginPage() {
 
   const [isPending, setIsPending] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  // Dev login: bypass magic link by using /test/token endpoint
+  async function handleDevLogin() {
+    const email = getValues("email") || "dev@nextgenstock.io";
+    setIsPending(true);
+    setLoginError(null);
+    try {
+      const res = await fetch(`${API_BASE}/test/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `Dev login failed: ${res.status}`);
+      }
+      const { access_token } = await res.json();
+      // Store as cookie so middleware and api client can read it
+      document.cookie = `dev_token=${encodeURIComponent(access_token)}; path=/; max-age=3600; SameSite=Lax`;
+      // Full page reload to clear stale auth query cache
+      window.location.href = "/dashboard";
+    } catch (err) {
+      setLoginError((err as Error).message);
+    } finally {
+      setIsPending(false);
+    }
+  }
 
   async function onSubmit(values: LoginFormValues) {
     setIsPending(true);
@@ -170,6 +201,18 @@ export default function LoginPage() {
                 )}
                 Send magic link
               </Button>
+
+              {IS_DEV && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-dashed border-yellow-500 text-yellow-600 hover:bg-yellow-50"
+                  disabled={isPending}
+                  onClick={handleDevLogin}
+                >
+                  Dev Login (skip magic link)
+                </Button>
+              )}
             </form>
           </CardContent>
 
