@@ -110,6 +110,7 @@ export default function ArtifactsPage() {
               to generate one.
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -263,6 +264,7 @@ export default function ArtifactsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

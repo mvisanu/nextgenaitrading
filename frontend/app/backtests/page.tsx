@@ -186,6 +186,7 @@ export default function BacktestsPage() {
               No backtests yet. Run your first backtest above.
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -275,6 +276,7 @@ export default function BacktestsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

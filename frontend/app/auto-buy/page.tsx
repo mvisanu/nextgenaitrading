@@ -576,7 +576,7 @@ export default function AutoBuyPage() {
             {logLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : filteredLog.length === 0 ? (
-              <div>
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

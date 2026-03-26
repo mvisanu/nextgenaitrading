@@ -116,6 +116,7 @@ export default function BacktestDetailPage({ params }: PageProps) {
                 <CardTitle className="text-sm">Trades ({trades.length})</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -142,6 +143,7 @@ export default function BacktestDetailPage({ params }: PageProps) {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -153,6 +155,7 @@ export default function BacktestDetailPage({ params }: PageProps) {
                 <CardTitle className="text-sm">Variant Leaderboard</CardTitle>
               </CardHeader>
               <CardContent>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -185,6 +188,7 @@ export default function BacktestDetailPage({ params }: PageProps) {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           )}

@@ -4,8 +4,10 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } fr
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff, PanelRightClose, PanelRightOpen, ChevronUp, Crosshair, Lightbulb, BarChart4, Activity } from "lucide-react";
+import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff, PanelRightClose, PanelRightOpen, ChevronUp, Crosshair, Lightbulb, BarChart4, Activity, Menu } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/layout/AppShell";
 import { PriceChart, type DrawingMode, type ChartClickPoint } from "@/components/charts/PriceChart";
 import { detectFVGs, type DrawingData, type TrendLineData, type FVGData, type DrawingPoint } from "@/components/charts/DrawingPrimitives";
@@ -699,6 +701,7 @@ function DashboardContent() {
 
   // ── Panel & drawing tools state ─────────────────────────────────────────
   const [showWatchlist, setShowWatchlist] = useState(true);
+  const [mobileWatchlistOpen, setMobileWatchlistOpen] = useState(false);
   const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
   const [drawings, setDrawings] = useState<DrawingData[]>([]);
   const [pendingPoint, setPendingPoint] = useState<DrawingPoint | null>(null);
@@ -854,7 +857,20 @@ function DashboardContent() {
       <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[padding] duration-200 ${sidebarPinned ? "lg:pl-[200px]" : "lg:pl-12"}`}>
 
         {/* ── Top toolbar (40px) ────────────────────────────────────────── */}
-        <header className="flex h-10 shrink-0 items-center border-b border-border bg-secondary px-2 gap-1 z-20">
+        <header className="flex h-10 shrink-0 items-center border-b border-border bg-secondary px-2 gap-1 z-20 overflow-x-auto">
+          {/* Mobile menu hamburger */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="lg:hidden h-7 w-7 shrink-0">
+                <Menu className="h-4 w-4" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[200px] p-0">
+              <Sidebar />
+            </SheetContent>
+          </Sheet>
+
           {/* Symbol search */}
           <SymbolSearch currentSymbol={symbol} onSelect={handleSelectSymbol} watchlistItems={allItems} />
 
@@ -865,7 +881,7 @@ function DashboardContent() {
           <IntervalDropdown selected={interval} onSelect={setInterval} />
 
           {/* Quick-access interval buttons */}
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="hidden sm:flex items-center gap-0.5 shrink-0">
             {QUICK_INTERVALS.map((qi) => {
               const opt = ALL_INTERVALS.find(
                 (i) => i.shortLabel === qi || i.value === qi
@@ -891,19 +907,19 @@ function DashboardContent() {
           {/* Divider */}
           <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
 
-          {/* Indicators button */}
-          <button className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0">
+          {/* Indicators button — hidden on mobile */}
+          <button className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0">
             <span>Indicators</span>
           </button>
 
-          {/* Alert button */}
-          <button className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0">
+          {/* Alert button — hidden on mobile */}
+          <button className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0">
             <Bell className="h-3.5 w-3.5" />
             <span>Alert</span>
           </button>
 
-          {/* Divider */}
-          <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
+          {/* Divider — hidden on mobile */}
+          <div className="hidden sm:block w-px h-5 bg-border mx-0.5 shrink-0" />
 
           {/* Drawing tools toggle */}
           <button
@@ -917,7 +933,7 @@ function DashboardContent() {
             )}
           >
             <TrendingUp className="h-3.5 w-3.5" />
-            <span>Draw</span>
+            <span className="hidden sm:inline">Draw</span>
             <ChevronDown className="h-3 w-3" />
           </button>
 
@@ -1029,13 +1045,22 @@ function DashboardContent() {
             )}
           </button>
 
-          {/* Watchlist panel toggle */}
+          {/* Watchlist panel toggle — desktop */}
           <button
             onClick={() => setShowWatchlist((v) => !v)}
             title={showWatchlist ? "Hide watchlist" : "Show watchlist"}
-            className="flex items-center justify-center h-7 w-7 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0"
+            className="hidden md:flex items-center justify-center h-7 w-7 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0"
           >
             {showWatchlist ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+          </button>
+
+          {/* Watchlist toggle — mobile (opens as bottom sheet) */}
+          <button
+            onClick={() => setMobileWatchlistOpen(true)}
+            title="Watchlist"
+            className="md:hidden flex items-center justify-center h-7 w-7 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0"
+          >
+            <PanelRightOpen className="h-4 w-4" />
           </button>
 
           {/* Settings icon */}
@@ -1057,7 +1082,7 @@ function DashboardContent() {
           <div className="flex flex-col flex-1 min-w-0 border-r border-border">
 
             {/* OHLCV header bar */}
-            <div className="flex items-center gap-3 px-3 h-8 shrink-0 border-b border-border bg-card/50 text-[11px] font-mono">
+            <div className="flex items-center gap-3 px-3 h-8 shrink-0 border-b border-border bg-card/50 text-[11px] font-mono overflow-x-auto">
               <span className="text-foreground font-semibold">
                 {chartSymbol} · {interval.shortLabel} · CRYPTOCAP
               </span>
@@ -1120,9 +1145,9 @@ function DashboardContent() {
             </div>
           </div>
 
-          {/* ── Watchlist panel (~25%, 320px) ───────────────────────────── */}
+          {/* ── Watchlist panel (~25%, 320px on desktop, full-width overlay on mobile) ── */}
           {showWatchlist && <div
-            className="flex flex-col shrink-0 bg-card overflow-hidden"
+            className="hidden md:flex flex-col shrink-0 bg-card overflow-hidden"
             style={{ width: 320 }}
           >
             {/* Panel header with column labels + edit toggle */}
@@ -1203,6 +1228,51 @@ function DashboardContent() {
           <DashboardUserStatus />
         </div>
       </div>
+
+      {/* ── Mobile watchlist sheet ──────────────────────────────────────── */}
+      <Sheet open={mobileWatchlistOpen} onOpenChange={setMobileWatchlistOpen}>
+        <SheetContent side="right" className="w-[300px] p-0 md:hidden">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center px-2 h-8 shrink-0 border-b border-border bg-secondary/50">
+              <span className="text-[11px] font-semibold text-foreground flex-1">Watchlist</span>
+              <button
+                onClick={() => setIsEditingWatchlist((v) => !v)}
+                className={cn(
+                  "mr-2 transition-colors",
+                  isEditingWatchlist ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {isEditingWatchlist ? <Check className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <WatchlistSection
+                title="Indices" items={watchlist.indices} selectedSymbol={symbol}
+                isEditing={isEditingWatchlist} onSelect={(s) => { handleSelectSymbol(s); setMobileWatchlistOpen(false); }}
+                onRemove={removeFromWatchlist} onAdd={(sym) => addToWatchlist("indices", sym)}
+              />
+              <WatchlistSection
+                title="Stocks" items={watchlist.stocks} selectedSymbol={symbol}
+                isEditing={isEditingWatchlist} onSelect={(s) => { handleSelectSymbol(s); setMobileWatchlistOpen(false); }}
+                onRemove={removeFromWatchlist} onAdd={(sym) => addToWatchlist("stocks", sym)}
+              />
+              <WatchlistSection
+                title="Crypto" items={watchlist.crypto} selectedSymbol={symbol}
+                isEditing={isEditingWatchlist} onSelect={(s) => { handleSelectSymbol(s); setMobileWatchlistOpen(false); }}
+                onRemove={removeFromWatchlist} onAdd={(sym) => addToWatchlist("crypto", sym)}
+              />
+              {(watchlist.custom.length > 0 || isEditingWatchlist) && (
+                <WatchlistSection
+                  title="Custom" items={watchlist.custom} selectedSymbol={symbol}
+                  isEditing={isEditingWatchlist} onSelect={(s) => { handleSelectSymbol(s); setMobileWatchlistOpen(false); }}
+                  onRemove={removeFromWatchlist} onAdd={(sym) => addToWatchlist("custom", sym)}
+                />
+              )}
+            </div>
+            <SymbolDetail item={selectedItem} />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

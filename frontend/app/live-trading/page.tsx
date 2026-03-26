@@ -809,6 +809,7 @@ export default function LiveTradingPage() {
                 No open paper positions — execute a paper trade above
               </p>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -853,6 +854,7 @@ export default function LiveTradingPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CollapsibleSection>
 
@@ -864,6 +866,7 @@ export default function LiveTradingPage() {
               open={paperHistoryOpen}
               onToggle={() => setPaperHistoryOpen(!paperHistoryOpen)}
             >
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -911,6 +914,7 @@ export default function LiveTradingPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </CollapsibleSection>
           )}
         </>
@@ -937,6 +941,7 @@ export default function LiveTradingPage() {
             No open positions
           </p>
         ) : (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -973,6 +978,7 @@ export default function LiveTradingPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </CollapsibleSection>
       )}
@@ -992,6 +998,7 @@ export default function LiveTradingPage() {
             No orders yet
           </p>
         ) : (
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1038,6 +1045,7 @@ export default function LiveTradingPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </CollapsibleSection>
       )}
