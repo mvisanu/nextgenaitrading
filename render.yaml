@@ -1,0 +1,101 @@
+# render.yaml — Render Blueprint for NextGenStock backend.
+# Commit to repo root. In the Render dashboard choose New > Blueprint
+# and point it at this repo — all settings below will be pre-filled.
+#
+# All variables marked sync: false MUST be set manually in the Render
+# dashboard after the Blueprint is applied. Never hardcode secrets here.
+
+services:
+  - type: web
+    name: nextgenstock-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+
+    # Starter plan ($7/mo) — never sleeps.
+    # Free tier sleeps after 15 min inactivity and kills APScheduler.
+    plan: starter
+
+    # Match this to your Supabase database region for lowest latency.
+    # Options: oregon, frankfurt, singapore, ohio
+    region: oregon
+
+    branch: main
+
+    # Render marks the service healthy only when this returns HTTP 200.
+    healthCheckPath: /healthz
+
+    # Auto-deploy on every push to main.
+    autoDeploy: true
+
+    envVars:
+      # ── Database ──────────────────────────────────────────────────────────
+      # Use Supabase connection POOLER string (port 6543, Transaction mode).
+      # Format: postgresql+asyncpg://<user>:<pass>@<pooler-host>:6543/<db>?ssl=require
+      # NOTE: for alembic migrations (run locally), use the DIRECT string
+      # (port 5432) instead — the pooler breaks migration state tracking.
+      - key: DATABASE_URL
+        sync: false
+
+      # Connection pool — Supabase free tier allows 60 total connections.
+      # 1 Render instance × (5 pool + 5 overflow) = 10 max. Safe.
+      - key: POOL_SIZE
+        value: "5"
+      - key: MAX_OVERFLOW
+        value: "5"
+
+      # ── Authentication ────────────────────────────────────────────────────
+      # Generate: python -c "import secrets; print(secrets.token_hex(64))"
+      - key: SECRET_KEY
+        sync: false
+
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "15"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+
+      # ── Encryption ────────────────────────────────────────────────────────
+      # Generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: ENCRYPTION_KEY
+        sync: false
+
+      # ── CORS ──────────────────────────────────────────────────────────────
+      # Set to your Vercel production URL after the frontend is deployed.
+      # Comma-separate multiple origins if using a custom domain, e.g.:
+      #   https://myapp.vercel.app,https://www.yourdomain.com
+      - key: CORS_ORIGINS
+        sync: false
+
+      # ── Cookies ───────────────────────────────────────────────────────────
+      # MUST be true in production — browsers reject HttpOnly cookies on
+      # non-HTTPS origins when Secure flag is absent.
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: lax
+
+      # ── Debug ─────────────────────────────────────────────────────────────
+      # false = Swagger/Redoc disabled, strict CORS enforced.
+      - key: DEBUG
+        value: "false"
+
+      # ── Broker URLs ───────────────────────────────────────────────────────
+      - key: ALPACA_BASE_URL
+        value: https://api.alpaca.markets
+      - key: ALPACA_PAPER_URL
+        value: https://paper-api.alpaca.markets
+
+      # ── Scheduler ─────────────────────────────────────────────────────────
+      # APScheduler runs in-process. Keep Render instance count at 1 to
+      # avoid duplicate job execution across instances.
+      - key: SCHEDULER_ENABLE
+        value: "true"
+
+      # ── Notifications ─────────────────────────────────────────────────────
+      # Enable only after configuring SMTP / webhook credentials.
+      - key: NOTIFICATION_EMAIL_ENABLED
+        value: "false"
+      - key: NOTIFICATION_WEBHOOK_ENABLED
+        value: "false"
