@@ -35,6 +35,9 @@ def _get_session_factory() -> async_sessionmaker[AsyncSession]:
             max_overflow=settings.max_overflow,
             pool_recycle=3600,    # recycle connections older than 1 h — prevents stale-socket hangs
             pool_timeout=30,      # raise after 30 s if no connection is available
+            # Disable asyncpg prepared statement cache — required when Supabase
+            # routes connections through pgbouncer (transaction/statement mode).
+            connect_args={"statement_cache_size": 0},
         )
         _session_factory = async_sessionmaker(
             bind=_async_engine,
