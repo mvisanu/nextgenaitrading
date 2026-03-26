@@ -123,7 +123,7 @@ class SignalCheckOut(BaseModel):
 
 class BollingerOverlayBar(BaseModel):
     """Single bar of Bollinger Band overlay data for the chart."""
-    time: str
+    time: str | int
     upper: float
     lower: float
     middle: float

@@ -9,8 +9,12 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/layout/AppShell";
-import { PriceChart, type DrawingMode, type ChartClickPoint } from "@/components/charts/PriceChart";
+import { PriceChart, type DrawingMode, type ChartClickPoint, type MAOverlay } from "@/components/charts/PriceChart";
 import { detectFVGs, type DrawingData, type TrendLineData, type FVGData, type DrawingPoint } from "@/components/charts/DrawingPrimitives";
+import { MACDChart } from "@/components/charts/MACDChart";
+import { RSIChart } from "@/components/charts/RSIChart";
+import { NewsPanel } from "@/components/dashboard/NewsPanel";
+import { computeSMA, computeMACD, computeRSI } from "@/lib/indicators";
 import { liveApi, strategyApi } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
 import { useSidebarPinned } from "@/lib/sidebar";
@@ -40,7 +44,9 @@ const INTERVAL_GROUPS: IntervalGroup[] = [
     items: [
       { label: "1 minute",    value: "1m",  shortLabel: "1m"  },
       { label: "2 minutes",   value: "2m",  shortLabel: "2m"  },
+      { label: "3 minutes",   value: "3m",  shortLabel: "3m"  },
       { label: "5 minutes",   value: "5m",  shortLabel: "5m"  },
+      { label: "10 minutes",  value: "10m", shortLabel: "10m" },
       { label: "15 minutes",  value: "15m", shortLabel: "15m" },
       { label: "30 minutes",  value: "30m", shortLabel: "30m" },
     ],
@@ -48,10 +54,9 @@ const INTERVAL_GROUPS: IntervalGroup[] = [
   {
     title: "HOURS",
     items: [
-      { label: "1 hour",   value: "1h", shortLabel: "1H" },
-      { label: "2 hours",  value: "2h", shortLabel: "2H" },
-      { label: "3 hours",  value: "3h", shortLabel: "3H" },
-      { label: "4 hours",  value: "4h", shortLabel: "4H" },
+      { label: "1 hour",   value: "1h", shortLabel: "1h" },
+      { label: "2 hours",  value: "2h", shortLabel: "2h" },
+      { label: "4 hours",  value: "4h", shortLabel: "4h" },
     ],
   },
   {
@@ -67,9 +72,27 @@ const INTERVAL_GROUPS: IntervalGroup[] = [
 const ALL_INTERVALS = INTERVAL_GROUPS.flatMap((g) => g.items);
 const DEFAULT_INTERVAL = ALL_INTERVALS.find((i) => i.value === "1d")!;
 
-// Quick-access interval buttons shown in the toolbar
-const QUICK_INTERVALS = ["1m", "5m", "15m", "1h", "4h", "1D", "1W"];
+// Webull-style inline interval buttons (shown in toolbar)
+const INLINE_INTERVALS = ["1m", "2m", "3m", "5m", "10m", "15m", "30m", "1h", "2h", "4h"];
 
+
+// Webull-style period range buttons (bottom bar below chart)
+interface PeriodRange {
+  label: string;
+  interval: string; // maps to a candle interval
+}
+
+const PERIOD_RANGES: PeriodRange[] = [
+  { label: "1D",  interval: "5m"  },
+  { label: "5D",  interval: "15m" },
+  { label: "1M",  interval: "1h"  },
+  { label: "3M",  interval: "1d"  },
+  { label: "6M",  interval: "1d"  },
+  { label: "YTD", interval: "1d"  },
+  { label: "1Y",  interval: "1d"  },
+  { label: "5Y",  interval: "1wk" },
+  { label: "Max", interval: "1mo" },
+];
 
 // Common yfinance symbol suggestions for search autocomplete
 const POPULAR_SYMBOLS = [
@@ -105,6 +128,7 @@ function PriceChartFill({
   drawings,
   onChartClick,
   bollingerData,
+  maOverlays,
 }: {
   data: CandleBar[];
   theme: "dark" | "light";
@@ -112,6 +136,7 @@ function PriceChartFill({
   drawings?: DrawingData[];
   onChartClick?: (point: ChartClickPoint) => void;
   bollingerData?: import("@/types").BollingerOverlayBar[];
+  maOverlays?: MAOverlay[];
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(400);
@@ -136,12 +161,13 @@ function PriceChartFill({
         drawings={drawings}
         onChartClick={onChartClick}
         bollingerData={bollingerData}
+        maOverlays={maOverlays}
       />
     </div>
   );
 }
 
-// Single watchlist row
+// Webull-style watchlist row — two-line layout with symbol/name on left, price/change on right
 function WatchlistRow({
   item,
   isSelected,
@@ -161,50 +187,44 @@ function WatchlistRow({
   return (
     <div
       className={cn(
-        "group flex items-center w-full px-2 text-left transition-colors cursor-pointer",
-        "hover:bg-secondary/60",
-        isSelected && "bg-secondary"
+        "group flex items-center w-full px-3 text-left transition-colors cursor-pointer border-b border-border/30",
+        "hover:bg-secondary/50",
+        isSelected && "bg-primary/5 border-l-2 border-l-primary"
       )}
-      style={{ height: 28 }}
+      style={{ minHeight: 48 }}
       onClick={onClick}
     >
-      {/* Delete button (visible in edit mode or on hover) */}
-      {isEditing ? (
+      {/* Delete button */}
+      {isEditing && (
         <button
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="shrink-0 mr-1 text-red-400 hover:text-red-300 transition-colors"
+          className="shrink-0 mr-2 text-red-400 hover:text-red-300 transition-colors"
           title="Remove"
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
-      ) : (
-        <span
-          className="shrink-0 rounded-full mr-1.5"
-          style={{ width: 8, height: 8, background: item.color }}
-        />
       )}
-      {/* Symbol */}
-      <span className="font-mono font-semibold text-[11px] text-foreground w-[52px] truncate shrink-0">
-        {item.symbol}
-      </span>
-      {/* Price */}
-      <span className="font-mono text-[11px] text-foreground ml-auto shrink-0 tabular-nums">
-        {formatPrice(item.price, item.symbol)}
-      </span>
-      {/* Change */}
-      <span
-        className="font-mono text-[11px] ml-1.5 shrink-0 tabular-nums w-[42px] text-right"
-        style={{ color: changeColor }}
-      >
-        {formatChange(item.change)}
-      </span>
-      {/* Change % */}
-      <span
-        className="font-mono text-[11px] ml-1.5 shrink-0 tabular-nums w-[44px] text-right"
-        style={{ color: changeColor }}
-      >
-        {positive ? "+" : ""}{item.changePct.toFixed(2)}%
-      </span>
+      {/* Left side: symbol + name */}
+      <div className="flex-1 min-w-0 py-1.5">
+        <div className="font-mono font-bold text-[13px] text-foreground truncate">
+          {item.symbol}
+        </div>
+        <div className="text-[10px] text-muted-foreground truncate leading-tight">
+          {item.name}
+        </div>
+      </div>
+      {/* Right side: price + change */}
+      <div className="text-right shrink-0 ml-2 py-1.5">
+        <div className="font-mono font-semibold text-[13px] text-foreground tabular-nums">
+          {formatPrice(item.price, item.symbol)}
+        </div>
+        <div
+          className="font-mono text-[10px] tabular-nums leading-tight"
+          style={{ color: changeColor }}
+        >
+          {formatChange(item.change)} {positive ? "+" : ""}{item.changePct.toFixed(2)}%
+        </div>
+      </div>
     </div>
   );
 }
@@ -321,37 +341,64 @@ function WatchlistSection({
   );
 }
 
-// Symbol detail panel at the bottom of the watchlist
-function SymbolDetail({ item }: { item: WatchlistItem }) {
+// Webull-style quote panel at the top of watchlist sidebar
+function QuotePanel({ item, lastCandle }: { item: WatchlistItem; lastCandle?: CandleBar }) {
   const positive = item.change >= 0;
   const changeColor = positive ? "#26a69a" : "#ef5350";
 
   return (
-    <div className="border-t border-border p-3 shrink-0">
-      <div className="flex items-baseline gap-2 mb-1">
-        <span
-          className="inline-block rounded-full mr-1"
-          style={{ width: 10, height: 10, background: item.color, flexShrink: 0 }}
-        />
+    <div className="border-b border-border px-4 py-3 shrink-0">
+      {/* Symbol + name */}
+      <div className="flex items-center gap-2 mb-1">
         <span className="font-mono font-bold text-sm text-foreground">{item.symbol}</span>
         <span className="text-[11px] text-muted-foreground truncate">{item.name}</span>
       </div>
 
-      <div className="font-mono font-bold text-xl text-foreground tabular-nums">
-        {formatPrice(item.price, item.symbol)}{" "}
-        <span className="text-xs font-normal text-muted-foreground">USD</span>
+      {/* Large price */}
+      <div className="font-mono font-bold text-3xl tabular-nums leading-tight" style={{ color: changeColor }}>
+        {formatPrice(item.price, item.symbol)}
       </div>
 
-      <div className="flex items-center gap-2 mt-0.5">
-        <span className="font-mono text-xs tabular-nums" style={{ color: changeColor }}>
-          {formatChange(item.change)} ({positive ? "+" : ""}{item.changePct.toFixed(2)}%)
+      {/* Change + pct */}
+      <div className="flex items-center gap-1.5 mt-0.5">
+        <span className="font-mono text-sm font-semibold tabular-nums" style={{ color: changeColor }}>
+          {formatChange(item.change)}
+        </span>
+        <span className="font-mono text-sm tabular-nums" style={{ color: changeColor }}>
+          {positive ? "+" : ""}{item.changePct.toFixed(2)}%
         </span>
       </div>
 
-      <div className="flex items-center gap-1.5 mt-2">
-        <span className="inline-block h-2 w-2 rounded-full bg-[#26a69a] shrink-0" />
-        <span className="text-[11px] text-muted-foreground">Market open</span>
-      </div>
+      {/* Key Statistics */}
+      {lastCandle && (
+        <div className="mt-3 pt-2 border-t border-border/50">
+          <div className="text-[11px] font-semibold text-foreground mb-1.5">Key Statistics</div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Open</span>
+              <span className="text-foreground tabular-nums">{lastCandle.open.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">High</span>
+              <span className="text-foreground tabular-nums">{lastCandle.high.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Low</span>
+              <span className="text-foreground tabular-nums">{lastCandle.low.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Close</span>
+              <span className="text-foreground tabular-nums">{lastCandle.close.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            {lastCandle.volume !== undefined && (
+              <div className="flex justify-between col-span-2">
+                <span className="text-muted-foreground">Volume</span>
+                <span className="text-foreground tabular-nums">{lastCandle.volume.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -708,9 +755,17 @@ function DashboardContent() {
   const [pendingPoint, setPendingPoint] = useState<DrawingPoint | null>(null);
   const [showFVG, setShowFVG] = useState(false);
   const [showBollinger, setShowBollinger] = useState(false);
+  const [showMA, setShowMA] = useState(false);
+  const [showMACD, setShowMACD] = useState(false);
+  const [showRSI, setShowRSI] = useState(false);
   const [showDrawings, setShowDrawings] = useState(true);
   const [showDrawingTools, setShowDrawingTools] = useState(false);
+  const [showNews, setShowNews] = useState(true);
+  const [newsMaximized, setNewsMaximized] = useState(false);
   const [mobileDrawingOpen, setMobileDrawingOpen] = useState(false);
+  // Bottom timeline bar state
+  const [activePeriod, setActivePeriod] = useState<string | null>(null);
+  const [chartScale, setChartScale] = useState<"linear" | "log">("linear");
 
   const DRAWING_STORAGE_KEY = "ngs-drawings";
 
@@ -795,13 +850,28 @@ function DashboardContent() {
     });
   }, []);
 
+  // Period range selection — sets the interval and marks the active period
+  const handlePeriodSelect = useCallback((period: PeriodRange) => {
+    setActivePeriod(period.label);
+    const opt = ALL_INTERVALS.find((i) => i.value === period.interval);
+    if (opt) setInterval(opt);
+  }, []);
+
+  // Clear active period when user manually picks an interval from top bar
+  const handleIntervalSelect = useCallback((opt: IntervalOption) => {
+    setActivePeriod(null);
+    setInterval(opt);
+  }, []);
+
   // Chart loads whatever symbol the user typed — no restriction
   const chartSymbol = symbol;
 
-  // Fetch candlestick data
+  // Fetch candlestick data — auto-refresh for live price ticking
   const { data: chartPayload, isLoading: chartLoading } = useQuery({
     queryKey: ["live", "chart-data", chartSymbol, interval.value, showBollinger],
     queryFn: () => liveApi.chartData(chartSymbol, interval.value, showBollinger),
+    refetchInterval: 30_000, // refresh every 30s for live price updates
+    staleTime: 15_000,
   });
 
   const candles = useMemo(() => chartPayload?.candles ?? [], [chartPayload]);
@@ -827,6 +897,40 @@ function DashboardContent() {
     if (!showDrawings) return autoFVGs;
     return [...drawings, ...autoFVGs];
   }, [drawings, autoFVGs, showDrawings]);
+
+  // ── Computed indicators ────────────────────────────────────────────
+  const closesForIndicators = useMemo(
+    () => candles.map((c) => ({ time: c.time, close: c.close })),
+    [candles]
+  );
+
+  const maOverlays = useMemo((): MAOverlay[] => {
+    if (!showMA || candles.length < 5) return [];
+    const MA_CONFIG: { period: number; color: string }[] = [
+      { period: 5, color: "#00BCD4" },    // cyan
+      { period: 10, color: "#FFEB3B" },   // yellow
+      { period: 20, color: "#E040FB" },   // magenta
+      { period: 50, color: "#66BB6A" },   // green
+      { period: 200, color: "#42A5F5" },  // blue
+    ];
+    return MA_CONFIG
+      .filter((m) => candles.length >= m.period)
+      .map((m) => ({
+        label: `MA${m.period}`,
+        data: computeSMA(closesForIndicators, m.period),
+        color: m.color,
+      }));
+  }, [showMA, candles, closesForIndicators]);
+
+  const macdData = useMemo(() => {
+    if (!showMACD || candles.length < 35) return [];
+    return computeMACD(closesForIndicators);
+  }, [showMACD, candles, closesForIndicators]);
+
+  const rsiData = useMemo(() => {
+    if (!showRSI || candles.length < 20) return [];
+    return computeRSI(closesForIndicators);
+  }, [showRSI, candles, closesForIndicators]);
 
   // Flatten for lookups
   const allItems = flattenWatchlist(watchlist);
@@ -879,12 +983,9 @@ function DashboardContent() {
           {/* Divider */}
           <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
 
-          {/* Interval dropdown */}
-          <IntervalDropdown selected={interval} onSelect={setInterval} />
-
-          {/* Quick-access interval buttons */}
-          <div className="hidden sm:flex items-center gap-0.5 shrink-0">
-            {QUICK_INTERVALS.map((qi) => {
+          {/* Webull-style inline interval buttons */}
+          <div className="hidden sm:flex items-center gap-0 shrink-0">
+            {INLINE_INTERVALS.map((qi) => {
               const opt = ALL_INTERVALS.find(
                 (i) => i.shortLabel === qi || i.value === qi
               );
@@ -892,26 +993,65 @@ function DashboardContent() {
               return (
                 <button
                   key={qi}
-                  onClick={() => setInterval(opt)}
+                  onClick={() => handleIntervalSelect(opt)}
                   className={cn(
-                    "px-2 py-0.5 rounded text-[11px] font-medium transition-colors",
-                    opt.value === interval.value
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                    "px-1.5 py-0.5 text-[12px] font-medium transition-colors",
+                    opt.value === interval.value && !activePeriod
+                      ? "text-primary font-bold"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {opt.shortLabel}
                 </button>
               );
             })}
+            {/* More intervals dropdown for 1D, 1W, 1M */}
+            <IntervalDropdown selected={interval} onSelect={handleIntervalSelect} />
+          </div>
+          {/* Mobile: just the dropdown */}
+          <div className="sm:hidden">
+            <IntervalDropdown selected={interval} onSelect={handleIntervalSelect} />
           </div>
 
           {/* Divider */}
           <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
 
-          {/* Indicators button — hidden on mobile */}
-          <button className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0">
-            <span>Indicators</span>
+          {/* Indicator toggles — hidden on mobile */}
+          <button
+            onClick={() => setShowMA((v) => !v)}
+            className={cn(
+              "hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+              showMA ? "bg-cyan-500/20 text-cyan-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+            )}
+          >
+            MA
+          </button>
+          <button
+            onClick={() => setShowMACD((v) => !v)}
+            className={cn(
+              "hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+              showMACD ? "bg-blue-500/20 text-blue-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+            )}
+          >
+            MACD
+          </button>
+          <button
+            onClick={() => setShowRSI((v) => !v)}
+            className={cn(
+              "hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+              showRSI ? "bg-purple-500/20 text-purple-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+            )}
+          >
+            RSI
+          </button>
+          <button
+            onClick={() => { setShowNews((v) => !v); setNewsMaximized(false); }}
+            className={cn(
+              "hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+              showNews ? "bg-amber-500/20 text-amber-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+            )}
+          >
+            News
           </button>
 
           {/* Alert button — hidden on mobile */}
@@ -1081,13 +1221,30 @@ function DashboardContent() {
         <div className="flex flex-1 min-h-0 overflow-hidden">
 
           {/* ── Chart panel (~75%) ───────────────────────────────────────── */}
-          <div className="flex flex-col flex-1 min-w-0 border-r border-border">
+          <div className="relative flex flex-col flex-1 min-w-0 border-r border-border">
 
-            {/* OHLCV header bar */}
+            {/* Price ticker + OHLCV header bar */}
             <div className="flex items-center gap-3 px-3 h-8 shrink-0 border-b border-border bg-card/50 text-[11px] font-mono overflow-x-auto">
-              <span className="text-foreground font-semibold">
-                {chartSymbol} · {interval.shortLabel} · CRYPTOCAP
+              <span className="text-primary font-bold text-[13px]">
+                {chartSymbol}
               </span>
+              {lastCandle && (
+                <span
+                  className="font-bold text-[13px] tabular-nums"
+                  style={{ color: isPositive ? "#26a69a" : "#ef5350" }}
+                >
+                  {formatPrice(lastCandle.close, chartSymbol)}
+                </span>
+              )}
+              {priceChange !== null && pricePct !== null && (
+                <span
+                  className="text-[11px] tabular-nums"
+                  style={{ color: isPositive ? "#26a69a" : "#ef5350" }}
+                >
+                  {isPositive ? "+" : ""}{priceChange.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {" "}{isPositive ? "+" : ""}{pricePct.toFixed(2)}%
+                </span>
+              )}
               {lastCandle && (
                 <>
                   <span className="text-muted-foreground">
@@ -1114,13 +1271,6 @@ function DashboardContent() {
                       {lastCandle.close.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </span>
-                  {priceChange !== null && pricePct !== null && (
-                    <span style={{ color: isPositive ? "#26a69a" : "#ef5350" }}>
-                      {isPositive ? "+" : ""}
-                      {priceChange.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      {" "}({isPositive ? "+" : ""}{pricePct.toFixed(2)}%)
-                    </span>
-                  )}
                 </>
               )}
               {chartLoading && (
@@ -1128,8 +1278,22 @@ function DashboardContent() {
               )}
             </div>
 
-            {/* Chart fills remaining height */}
-            <div className="flex-1 min-h-0">
+            {/* MA overlay labels */}
+            {showMA && maOverlays.length > 0 && (
+              <div className="flex items-center gap-3 px-3 h-5 shrink-0 bg-card/30 text-[10px] font-mono overflow-x-auto">
+                {maOverlays.map((ma) => {
+                  const lastVal = ma.data[ma.data.length - 1];
+                  return lastVal ? (
+                    <span key={ma.label} style={{ color: ma.color }}>
+                      {ma.label}:{lastVal.value.toFixed(2)}
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            )}
+
+            {/* Chart fills remaining height (minus sub-charts) */}
+            <div className="flex-1 min-h-0" style={{ minHeight: 200 }}>
               {chartLoading ? (
                 <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
                   Loading chart data...
@@ -1142,9 +1306,70 @@ function DashboardContent() {
                   drawings={allDrawings}
                   onChartClick={handleChartClick}
                   bollingerData={showBollinger ? (chartPayload?.bollinger ?? undefined) : undefined}
+                  maOverlays={showMA ? maOverlays : undefined}
                 />
               )}
             </div>
+
+            {/* ── Bottom timeline bar (Webull-style period range + chart options) ── */}
+            <div className="flex items-center h-8 shrink-0 border-t border-border bg-card/50 px-3 gap-1">
+              {/* Period range buttons: 1D, 5D, 1M, 3M, 6M, YTD, 1Y, 5Y, Max */}
+              <div className="flex items-center gap-0">
+                {PERIOD_RANGES.map((p) => (
+                  <button
+                    key={p.label}
+                    onClick={() => handlePeriodSelect(p)}
+                    className={cn(
+                      "px-2 py-0.5 text-[12px] font-medium transition-colors rounded-sm",
+                      activePeriod === p.label
+                        ? "text-primary font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Right-side chart options: Adj, Night, Ext, Linear/Log, Auto */}
+              <div className="hidden sm:flex items-center gap-0 text-[11px]">
+                <span className="px-1.5 py-0.5 text-muted-foreground/60 cursor-default">Adj.</span>
+                <span className="px-1.5 py-0.5 text-muted-foreground/60 cursor-default">Night</span>
+                <span className="px-1.5 py-0.5 text-muted-foreground/60 cursor-default">Ext.</span>
+                <button
+                  onClick={() => setChartScale((s) => s === "linear" ? "log" : "linear")}
+                  className={cn(
+                    "px-1.5 py-0.5 font-medium transition-colors",
+                    "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {chartScale === "linear" ? "Linear" : "Log"} ▾
+                </button>
+                <span className="px-1.5 py-0.5 text-muted-foreground/60 cursor-default">Auto</span>
+              </div>
+            </div>
+
+            {/* MACD sub-chart */}
+            {showMACD && macdData.length > 0 && !chartLoading && (
+              <MACDChart data={macdData} height={100} theme={theme} />
+            )}
+
+            {/* RSI sub-chart */}
+            {showRSI && rsiData.length > 0 && !chartLoading && (
+              <RSIChart data={rsiData} height={80} theme={theme} />
+            )}
+
+            {/* News panel */}
+            {showNews && (
+              <NewsPanel
+                ticker={chartSymbol}
+                isMaximized={newsMaximized}
+                onToggleMaximize={() => setNewsMaximized((v) => !v)}
+              />
+            )}
           </div>
 
           {/* ── Watchlist panel (~25%, 320px on desktop, full-width overlay on mobile) ── */}
@@ -1152,23 +1377,24 @@ function DashboardContent() {
             className="hidden md:flex flex-col shrink-0 bg-card overflow-hidden"
             style={{ width: 320 }}
           >
-            {/* Panel header with column labels + edit toggle */}
-            <div className="flex items-center px-2 h-8 shrink-0 border-b border-border bg-secondary/50">
-              <span className="text-[11px] font-semibold text-foreground flex-1">Watchlist</span>
+            {/* Quote panel — large price ticker */}
+            <QuotePanel item={selectedItem} lastCandle={lastCandle} />
+
+            {/* Watchlist header */}
+            <div className="flex items-center px-3 h-8 shrink-0 border-b border-border bg-secondary/50">
+              <span className="text-[12px] font-semibold text-foreground flex-1">Watchlist</span>
               <button
                 onClick={() => setIsEditingWatchlist((v) => !v)}
                 className={cn(
-                  "mr-2 transition-colors",
-                  isEditingWatchlist ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  "transition-colors px-2 py-0.5 rounded text-[11px]",
+                  isEditingWatchlist
+                    ? "text-primary bg-primary/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 )}
                 title={isEditingWatchlist ? "Done editing" : "Edit watchlist"}
               >
-                {isEditingWatchlist ? <Check className="h-3 w-3" /> : <Pencil className="h-3 w-3" />}
+                {isEditingWatchlist ? "Done" : "Edit"}
               </button>
-              {/* Column headers */}
-              <span className="font-mono text-[10px] text-muted-foreground w-[52px] text-right shrink-0">Last</span>
-              <span className="font-mono text-[10px] text-muted-foreground w-[42px] text-right ml-1.5 shrink-0">Chg</span>
-              <span className="font-mono text-[10px] text-muted-foreground w-[44px] text-right ml-1.5 shrink-0">Chg%</span>
             </div>
 
             {/* Scrollable watchlist sections */}
@@ -1213,8 +1439,16 @@ function DashboardContent() {
               )}
             </div>
 
-            {/* Symbol detail panel */}
-            <SymbolDetail item={selectedItem} />
+            {/* Add Symbol shortcut at the bottom */}
+            <div className="shrink-0 border-t border-border p-2">
+              <button
+                onClick={() => setIsEditingWatchlist(true)}
+                className="flex items-center gap-1.5 w-full px-2 py-1.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+              >
+                <Search className="h-3 w-3" />
+                Add Symbol
+              </button>
+            </div>
           </div>}
         </div>
 
@@ -1271,7 +1505,7 @@ function DashboardContent() {
                 />
               )}
             </div>
-            <SymbolDetail item={selectedItem} />
+            <QuotePanel item={selectedItem} lastCandle={lastCandle} />
           </div>
         </SheetContent>
       </Sheet>
@@ -1330,6 +1564,38 @@ function DashboardContent() {
               >
                 <Activity className="h-4 w-4" />
                 BB Squeeze {showBollinger && <Check className="h-3 w-3 ml-auto" />}
+              </button>
+              <div className="border-t border-border my-1" />
+              <div className="text-[10px] font-semibold text-muted-foreground mb-1 px-3">Indicators</div>
+              <button
+                onClick={() => { setShowMA((v) => !v); }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  showMA ? "bg-cyan-500/20 text-cyan-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <BarChart4 className="h-4 w-4" />
+                MA Lines {showMA && <Check className="h-3 w-3 ml-auto" />}
+              </button>
+              <button
+                onClick={() => { setShowMACD((v) => !v); }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  showMACD ? "bg-blue-500/20 text-blue-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <Activity className="h-4 w-4" />
+                MACD {showMACD && <Check className="h-3 w-3 ml-auto" />}
+              </button>
+              <button
+                onClick={() => { setShowRSI((v) => !v); }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  showRSI ? "bg-purple-500/20 text-purple-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <Activity className="h-4 w-4" />
+                RSI {showRSI && <Check className="h-3 w-3 ml-auto" />}
               </button>
               {drawings.length > 0 && (
                 <>

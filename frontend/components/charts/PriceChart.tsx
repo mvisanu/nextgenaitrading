@@ -12,6 +12,7 @@ import {
   type MouseEventParams,
 } from "lightweight-charts";
 import type { CandleBar, SignalMarker, BollingerOverlayBar } from "@/types";
+import type { MAPoint } from "@/lib/indicators";
 import {
   TrendLinePrimitive,
   FVGBoxPrimitive,
@@ -25,6 +26,12 @@ export type DrawingMode = "none" | "trendline" | "fvg";
 export interface ChartClickPoint {
   time: string;
   price: number;
+}
+
+export interface MAOverlay {
+  label: string;
+  data: MAPoint[];
+  color: string;
 }
 
 interface PriceChartProps {
@@ -42,6 +49,8 @@ interface PriceChartProps {
   onChartClick?: (point: ChartClickPoint) => void;
   /** Bollinger Band overlay data */
   bollingerData?: BollingerOverlayBar[];
+  /** Moving average overlays */
+  maOverlays?: MAOverlay[];
 }
 
 // Theme-dependent chart colours — refined for readability
@@ -84,6 +93,7 @@ export function PriceChart({
   drawings = [],
   onChartClick,
   bollingerData,
+  maOverlays,
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -210,14 +220,15 @@ export function PriceChart({
 
     // ── Bollinger Band overlay ──────────────────────────────────────────
     if (bollingerData && bollingerData.length > 0) {
-      const bbSorted = [...bollingerData].sort((a, b) =>
-        a.time < b.time ? -1 : a.time > b.time ? 1 : 0
-      );
+      const bbSorted = [...bollingerData]
+        .sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0))
+        .filter((b, i, arr) => i === 0 || b.time !== arr[i - 1].time);
 
-      // Upper band — semi-transparent line
+      // Upper band — semi-transparent curved line
       const upperSeries = chart.addSeries(LineSeries, {
         color: "rgba(33, 150, 243, 0.6)",
-        lineWidth: 1,
+        lineWidth: 2,
+        lineType: 2, // curved
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false,
@@ -226,10 +237,11 @@ export function PriceChart({
         bbSorted.map((b) => ({ time: b.time as Time, value: b.upper }))
       );
 
-      // Lower band
+      // Lower band — curved
       const lowerSeries = chart.addSeries(LineSeries, {
         color: "rgba(33, 150, 243, 0.6)",
-        lineWidth: 1,
+        lineWidth: 2,
+        lineType: 2, // curved
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false,
@@ -238,11 +250,12 @@ export function PriceChart({
         bbSorted.map((b) => ({ time: b.time as Time, value: b.lower }))
       );
 
-      // Middle band — dashed style via lighter color
+      // Middle band — dashed curved line
       const middleSeries = chart.addSeries(LineSeries, {
         color: "rgba(33, 150, 243, 0.3)",
         lineWidth: 1,
         lineStyle: 2, // dashed
+        lineType: 2, // curved
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false,
@@ -254,14 +267,16 @@ export function PriceChart({
       // Squeeze highlight — color the upper/lower bands orange where squeeze is active
       const squeezeUpper = chart.addSeries(LineSeries, {
         color: "rgba(255, 152, 0, 0.9)",
-        lineWidth: 2,
+        lineWidth: 3,
+        lineType: 2, // curved
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false,
       });
       const squeezeLower = chart.addSeries(LineSeries, {
         color: "rgba(255, 152, 0, 0.9)",
-        lineWidth: 2,
+        lineWidth: 3,
+        lineType: 2, // curved
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false,
@@ -275,6 +290,26 @@ export function PriceChart({
         );
         squeezeLower.setData(
           squeezeOnly.map((b) => ({ time: b.time as Time, value: b.lower }))
+        );
+      }
+    }
+
+    // ── Moving Average overlays ──────────────────────────────────────────
+    if (maOverlays && maOverlays.length > 0) {
+      for (const ma of maOverlays) {
+        if (ma.data.length === 0) continue;
+        const maSeries = chart.addSeries(LineSeries, {
+          color: ma.color,
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        const maSorted = [...ma.data]
+          .sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0))
+          .filter((d, i, arr) => i === 0 || d.time !== arr[i - 1].time);
+        maSeries.setData(
+          maSorted.map((d) => ({ time: d.time as Time, value: d.value }))
         );
       }
     }
@@ -323,7 +358,7 @@ export function PriceChart({
       ro.disconnect();
       chartRef.current = null;
     };
-  }, [data, signals, height, theme, drawings, bollingerData]);
+  }, [data, signals, height, theme, drawings, bollingerData, maOverlays]);
 
   if (data.length === 0) {
     return (

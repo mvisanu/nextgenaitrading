@@ -160,7 +160,7 @@ export interface VariantBacktestResult {
 // ─── Chart Data ───────────────────────────────────────────────────────────────
 
 export interface CandleBar {
-  time: string; // "YYYY-MM-DD"
+  time: string | number; // "YYYY-MM-DD" for daily+, Unix seconds for intraday
   open: number;
   high: number;
   low: number;
@@ -169,7 +169,7 @@ export interface CandleBar {
 }
 
 export interface SignalMarker {
-  time: string;
+  time: string | number;
   position: "aboveBar" | "belowBar";
   color: string;
   shape: "arrowUp" | "arrowDown";
@@ -220,7 +220,7 @@ export interface SqueezeData {
 }
 
 export interface BollingerOverlayBar {
-  time: string;
+  time: string | number;
   upper: number;
   lower: number;
   middle: number;
@@ -783,4 +783,17 @@ export interface TopMoverRow {
   bb_rating?: number;
   rsi?: number;
   [key: string]: unknown;
+}
+
+// ─── News Feed ──────────────────────────────────────────────────────────────
+
+export interface NewsItem {
+  headline: string;
+  source: string;
+  published_at: string | null;
+  url: string;
+  snippet: string;
+  tickers_mentioned: string[];
+  theme_tags: string[];
+  relevance_score: number;
 }

@@ -54,6 +54,7 @@ import type {
   LastScanResult,
   ScannerStatus,
   RunNowResult,
+  NewsItem,
   // Screener + TA types
   ScreenerRequest,
   ScreenerResult,
@@ -453,4 +454,15 @@ export const taApi = {
   bollingerSqueeze: (exchange?: string, timeframe?: string) =>
     fetch(`/api/tv-ta/bollinger-squeeze?exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "4h"}`)
       .then(r => r.json()) as Promise<TopMoverRow[]>,
+};
+
+// ── News Feed ─────────────────────────────────────────────────────────────────
+
+export const newsApi = {
+  list: (limit = 50, ticker?: string) => {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (ticker) qs.set("ticker", ticker);
+    return get<NewsItem[]>(`/news?${qs.toString()}`);
+  },
 };

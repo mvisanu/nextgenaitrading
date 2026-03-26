@@ -211,7 +211,7 @@ async def get_live_chart_data(
         )
     try:
         df = load_ohlcv_for_strategy(symbol, interval)
-        candles = df_to_candles(df)
+        candles = df_to_candles(df, interval)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -222,15 +222,43 @@ async def get_live_chart_data(
     if bollinger:
         try:
             from app.services.bollinger_squeeze_service import compute_bollinger_bands, detect_squeeze
-            bb = compute_bollinger_bands(df["Close"])
+
+            # Adapt BB period to timeframe — shorter timeframes need longer
+            # periods to produce smooth bands (5m × 50 ≈ 1D × 20 in real time)
+            INTRADAY_INTERVALS = {"1m", "2m", "5m", "15m", "30m"}
+            SHORT_INTERVALS = {"1h", "2h", "3h", "4h"}
+            if interval in INTRADAY_INTERVALS:
+                bb_length = 50
+                smooth_window = 5  # EMA smooth the output bands
+            elif interval in SHORT_INTERVALS:
+                bb_length = 30
+                smooth_window = 3
+            else:
+                bb_length = 20  # daily/weekly — standard
+                smooth_window = 0
+
+            bb = compute_bollinger_bands(df["Close"], length=bb_length)
+
+            # Apply EMA smoothing to reduce noise on intraday
+            if smooth_window > 1:
+                for col in ("bb_upper", "bb_lower", "bb_middle"):
+                    bb[col] = bb[col].ewm(span=smooth_window, adjust=False).mean()
+
+            from app.services.market_data import _INTRADAY_INTERVALS
+            is_intraday = interval in _INTRADAY_INTERVALS
+
             bollinger_overlay = []
             for ts, row in bb.iterrows():
                 if any(pd.isna([row["bb_upper"], row["bb_lower"], row["bb_middle"]])):
                     continue
-                t = ts
-                time_str = t.strftime("%Y-%m-%d") if hasattr(t, "strftime") else str(t)[:10]
+                if is_intraday and hasattr(ts, "timestamp"):
+                    time_val: str | int = int(ts.timestamp())
+                elif hasattr(ts, "strftime"):
+                    time_val = ts.strftime("%Y-%m-%d")
+                else:
+                    time_val = str(ts)[:10]
                 bollinger_overlay.append(BollingerOverlayBar(
-                    time=time_str,
+                    time=time_val,
                     upper=round(float(row["bb_upper"]), 4),
                     lower=round(float(row["bb_lower"]), 4),
                     middle=round(float(row["bb_middle"]), 4),

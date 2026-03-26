@@ -1445,7 +1445,7 @@ function StatusPill({
 
 function buildSignalMarkers(
   result: SignalCheckResult,
-  candles: { time: string; high: number; low: number }[]
+  candles: { time: string | number; high: number; low: number }[]
 ): SignalMarker[] {
   if (!candles.length || !result.signal) return [];
   const sig = result.signal.toLowerCase();

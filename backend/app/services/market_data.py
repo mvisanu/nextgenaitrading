@@ -133,18 +133,28 @@ def _resample_hours(df: pd.DataFrame, hours: int) -> pd.DataFrame:
     return resampled
 
 
-def df_to_candles(df: pd.DataFrame) -> list[dict]:
-    """Convert OHLCV DataFrame to chart-ready [{time, open, high, low, close, volume}] list."""
+_INTRADAY_INTERVALS = {"1m", "2m", "3m", "5m", "10m", "15m", "30m", "1h", "2h", "3h", "4h"}
+
+
+def df_to_candles(df: pd.DataFrame, interval: str = "1d") -> list[dict]:
+    """Convert OHLCV DataFrame to chart-ready [{time, open, high, low, close, volume}] list.
+
+    For intraday intervals the ``time`` field is a Unix timestamp (int seconds)
+    so that Lightweight Charts renders hours/minutes on the x-axis.  For daily+
+    intervals the field stays as an ISO date string ``"YYYY-MM-DD"``.
+    """
+    intraday = interval in _INTRADAY_INTERVALS
     candles = []
     for ts, row in df.iterrows():
-        t = ts
-        if hasattr(t, "strftime"):
-            time_str = t.strftime("%Y-%m-%d")
+        if intraday and hasattr(ts, "timestamp"):
+            time_val: int | str = int(ts.timestamp())
+        elif hasattr(ts, "strftime"):
+            time_val = ts.strftime("%Y-%m-%d")
         else:
-            time_str = str(t)[:10]
+            time_val = str(ts)[:10]
         candles.append(
             {
-                "time": time_str,
+                "time": time_val,
                 "open": float(row["Open"]),
                 "high": float(row["High"]),
                 "low": float(row["Low"]),

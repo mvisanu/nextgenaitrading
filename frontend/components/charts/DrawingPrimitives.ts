@@ -18,7 +18,7 @@ import type {
 // ─── Shared types ────────────────────────────────────────────────────────────
 
 export interface DrawingPoint {
-  time: string; // "YYYY-MM-DD" or epoch-seconds string
+  time: string | number; // "YYYY-MM-DD" for daily+, Unix seconds for intraday
   price: number;
 }
 
@@ -34,8 +34,8 @@ export interface TrendLineData {
 export interface FVGData {
   id: string;
   type: "fvg";
-  startTime: string;
-  endTime: string;
+  startTime: string | number;
+  endTime: string | number;
   highPrice: number;
   lowPrice: number;
   direction: "bullish" | "bearish";
@@ -272,7 +272,7 @@ class FVGBoxRenderer {
 // ─── Auto-detect FVGs from candle data ───────────────────────────────────────
 
 export interface CandleInput {
-  time: string;
+  time: string | number;
   open: number;
   high: number;
   low: number;

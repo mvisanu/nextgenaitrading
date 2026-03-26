@@ -27,6 +27,11 @@ NEWS_SOURCES: list[str] = [
     "https://rss.cnn.com/rss/money_markets.rss",
     "https://feeds.federalreserve.gov/feeds/press_all.xml",
     "https://www.eia.gov/rss/news.xml",
+    # Crypto / Bitcoin sources
+    "https://cointelegraph.com/rss",
+    "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    "https://decrypt.co/feed",
+    "https://bitcoinmagazine.com/.rss/full/",
 ]
 
 # Recognised ticker symbols — used in headline scanning
@@ -39,6 +44,9 @@ KNOWN_TICKERS: set[str] = {
     "ASTS", "RKLB",
     "LLY", "NVO", "REGN", "CRSP", "ILMN",
     "PLTR", "ISRG",
+    # Crypto-adjacent stocks & crypto symbols
+    "COIN", "MSTR", "MARA", "RIOT", "IBIT", "HOOD",
+    "BTC", "ETH", "SOL", "XRP", "ADA", "DOGE",
 }
 
 # Company name → ticker mapping for fuzzy headline matching
@@ -71,6 +79,22 @@ COMPANY_NAME_MAP: dict[str, str] = {
     "broadcom": "AVGO",
     "tsmc": "TSM",
     "asml": "ASML",
+    # Crypto
+    "bitcoin": "BTC",
+    "btc": "BTC",
+    "ethereum": "ETH",
+    "ether": "ETH",
+    "solana": "SOL",
+    "ripple": "XRP",
+    "dogecoin": "DOGE",
+    "cardano": "ADA",
+    "coinbase": "COIN",
+    "microstrategy": "MSTR",
+    "strategy": "MSTR",
+    "marathon digital": "MARA",
+    "marathon holdings": "MARA",
+    "riot platforms": "RIOT",
+    "robinhood": "HOOD",
 }
 
 # Theme keyword sets
@@ -84,6 +108,9 @@ THEME_KEYWORDS: dict[str, set[str]] = {
     "semiconductors": {"semiconductor", "chip", "wafer", "foundry", "lithography", "fab"},
     "defense": {"defense contract", "pentagon", "military", "aerospace", "weapon system"},
     "energy": {"energy policy", "renewable", "oil", "natural gas", "electric grid", "nuclear"},
+    "crypto": {"bitcoin", "btc", "ethereum", "eth", "crypto", "blockchain", "defi",
+               "stablecoin", "nft", "web3", "mining", "halving", "altcoin", "memecoin",
+               "binance", "coinbase", "solana", "cardano", "ripple", "dogecoin"},
 }
 
 # Compiled pattern to extract $TICKER or "TICKER stock" mentions
