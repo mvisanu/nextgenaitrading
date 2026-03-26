@@ -54,9 +54,9 @@ backend/app/
   schemas/              # Pydantic request/response DTOs + v2: buy_zone, alert, auto_buy, idea, theme_score + v3: buy_signal, generated_idea, watchlist, scanner
   db/session.py         # Async engine + session factory
   broker/               # AlpacaClient, RobinhoodClient, factory.py
-  services/             # credential_service, execution_service, strategy_run_service + v2: buy_zone_service, analog_scoring_service, alert_engine_service, auto_buy_engine, theme_scoring_service, notification_service + v3: buy_signal_service, live_scanner_service, news_scanner_service, moat_scoring_service, financial_quality_service, entry_priority_service
+  services/             # credential_service, execution_service, strategy_run_service + v2: buy_zone_service, analog_scoring_service, alert_engine_service, auto_buy_engine, theme_scoring_service, notification_service + v3: buy_signal_service, live_scanner_service, news_scanner_service, moat_scoring_service, financial_quality_service, entry_priority_service + bollinger_squeeze_service
   utils/                # v3: market_hours.py (ET market hours check)
-  strategies/           # conservative.py, aggressive.py
+  strategies/           # conservative.py, aggressive.py, bollinger_squeeze.py
   optimizers/           # ai_pick_optimizer.py, buy_low_sell_high_optimizer.py
   backtesting/engine.py
   artifacts/pine_script_generator.py
@@ -108,6 +108,7 @@ frontend/
 | Aggressive | 4.0x | 5/8 | HMM + 5% trailing stop |
 | AI Pick | — | — | Optimizer across MACD/RSI/EMA variants |
 | Buy Low/Sell High | — | — | Optimizer across dip/cycle variants |
+| BB Squeeze | 2.5x | 6/8 | Bollinger Band squeeze breakout detection |
 
 Optimizers backtest multiple variants, rank by risk-adjusted score, save winner + generate Pine Script v5.
 
@@ -180,6 +181,9 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 | v3 API: POST /api/ideas/generated/run-now | Manual idea scan trigger (bypasses market hours) |
 | v3 E2E tests (34 cases) | Written in `tests/e2e/specs/v3-opportunities.spec.ts` + `v3-ideas.spec.ts` |
 | v3 Bug fixes (10 from TEST_REPORT.md) | All resolved — see V3 Bug Fixes section below |
+| Bollinger Band Squeeze strategy | Complete — backend service + strategy + API + frontend chart overlay + dashboard toggle |
+| Cross-origin auth (Vercel ↔ Render) | Complete — auth_session marker cookie + pgbouncer fix |
+| Mobile responsiveness | Complete — all pages phone-friendly (hamburger menus, scrollable tables, responsive grids) |
 
 ### Running E2E Tests
 ```bash
@@ -301,8 +305,45 @@ Full audit performed; 1 Critical, 4 High, 7 Medium, 6 Low findings identified an
 ### Former V3 Documentation (now consolidated above)
 All V3 docs have been merged into the consolidated files listed above.
 
+### Bollinger Band Squeeze Strategy (2026-03-25)
+Full implementation of BB Squeeze as a new strategy mode across backend + frontend:
+- **`services/bollinger_squeeze_service.py`** (NEW): Pure calculation utilities — `compute_bollinger_bands()`, `detect_squeeze()`, `compute_squeeze_strength()`, `detect_breakout()`, `compute_squeeze_analysis()`
+- **`strategies/bollinger_squeeze.py`** (NEW): `BollingerSqueezeStrategy` class — 8 squeeze-specific confirmations (RSI, EMA cross, ADX, volume, OBV, squeeze active, bullish breakout, breakout volume), leverage 2.5x, min 6/8 confirms
+- **`schemas/live.py`**: Added `SqueezeData`, `BollingerOverlayBar` models; extended `SignalCheckOut` with `squeeze` field; `LiveChartResponse` with `bollinger` list
+- **`api/live.py`**: Chart-data endpoint accepts `bollinger: bool` query param; signal check extracts squeeze data from notes JSON
+- **`strategy_run_service.py`**: Routes `"squeeze"` mode through `_run_hmm_mode`
+- **Frontend**: PriceChart renders BB overlay (upper/lower/middle bands + squeeze zones in orange); live-trading page has "BB Squeeze" strategy mode with squeeze status card; dashboard has "BB Squeeze" toggle button in drawing tools toolbar
+- **Types**: `SqueezeData`, `BollingerOverlayBar` interfaces; `SignalCheckRequest.mode` includes `"squeeze"`
+
+### Cross-Origin Auth Fix (2026-03-25)
+Fixed redirect loop when frontend (Vercel) and backend (Render) are on different domains:
+- **Problem**: httponly `access_token` cookie set on Render domain is invisible to Next.js edge middleware on Vercel → middleware sees no cookie → redirects to `/login` → infinite loop
+- **Solution**: `auth_session` marker cookie (non-sensitive `1` value) set via `document.cookie` on the frontend domain
+- **`proxy.ts`** (middleware): Checks for either `access_token` or `auth_session` cookie
+- **`login/page.tsx`** + **`register/page.tsx`**: Set `auth_session=1` cookie on successful auth
+- **`AppShell.tsx`** + **`lib/api.ts`**: Clear `auth_session` cookie on logout and on 401 session expiry
+- **`db/session.py`**: Added `connect_args={"statement_cache_size": 0}` for Supabase pgbouncer compatibility
+- **Production env vars needed on Render**: `CORS_ORIGINS=<vercel-domain>`, `COOKIE_SECURE=true`, `COOKIE_SAMESITE=none`
+
+### Mobile Responsiveness (2026-03-25)
+Comprehensive mobile/phone viewing fixes across all pages:
+- **Dashboard** (custom layout — biggest fix): Added mobile hamburger menu (Sheet); mobile watchlist as right-side sheet; toolbar scrolls horizontally; quick intervals/indicators/alert buttons hidden on small screens; OHLCV bar scrollable; drawing tool labels icon-only on mobile
+- **Live Trading**: All 4 tables (paper positions, paper history, broker positions, orders) wrapped in `overflow-x-auto`
+- **Backtests**: List table + detail page (trades + variant leaderboard) wrapped in `overflow-x-auto`
+- **Artifacts**: Table wrapped in `overflow-x-auto`
+- **Auto-Buy**: Empty-state decision log table wrapped in `overflow-x-auto`
+- **Already mobile-friendly**: AppShell pages (hamburger + responsive padding), WatchlistTable, trade log, alerts, ideas, profile, FAQ
+
+### Auto-Buy Paper Mode Password UI (2026-03-25)
+- **`auto-buy/page.tsx`**: Added `livePassword` state + password Input field in live mode dialog; sends `current_password` in updateSettings call
+- **`types/index.ts`**: Added `current_password?: string` to `UpdateAutoBuySettingsRequest`
+- Fixed JSX syntax error (missing `</div>` at line 592 in empty-state ternary)
+
+### FVG Visibility Fix (2026-03-25)
+- **`DrawingPrimitives.ts`**: Increased FVG fill opacity 0.15→0.35, border 0.5→0.85 solid (was dashed), label font bold 11px at full opacity
+
 ### Git Status
-All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio.
+All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25 — uncommitted.
 
 ### Known E2E Test Failures (as of 2026-03-25, see `TEST_REPORT.md`)
 Most issues from the 2026-03-25 test run have been fixed. Remaining open items:

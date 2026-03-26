@@ -16,6 +16,7 @@ import { useTheme } from "@/lib/theme";
 import { useSidebarPinned } from "@/lib/sidebar";
 import { useWatchlist, flattenWatchlist, type WatchlistItem, type WatchlistCategory } from "@/lib/watchlist";
 import { cn } from "@/lib/utils";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import type { CandleBar } from "@/types";
 
 // Watchlist data now comes from shared hook (lib/watchlist.ts)
@@ -709,6 +710,7 @@ function DashboardContent() {
   const [showBollinger, setShowBollinger] = useState(false);
   const [showDrawings, setShowDrawings] = useState(true);
   const [showDrawingTools, setShowDrawingTools] = useState(false);
+  const [mobileDrawingOpen, setMobileDrawingOpen] = useState(false);
 
   const DRAWING_STORAGE_KEY = "ngs-drawings";
 
@@ -1216,8 +1218,8 @@ function DashboardContent() {
           </div>}
         </div>
 
-        {/* ── Bottom status bar (24px) ──────────────────────────────────── */}
-        <div className="shrink-0 flex items-center h-6 px-3 border-t border-border bg-secondary text-[11px] text-muted-foreground gap-3 z-10">
+        {/* ── Bottom status bar (24px) — hidden on mobile ────────────────── */}
+        <div className="hidden lg:flex shrink-0 items-center h-6 px-3 border-t border-border bg-secondary text-[11px] text-muted-foreground gap-3 z-10">
           <span>NextGenStock v1.0</span>
           <span className="text-border">|</span>
           <span className="flex items-center gap-1">
@@ -1273,6 +1275,108 @@ function DashboardContent() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* ── Mobile drawing tools FAB + panel ──────────────────────────────── */}
+      <div className="lg:hidden fixed right-3 bottom-[72px] z-50 flex flex-col items-end gap-2">
+        {/* Expanded drawing tools panel */}
+        {mobileDrawingOpen && (
+          <div className="bg-card border border-border rounded-xl shadow-lg p-3 w-48 animate-in slide-in-from-bottom-2 fade-in duration-200">
+            <div className="text-[11px] font-semibold text-foreground mb-2">Drawing Tools</div>
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={() => { toggleDrawingMode("trendline"); setMobileDrawingOpen(false); }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  drawingMode === "trendline"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <TrendingUp className="h-4 w-4" />
+                Trend Line
+              </button>
+              <button
+                onClick={() => { toggleDrawingMode("fvg"); setMobileDrawingOpen(false); }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  drawingMode === "fvg"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <SquareDashed className="h-4 w-4" />
+                FVG Zone
+              </button>
+              <button
+                onClick={() => { setShowFVG((v) => !v); setMobileDrawingOpen(false); }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  showFVG
+                    ? "bg-[#26a69a]/20 text-[#26a69a]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <SquareDashed className="h-4 w-4" />
+                Auto FVG {showFVG && <Check className="h-3 w-3 ml-auto" />}
+              </button>
+              <button
+                onClick={() => { setShowBollinger((v) => !v); setMobileDrawingOpen(false); }}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                  showBollinger
+                    ? "bg-blue-500/20 text-blue-400"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}
+              >
+                <Activity className="h-4 w-4" />
+                BB Squeeze {showBollinger && <Check className="h-3 w-3 ml-auto" />}
+              </button>
+              {drawings.length > 0 && (
+                <>
+                  <div className="border-t border-border my-1" />
+                  <button
+                    onClick={() => { setShowDrawings((v) => !v); }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                  >
+                    {showDrawings ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    {showDrawings ? "Hide Drawings" : "Show Drawings"}
+                  </button>
+                  <button
+                    onClick={() => { clearAllDrawings(); setMobileDrawingOpen(false); }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                  >
+                    <Eraser className="h-4 w-4" />
+                    Clear All
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* FAB button */}
+        <button
+          onClick={() => setMobileDrawingOpen((v) => !v)}
+          className={cn(
+            "flex items-center justify-center h-12 w-12 rounded-full shadow-lg transition-all",
+            mobileDrawingOpen || drawingMode !== "none"
+              ? "bg-primary text-primary-foreground shadow-primary/25"
+              : "bg-card border border-border text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <TrendingUp className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Drawing mode indicator on mobile */}
+      {drawingMode !== "none" && (
+        <div className="lg:hidden fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-primary text-primary-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow-lg animate-pulse">
+          {pendingPoint ? "Tap second point..." : "Tap first point..."}
+        </div>
+      )}
+
+      {/* ── Mobile bottom navigation ──────────────────────────────────────── */}
+      <MobileBottomNav />
     </div>
   );
 }

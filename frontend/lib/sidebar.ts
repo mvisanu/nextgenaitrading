@@ -12,14 +12,17 @@ function subscribe(cb: () => void) {
 
 function getSnapshot(): boolean {
   try {
-    return localStorage.getItem(PINNED_KEY) === "true";
+    const val = localStorage.getItem(PINNED_KEY);
+    // Default to pinned on first visit (no stored preference yet)
+    if (val === null) return true;
+    return val === "true";
   } catch {
-    return false;
+    return true;
   }
 }
 
 function getServerSnapshot(): boolean {
-  return false;
+  return true;
 }
 
 function setPinned(value: boolean) {

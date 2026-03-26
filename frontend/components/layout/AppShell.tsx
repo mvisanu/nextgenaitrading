@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Menu } from "lucide-react";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 // ─── Auth Context ──────────────────────────────────────────────────────────────
 
@@ -116,7 +117,7 @@ export function AppShell({ children, title, actions }: AppShellProps) {
         </header>
 
         {/* Page content — show skeleton while auth is resolving */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 pb-20 lg:pb-6">
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-8 w-48" />
@@ -126,8 +127,8 @@ export function AppShell({ children, title, actions }: AppShellProps) {
           ) : user ? children : null}
         </main>
 
-        {/* Bottom status bar */}
-        <div className="shrink-0 flex items-center h-6 px-3 border-t border-border bg-secondary text-[11px] text-muted-foreground gap-3">
+        {/* Bottom status bar — hidden on mobile (bottom nav takes its place) */}
+        <div className="hidden lg:flex shrink-0 items-center h-6 px-3 border-t border-border bg-secondary text-[11px] text-muted-foreground gap-3">
           <span>NextGenStock v1.0</span>
           <span className="text-border">|</span>
           <span className="flex items-center gap-1">
@@ -138,6 +139,9 @@ export function AppShell({ children, title, actions }: AppShellProps) {
           <span>{user?.email ?? ""}</span>
         </div>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav />
     </div>
   );
 }
