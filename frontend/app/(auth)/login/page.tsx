@@ -22,7 +22,7 @@ import { Loader2, Zap, Mail, CheckCircle } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
-const IS_DEV = process.env.NODE_ENV === "development";
+const IS_DEV = process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === "true";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
