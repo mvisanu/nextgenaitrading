@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -116,14 +116,15 @@ async def update_alert(
     return AlertOut.from_orm(rule)
 
 
-@router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{rule_id}")
 async def delete_alert(
     rule_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
+) -> Response:
     """Permanently delete an alert rule."""
     rule = await _get_rule(rule_id, db, current_user)
     await db.delete(rule)
     await db.commit()
     logger.info("Alert rule deleted: id=%d user_id=%d", rule_id, current_user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

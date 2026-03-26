@@ -6,11 +6,12 @@ import {
   createSeriesMarkers,
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
   type IChartApi,
   type Time,
   type MouseEventParams,
 } from "lightweight-charts";
-import type { CandleBar, SignalMarker } from "@/types";
+import type { CandleBar, SignalMarker, BollingerOverlayBar } from "@/types";
 import {
   TrendLinePrimitive,
   FVGBoxPrimitive,
@@ -39,6 +40,8 @@ interface PriceChartProps {
   drawings?: DrawingData[];
   /** Called when user clicks the chart while in a drawing mode */
   onChartClick?: (point: ChartClickPoint) => void;
+  /** Bollinger Band overlay data */
+  bollingerData?: BollingerOverlayBar[];
 }
 
 // Theme-dependent chart colours — refined for readability
@@ -80,6 +83,7 @@ export function PriceChart({
   drawingMode = "none",
   drawings = [],
   onChartClick,
+  bollingerData,
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -204,6 +208,77 @@ export function PriceChart({
         }))
     );
 
+    // ── Bollinger Band overlay ──────────────────────────────────────────
+    if (bollingerData && bollingerData.length > 0) {
+      const bbSorted = [...bollingerData].sort((a, b) =>
+        a.time < b.time ? -1 : a.time > b.time ? 1 : 0
+      );
+
+      // Upper band — semi-transparent line
+      const upperSeries = chart.addSeries(LineSeries, {
+        color: "rgba(33, 150, 243, 0.6)",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      upperSeries.setData(
+        bbSorted.map((b) => ({ time: b.time as Time, value: b.upper }))
+      );
+
+      // Lower band
+      const lowerSeries = chart.addSeries(LineSeries, {
+        color: "rgba(33, 150, 243, 0.6)",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      lowerSeries.setData(
+        bbSorted.map((b) => ({ time: b.time as Time, value: b.lower }))
+      );
+
+      // Middle band — dashed style via lighter color
+      const middleSeries = chart.addSeries(LineSeries, {
+        color: "rgba(33, 150, 243, 0.3)",
+        lineWidth: 1,
+        lineStyle: 2, // dashed
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      middleSeries.setData(
+        bbSorted.map((b) => ({ time: b.time as Time, value: b.middle }))
+      );
+
+      // Squeeze highlight — color the upper/lower bands orange where squeeze is active
+      const squeezeUpper = chart.addSeries(LineSeries, {
+        color: "rgba(255, 152, 0, 0.9)",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      const squeezeLower = chart.addSeries(LineSeries, {
+        color: "rgba(255, 152, 0, 0.9)",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+
+      // Only set data for squeeze bars (gaps will break the line = desired effect)
+      const squeezeOnly = bbSorted.filter((b) => b.is_squeeze);
+      if (squeezeOnly.length > 0) {
+        squeezeUpper.setData(
+          squeezeOnly.map((b) => ({ time: b.time as Time, value: b.upper }))
+        );
+        squeezeLower.setData(
+          squeezeOnly.map((b) => ({ time: b.time as Time, value: b.lower }))
+        );
+      }
+    }
+
     chart.timeScale().fitContent();
 
     // ── Click handler for drawing mode ──────────────────────────────────
@@ -248,7 +323,7 @@ export function PriceChart({
       ro.disconnect();
       chartRef.current = null;
     };
-  }, [data, signals, height, theme, drawings]);
+  }, [data, signals, height, theme, drawings, bollingerData]);
 
   if (data.length === 0) {
     return (

@@ -13,7 +13,6 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -119,22 +118,15 @@ const TIMEFRAMES: { value: Timeframe; label: string; short: string }[] = [
 ];
 
 export default function LiveTradingPage() {
-  const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { theme } = useTheme();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login?callbackUrl=/live-trading");
-    }
-  }, [authLoading, user, router]);
 
   const [selectedCredentialId, setSelectedCredentialId] = useState<number | null>(null);
   const [symbol, setSymbol] = useState("AAPL");
   const [committedSymbol, setCommittedSymbol] = useState("AAPL");
   const [timeframe, setTimeframe] = useState<Timeframe>("1d");
-  const [mode, setMode] = useState<"conservative" | "aggressive">("conservative");
+  const [mode, setMode] = useState<"conservative" | "aggressive" | "squeeze">("conservative");
   const [tradingMode, setTradingMode] = useState<TradingMode>("paper");
   const [showLiveConfirm, setShowLiveConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -167,8 +159,8 @@ export default function LiveTradingPage() {
   });
 
   const { data: chartData } = useQuery({
-    queryKey: ["live", "chart-data", committedSymbol, timeframe],
-    queryFn: () => liveApi.chartData(committedSymbol, timeframe),
+    queryKey: ["live", "chart-data", committedSymbol, timeframe, mode],
+    queryFn: () => liveApi.chartData(committedSymbol, timeframe, mode === "squeeze"),
     enabled: committedSymbol.length >= 2 && /[A-Z]/.test(committedSymbol),
   });
 
@@ -333,7 +325,6 @@ export default function LiveTradingPage() {
   const signalReady = !!signalResult;
   const openPositionCount = positions.filter((p) => p.is_open).length;
 
-  if (authLoading || !user) return null;
 
   return (
     <AppShell title="Live Trading">
@@ -465,13 +456,14 @@ export default function LiveTradingPage() {
               {/* Strategy Mode */}
               <div className="space-y-1">
                 <Label className="text-xs">Strategy</Label>
-                <Select value={mode} onValueChange={(v) => setMode(v as "conservative" | "aggressive")}>
+                <Select value={mode} onValueChange={(v) => setMode(v as "conservative" | "aggressive" | "squeeze")}>
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="conservative">Conservative</SelectItem>
                     <SelectItem value="aggressive">Aggressive</SelectItem>
+                    <SelectItem value="squeeze">BB Squeeze</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -754,6 +746,7 @@ export default function LiveTradingPage() {
                   symbol={committedSymbol}
                   height={420}
                   theme={theme}
+                  bollingerData={chartData.bollinger ?? undefined}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-[420px] text-muted-foreground">
@@ -1170,6 +1163,7 @@ function StepCard({
 // ─── Signal Result Panel ──────────────────────────────────────────────────────
 
 function SignalResultPanel({ result }: { result: SignalCheckResult }) {
+  const sq = result.squeeze;
   return (
     <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2.5">
       <div className="flex items-center gap-2 flex-wrap">
@@ -1181,6 +1175,66 @@ function SignalResultPanel({ result }: { result: SignalCheckResult }) {
           {result.confirmation_count}/8 confirmations
         </span>
       </div>
+
+      {/* Squeeze status card */}
+      {sq && (
+        <div className={cn(
+          "rounded-md border p-2.5 space-y-1.5",
+          sq.is_squeeze
+            ? "border-orange-500/40 bg-orange-500/10"
+            : sq.breakout_state !== "none"
+              ? sq.breakout_state === "bullish"
+                ? "border-emerald-500/30 bg-emerald-500/5"
+                : "border-red-500/30 bg-red-500/5"
+              : "border-border bg-muted/10"
+        )}>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold">
+              {sq.is_squeeze
+                ? "Squeeze Active"
+                : sq.breakout_state === "bullish"
+                  ? "Bullish Breakout"
+                  : sq.breakout_state === "bearish"
+                    ? "Bearish Breakout"
+                    : "No Squeeze"}
+            </p>
+            {sq.is_squeeze && (
+              <Badge variant="outline" className="text-[10px] border-orange-500/40 text-orange-400">
+                Strength {sq.squeeze_strength.toFixed(0)}%
+              </Badge>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-[10px]">
+            <div>
+              <p className="text-muted-foreground">Band Width</p>
+              <p className="font-mono font-medium">{sq.bb_width_pct.toFixed(2)}%</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Percentile</p>
+              <p className="font-mono font-medium">{sq.bb_width_percentile.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Breakout</p>
+              <p className={cn(
+                "font-mono font-medium capitalize",
+                sq.breakout_state === "bullish" ? "text-emerald-400" :
+                sq.breakout_state === "bearish" ? "text-red-400" : ""
+              )}>
+                {sq.breakout_state}
+                {sq.breakout_confirmed && " \u2713"}
+              </p>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground italic">
+            {sq.is_squeeze
+              ? "Volatility is unusually tight — this can precede a larger move."
+              : sq.breakout_state !== "none"
+                ? `Breakout detected ${sq.bars_since_squeeze} bar(s) after squeeze.`
+                : "Bands are normal width — no compression detected."}
+          </p>
+        </div>
+      )}
+
       {result.reason && (
         <p className="text-[11px] text-muted-foreground italic">{result.reason}</p>
       )}

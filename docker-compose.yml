@@ -1,13 +1,15 @@
+# WARNING: This docker-compose is for LOCAL DEVELOPMENT ONLY.
+# Do NOT use these credentials or expose this port in production.
 services:
   db:
     image: postgres:16-alpine
     container_name: nextgenstock-db
     environment:
-      POSTGRES_USER: nextgen
-      POSTGRES_PASSWORD: nextgen
-      POSTGRES_DB: nextgenstock
+      POSTGRES_USER: ${POSTGRES_USER:-nextgen}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nextgen}
+      POSTGRES_DB: ${POSTGRES_DB:-nextgenstock}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

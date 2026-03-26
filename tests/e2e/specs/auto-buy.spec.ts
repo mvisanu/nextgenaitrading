@@ -131,9 +131,11 @@ test.describe("Auto-Buy API — settings GET/PATCH", () => {
   });
 
   test("AB-06: PATCH /api/auto-buy/settings can switch paper_mode", async ({ request }) => {
+    // paper_mode=false requires current_password (re-auth for real trading)
     const { ok, body } = await updateAutoBuySettings(request, {
       paper_mode: false,
-    });
+      current_password: USER_A.password,
+    } as any);
     expect(ok).toBe(true);
     expect(body).toHaveProperty("paper_mode", false);
   });
@@ -192,7 +194,7 @@ test.describe("Auto-Buy API — decision log", () => {
       expect(entry).toHaveProperty("id");
       expect(entry).toHaveProperty("ticker");
       expect(entry).toHaveProperty("decision_state");
-      expect(entry).toHaveProperty("reason_codes_json");
+      expect(entry).toHaveProperty("reason_codes"); // serialized as reason_codes in API response
       expect(entry).toHaveProperty("dry_run");
       expect(entry).toHaveProperty("created_at");
     }
@@ -252,12 +254,13 @@ test.describe("Auto-Buy API — dry-run POST /api/auto-buy/dry-run/{ticker}", ()
     const { ok, body } = await autoBuyDryRun(request, STOCK_SYMBOL);
     expect(ok).toBe(true);
 
-    const reasonCodes = (body.reason_codes ?? body.reason_codes_json) as string[];
+    // reason_codes is a list of {check, result} objects
+    const reasonCodes = (body.reason_codes ?? body.reason_codes_json) as {check: string; result: string}[];
 
-    // Each code should map to one of the known safeguard identifiers
-    // (format: "PASSED: <key>" or "FAILED: <key>: <reason>")
-    // At minimum, some safeguard keys must be present in the codes
-    const combinedCodes = reasonCodes.join(" ");
+    // Extract check names and join for matching
+    const combinedCodes = Array.isArray(reasonCodes)
+      ? reasonCodes.map((r) => (typeof r === "string" ? r : r.check ?? "")).join(" ")
+      : "";
     let matchedSafeguards = 0;
     for (const safeguard of EXPECTED_SAFEGUARD_KEYS) {
       if (combinedCodes.includes(safeguard)) {

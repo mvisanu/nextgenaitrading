@@ -288,7 +288,7 @@ test.describe("Backend API — Auth endpoints", () => {
 test.describe("Registration page UI — /register", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE_URL}/register`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
   });
 
   test("REG-UI-01: register page loads with correct heading and form fields", async ({
@@ -429,7 +429,7 @@ test.describe("Registration page UI — /register", () => {
 test.describe("Login page UI — /login", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE_URL}/login`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
   });
 
   test("LOGIN-UI-01: login page loads with correct heading and form fields", async ({
@@ -710,7 +710,7 @@ test.describe("Dashboard page — /dashboard", () => {
     const errors: string[] = [];
     page.on("pageerror", (err) => errors.push(err.message));
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     // Filter out known benign Next.js dev warnings
     const realErrors = errors.filter(
       (e) => !e.includes("Warning:") && !e.includes("hydration")
@@ -737,7 +737,7 @@ test.describe("Protected pages — authenticated rendering", () => {
 
   test("PAGES-01: /strategies loads with strategy tabs visible", async ({ page }) => {
     await page.goto(`${BASE_URL}/strategies`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     // Strategy tabs: Conservative | Aggressive | AI Pick | Buy Low / Sell High
     const tabsOrContent = page.locator('[role="tab"], [role="tablist"], .tab');
     await expect(tabsOrContent.first()).toBeVisible({ timeout: 10_000 });
@@ -745,7 +745,7 @@ test.describe("Protected pages — authenticated rendering", () => {
 
   test("PAGES-02: /backtests loads with New Backtest button", async ({ page }) => {
     await page.goto(`${BASE_URL}/backtests`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     const newBacktestBtn = page
       .locator("button")
       .filter({ hasText: /new backtest/i });
@@ -756,7 +756,7 @@ test.describe("Protected pages — authenticated rendering", () => {
     page,
   }) => {
     await page.goto(`${BASE_URL}/live-trading`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     // Per spec: a persistent Alert (variant="destructive") always visible
     const disclaimer = page
       .locator('[role="alert"], .alert, [class*="destructive"]')
@@ -766,7 +766,7 @@ test.describe("Protected pages — authenticated rendering", () => {
 
   test("PAGES-04: /artifacts loads with table or empty state", async ({ page }) => {
     await page.goto(`${BASE_URL}/artifacts`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     // Either a table with artifacts OR an empty state message
     const content = page.locator("table, text=No artifacts");
     await expect(content.first()).toBeVisible({ timeout: 10_000 });
@@ -776,7 +776,7 @@ test.describe("Protected pages — authenticated rendering", () => {
     page,
   }) => {
     await page.goto(`${BASE_URL}/profile`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     // Profile page should have cards/sections for user info and broker credentials
     const profileContent = page
       .locator("h2, h3, [class*='title']")
@@ -788,7 +788,7 @@ test.describe("Protected pages — authenticated rendering", () => {
     page,
   }) => {
     await page.goto(`${BASE_URL}/strategies`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     const runBtn = page.locator("button").filter({ hasText: /run|analyze/i });
     await expect(runBtn.first()).toBeVisible({ timeout: 10_000 });
   });
@@ -797,7 +797,7 @@ test.describe("Protected pages — authenticated rendering", () => {
     page,
   }) => {
     await page.goto(`${BASE_URL}/live-trading`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     // The dry-run switch should be visible and checked by default
     const dryRunSwitch = page.locator('button[role="switch"]').first();
     await expect(dryRunSwitch).toBeVisible({ timeout: 10_000 });
@@ -810,7 +810,7 @@ test.describe("Protected pages — authenticated rendering", () => {
     request,
   }) => {
     await page.goto(`${BASE_URL}/backtests`);
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     // Table headers should be visible if any runs exist (or empty state)
     const header = page.locator("th, thead");
     const emptyState = page.locator("text=No backtests yet");
@@ -1112,7 +1112,7 @@ test.describe("Navigation flows — post-login", () => {
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
 
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("networkidle");
     // Cookie is still present — should stay on /dashboard
     await expect(page).toHaveURL(/\/dashboard/);
     await expect(page).not.toHaveURL(/\/login/);

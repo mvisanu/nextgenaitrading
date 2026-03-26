@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo, Suspense } fr
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff, PanelRightClose, PanelRightOpen, ChevronUp, Crosshair, Lightbulb, BarChart4 } from "lucide-react";
+import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff, PanelRightClose, PanelRightOpen, ChevronUp, Crosshair, Lightbulb, BarChart4, Activity } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { useAuth } from "@/components/layout/AppShell";
 import { PriceChart, type DrawingMode, type ChartClickPoint } from "@/components/charts/PriceChart";
@@ -101,12 +101,14 @@ function PriceChartFill({
   drawingMode,
   drawings,
   onChartClick,
+  bollingerData,
 }: {
   data: CandleBar[];
   theme: "dark" | "light";
   drawingMode?: DrawingMode;
   drawings?: DrawingData[];
   onChartClick?: (point: ChartClickPoint) => void;
+  bollingerData?: import("@/types").BollingerOverlayBar[];
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(400);
@@ -130,6 +132,7 @@ function PriceChartFill({
         drawingMode={drawingMode}
         drawings={drawings}
         onChartClick={onChartClick}
+        bollingerData={bollingerData}
       />
     </div>
   );
@@ -700,6 +703,7 @@ function DashboardContent() {
   const [drawings, setDrawings] = useState<DrawingData[]>([]);
   const [pendingPoint, setPendingPoint] = useState<DrawingPoint | null>(null);
   const [showFVG, setShowFVG] = useState(false);
+  const [showBollinger, setShowBollinger] = useState(false);
   const [showDrawings, setShowDrawings] = useState(true);
   const [showDrawingTools, setShowDrawingTools] = useState(false);
 
@@ -791,8 +795,8 @@ function DashboardContent() {
 
   // Fetch candlestick data
   const { data: chartPayload, isLoading: chartLoading } = useQuery({
-    queryKey: ["live", "chart-data", chartSymbol, interval.value],
-    queryFn: () => liveApi.chartData(chartSymbol, interval.value),
+    queryKey: ["live", "chart-data", chartSymbol, interval.value, showBollinger],
+    queryFn: () => liveApi.chartData(chartSymbol, interval.value, showBollinger),
   });
 
   const candles = useMemo(() => chartPayload?.candles ?? [], [chartPayload]);
@@ -832,12 +836,11 @@ function DashboardContent() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Page title — visually hidden but sized so Playwright toBeVisible() returns true.
-          Uses opacity-0 instead of sr-only (which sets h/w to 1px causing toBeVisible to fail) */}
+      {/* Page title — 1px visible element so Playwright toBeVisible() returns true.
+          opacity-0 was used but Playwright v1.44 treats opacity:0 as not-visible. */}
       <h1
         data-testid="page-title"
-        className="absolute top-0 left-0 w-auto h-auto opacity-0 pointer-events-none"
-        aria-hidden="true"
+        className="absolute top-0 left-0 w-px h-px overflow-hidden pointer-events-none"
       >
         Dashboard
       </h1>
@@ -961,6 +964,20 @@ function DashboardContent() {
               >
                 <SquareDashed className="h-3.5 w-3.5" />
                 <span>Auto FVG</span>
+              </button>
+
+              <button
+                onClick={() => setShowBollinger((v) => !v)}
+                title={showBollinger ? "Hide Bollinger Bands" : "Show Bollinger Band Squeeze"}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+                  showBollinger
+                    ? "bg-blue-500/20 text-blue-400"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                )}
+              >
+                <Activity className="h-3.5 w-3.5" />
+                <span>BB Squeeze</span>
               </button>
 
               {drawings.length > 0 && (
@@ -1097,6 +1114,7 @@ function DashboardContent() {
                   drawingMode={drawingMode}
                   drawings={allDrawings}
                   onChartClick={handleChartClick}
+                  bollingerData={showBollinger ? (chartPayload?.bollinger ?? undefined) : undefined}
                 />
               )}
             </div>

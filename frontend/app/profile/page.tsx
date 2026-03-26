@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -67,17 +66,10 @@ const credentialSchema = z.object({
 type CredentialFormValues = z.infer<typeof credentialSchema>;
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [credDialogOpen, setCredDialogOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login?callbackUrl=/profile");
-    }
-  }, [authLoading, user, router]);
 
   // ── Profile data ────────────────────────────────────────────────────────────
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -193,8 +185,6 @@ export default function ProfilePage() {
     }
     createCredential(body);
   }
-
-  if (authLoading || !user) return null;
 
   return (
     <AppShell title="Profile">

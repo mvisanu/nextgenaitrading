@@ -21,8 +21,21 @@
  */
 
 import { test, expect } from "../fixtures/auth.fixture";
+import { API_URL, USER_A } from "../fixtures/test-data";
+import { registerUser, loginUser } from "../helpers/api.helper";
 
 const AUTO_BUY_ROUTE = "/auto-buy";
+
+// Reset auto-buy settings to known defaults before each test to prevent
+// state accumulation across runs (e.g., AB-UI-07 enables auto-buy which
+// would make AB-UI-04's "initially OFF" assertion fail on the next run).
+test.beforeEach(async ({ request }) => {
+  await registerUser(request, USER_A.email, USER_A.password);
+  await loginUser(request, USER_A.email, USER_A.password);
+  await request.patch(`${API_URL}/auto-buy/settings`, {
+    data: { enabled: false, paper_mode: true, confidence_threshold: 0.70, max_trade_amount: 1000.0 },
+  });
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Authentication guard

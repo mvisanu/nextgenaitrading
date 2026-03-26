@@ -55,7 +55,11 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // Grant clipboard permissions so ART-09 copy-to-clipboard test works in headless mode
+        permissions: ["clipboard-read", "clipboard-write"],
+      },
     },
     {
       name: "firefox",

@@ -237,6 +237,7 @@ function IdeaCard({ idea, onEdit, onDelete }: IdeaCardProps) {
               className="h-7 w-7 text-destructive hover:text-destructive"
               onClick={onDelete}
               title="Delete idea"
+              aria-label="Delete idea"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.core.security import assert_ownership
 from app.db.session import get_db
+from app.models.backtest import VariantBacktestResult
 from app.models.strategy import StrategyRun, TradeDecision
 from app.models.user import User
+from app.schemas.backtest import LeaderboardEntry
 from app.schemas.strategy import StrategyRunOut, StrategyRunRequest, TradeDecisionOut
 from app.services.strategy_run_service import run_strategy
 
@@ -63,7 +65,7 @@ async def run_buy_low_sell_high(
 async def list_runs(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=200),
 ) -> list[StrategyRunOut]:
     result = await db.execute(
         select(StrategyRun)
@@ -89,6 +91,32 @@ async def get_run(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found.")
     assert_ownership(run.user_id, current_user.id)
     return StrategyRunOut.model_validate(run)
+
+
+@router.get("/runs/{run_id}/optimization-chart")
+async def get_optimization_chart(
+    run_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    """Return variant backtest results for the Plotly optimization scatter chart.
+
+    Used by the AI Pick and Buy Low/Sell High strategy result panels.
+    Returns { variants: [...] } matching the frontend OptimizationChartData type.
+    """
+    run_result = await db.execute(
+        select(StrategyRun).where(StrategyRun.id == run_id)
+    )
+    run = run_result.scalar_one_or_none()
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found.")
+    assert_ownership(run.user_id, current_user.id)
+
+    variant_result = await db.execute(
+        select(VariantBacktestResult).where(VariantBacktestResult.strategy_run_id == run_id)
+    )
+    variants = variant_result.scalars().all()
+    return {"variants": [LeaderboardEntry.model_validate(v) for v in variants]}
 
 
 @router.get("/runs/{run_id}/decisions", response_model=list[TradeDecisionOut])

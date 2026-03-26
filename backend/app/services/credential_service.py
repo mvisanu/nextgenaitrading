@@ -106,4 +106,4 @@ async def test_credential(
         return {"ok": ok, "detail": None if ok else "Broker did not respond to ping."}
     except Exception as exc:
         logger.warning("Credential test failed for cred_id=%d: %s", cred_id, exc)
-        return {"ok": False, "detail": str(exc)}
+        return {"ok": False, "detail": "Connection test failed. Please check your API key and secret."}

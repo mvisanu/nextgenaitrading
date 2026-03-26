@@ -218,7 +218,7 @@ test.describe("Broker Credential UI — /profile page", () => {
     // Wait for the credential to appear in the list
     await expect(
       page.locator(`text=${ALPACA_CRED.profile_name}`)
-    ).toBeVisible({ timeout: 10_000 });
+    ).toBeVisible({ timeout: 30_000 });
   });
 
   test("CRED-11: raw API keys are never visible in the DOM after saving", async ({

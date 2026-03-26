@@ -4,6 +4,7 @@ Auth business logic: register, login, refresh, logout.
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request, Response, status
@@ -23,6 +24,33 @@ from app.models.user import User, UserProfile, UserSession
 from app.schemas.auth import RegisterRequest, LoginRequest
 
 logger = logging.getLogger(__name__)
+
+# ── In-memory login attempt tracking ──────────────────────────────────────────
+_MAX_FAILED_ATTEMPTS = 5
+_LOCKOUT_MINUTES = 15
+_failed_attempts: dict[str, list[datetime]] = defaultdict(list)
+
+
+def _check_lockout(email: str) -> None:
+    """Raise 429 if too many recent failed login attempts for this email."""
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(minutes=_LOCKOUT_MINUTES)
+    attempts = _failed_attempts.get(email, [])
+    recent = [t for t in attempts if t > cutoff]
+    _failed_attempts[email] = recent
+    if len(recent) >= _MAX_FAILED_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many failed login attempts. Try again in {_LOCKOUT_MINUTES} minutes.",
+        )
+
+
+def _record_failed_attempt(email: str) -> None:
+    _failed_attempts[email].append(datetime.now(tz=timezone.utc))
+
+
+def _clear_failed_attempts(email: str) -> None:
+    _failed_attempts.pop(email, None)
+
 
 _COOKIE_OPTS: dict = {
     "httponly": True,
@@ -126,17 +154,21 @@ async def login(
     request: Request,
 ) -> User:
     """Validate credentials, rotate session, set cookies."""
+    _check_lockout(payload.email)
+
     result = await db.execute(
         select(User).where(User.email == payload.email, User.is_active.is_(True))
     )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(payload.password, user.password_hash):
+        _record_failed_attempt(payload.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password.",
         )
 
+    _clear_failed_attempts(payload.email)
     access_token = create_access_token(user.id, user.email)
     refresh_token = create_refresh_token(user.id)
 

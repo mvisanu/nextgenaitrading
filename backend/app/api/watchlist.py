@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -113,12 +113,12 @@ async def add_to_watchlist(
     return WatchlistItemOut.model_validate(new_row)
 
 
-@router.delete("/{ticker}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{ticker}")
 async def remove_from_watchlist(
     ticker: str,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
+) -> Response:
     """
     Remove a ticker from the authenticated user's watchlist.
 
@@ -141,6 +141,7 @@ async def remove_from_watchlist(
     await db.delete(row)
     await db.commit()
     logger.info("watchlist: removed %s for user_id=%d", ticker, current_user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.patch("/{ticker}/alert", response_model=WatchlistItemOut)

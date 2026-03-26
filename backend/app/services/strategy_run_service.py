@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 MODE_DEFAULTS: dict[str, dict] = {
     "conservative": {"leverage": 2.5, "min_confirmations": 7, "trailing_stop_pct": None},
     "aggressive": {"leverage": 4.0, "min_confirmations": 5, "trailing_stop_pct": 0.05},
+    "squeeze": {"leverage": 2.5, "min_confirmations": 6, "trailing_stop_pct": None},
     "ai-pick": {"leverage": 2.0, "min_confirmations": None, "trailing_stop_pct": None},
     "buy-low-sell-high": {"leverage": 2.0, "min_confirmations": None, "trailing_stop_pct": None},
 }
@@ -71,7 +72,7 @@ async def run_strategy(
     try:
         df = load_ohlcv_for_strategy(symbol, timeframe)
 
-        if mode in ("conservative", "aggressive"):
+        if mode in ("conservative", "aggressive", "squeeze"):
             run = await _run_hmm_mode(run, df, mode, leverage, db, current_user)
         elif mode == "ai-pick":
             run = await _run_optimizer_mode(run, df, "ai_pick", leverage, db, current_user)
@@ -101,9 +102,15 @@ async def _run_hmm_mode(
 ) -> StrategyRun:
     """Run Conservative or Aggressive HMM strategy and save decisions + trades."""
     from app.strategies.aggressive import AggressiveStrategy
+    from app.strategies.bollinger_squeeze import BollingerSqueezeStrategy
     from app.strategies.conservative import ConservativeStrategy
 
-    strategy = ConservativeStrategy() if mode == "conservative" else AggressiveStrategy()
+    if mode == "squeeze":
+        strategy = BollingerSqueezeStrategy()
+    elif mode == "conservative":
+        strategy = ConservativeStrategy()
+    else:
+        strategy = AggressiveStrategy()
     result = strategy.generate_signals(df)
 
     # Update run with signal info
@@ -116,7 +123,18 @@ async def _run_hmm_mode(
 
     # Store per-indicator confirmation details in notes as JSON for the signal check UI
     if result.confirmation_details:
-        run.notes = json.dumps({"confirmation_details": result.confirmation_details, "reason": result.reason_summary})  # type: ignore[assignment]
+        notes_payload: dict = {"confirmation_details": result.confirmation_details, "reason": result.reason_summary}
+        # For squeeze mode, include squeeze analysis data
+        if mode == "squeeze":
+            try:
+                from app.services.bollinger_squeeze_service import compute_bollinger_bands, compute_squeeze_analysis
+                from app.strategies.bollinger_squeeze import _add_squeeze_indicators
+                sq_df = _add_squeeze_indicators(df.copy())
+                if len(sq_df) > 0:
+                    notes_payload["squeeze"] = compute_squeeze_analysis(sq_df, -1)
+            except Exception as exc:
+                logger.warning("Squeeze data extraction failed: %s", exc)
+        run.notes = json.dumps(notes_payload)  # type: ignore[assignment]
 
     # Save per-bar TradeDecision records (up to last 100 bars to avoid bloat)
     bar_data = list(zip(result.bar_timestamps, result.signals_per_bar))[-100:]

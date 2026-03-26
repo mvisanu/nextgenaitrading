@@ -1,7 +1,7 @@
 """
 Security utilities:
   - JWT access/refresh token creation and decoding
-  - Password hashing and verification via bcrypt (passlib)
+  - Password hashing and verification via bcrypt (direct, no passlib)
   - Fernet symmetric encryption/decryption for broker credentials
   - assert_ownership helper
 """
@@ -13,24 +13,25 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import bcrypt
 from cryptography.fernet import Fernet
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import jwt
+from jwt.exceptions import PyJWTError as JWTError
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 # ── Password hashing ───────────────────────────────────────────────────────────
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+# Uses bcrypt directly (bypasses passlib) to avoid passlib's detect_wrap_bug
+# which crashes on bcrypt>=4.0 — that version rejects test passwords >72 bytes.
 
 def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 # ── Refresh token hash (SHA-256, stored in DB) ─────────────────────────────────

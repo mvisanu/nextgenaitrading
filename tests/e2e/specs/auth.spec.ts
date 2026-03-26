@@ -168,6 +168,7 @@ test.describe("Login — POST /auth/login", () => {
     page,
   }) => {
     await page.goto(ROUTES.login);
+    await page.waitForLoadState("networkidle");
     await page.fill('input[type="email"]', USER_A.email);
     await page.fill('input[type="password"]', USER_A.password);
     await page.click('button[type="submit"]');
@@ -310,11 +311,15 @@ test.describe("Security — token storage assertions", () => {
     page,
     request,
   }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
+    // Use a unique email to avoid rate-limit lockout from wrong-password tests
+    // that also use USER_A.email in the same test run.
+    const email = uniqueEmail("auth07@nextgenstock.io");
+    await registerUser(request, email, USER_A.password);
 
     // Log in through the UI so cookies are set by the browser
     await page.goto(ROUTES.login);
-    await page.fill('input[type="email"]', USER_A.email);
+    await page.waitForLoadState("networkidle");
+    await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', USER_A.password);
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
@@ -329,10 +334,12 @@ test.describe("Security — token storage assertions", () => {
     page,
     request,
   }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
+    const email = uniqueEmail("auth07-ls@nextgenstock.io");
+    await registerUser(request, email, USER_A.password);
 
     await page.goto(ROUTES.login);
-    await page.fill('input[type="email"]', USER_A.email);
+    await page.waitForLoadState("networkidle");
+    await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', USER_A.password);
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 });

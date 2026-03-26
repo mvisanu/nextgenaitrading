@@ -18,7 +18,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -251,14 +251,15 @@ async def update_idea(
     return await _build_idea_out(idea, db)
 
 
-@router.delete("/{idea_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{idea_id}")
 async def delete_idea(
     idea_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
+) -> Response:
     """Delete an idea and all its linked tickers."""
     idea = await _get_idea(idea_id, db, current_user)
     await db.delete(idea)
     await db.commit()
     logger.info("Idea deleted: id=%d user_id=%d", idea_id, current_user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

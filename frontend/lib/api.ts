@@ -108,9 +108,14 @@ async function apiFetch<T>(
       await refreshTokenOnce();
       return apiFetch<T>(path, options, true);
     } catch {
-      // Refresh failed — redirect to login
+      // Refresh failed — redirect to login (only if not already on an auth page)
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        const onAuthPage = ["/login", "/register"].some((p) =>
+          window.location.pathname === p || window.location.pathname.startsWith(p + "/")
+        );
+        if (!onAuthPage) {
+          window.location.href = "/login";
+        }
       }
       throw new Error("Session expired. Please log in again.");
     }
@@ -258,9 +263,9 @@ export const liveApi = {
 
   status: () => get<LiveStatus>("/live/status"),
 
-  chartData: (symbol: string, interval: string) =>
-    get<{ candles: import("@/types").CandleBar[] }>(
-      `/live/chart-data?symbol=${encodeURIComponent(symbol)}&interval=${interval}`
+  chartData: (symbol: string, interval: string, bollinger: boolean = false) =>
+    get<{ candles: import("@/types").CandleBar[]; bollinger?: import("@/types").BollingerOverlayBar[] | null }>(
+      `/live/chart-data?symbol=${encodeURIComponent(symbol)}&interval=${interval}${bollinger ? "&bollinger=true" : ""}`
     ),
 };
 

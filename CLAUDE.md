@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**NextGenStock** — a production-grade multi-user AI trading platform. V1 spec: `prompt.md`. V2 feature spec: `prompt-feature.md` / `PRD2.md`. V3 feature spec: `prompt-watchlist-scanner.md` / `PRD3.md`. V1 backend complete (60 files). V2 backend implemented (47 new files, 236 unit tests passing). V3 backend + frontend implemented (~88% complete, 167 unit tests passing, 10 bugs fixed). Frontend mostly implemented with Thai/English i18n on FAQ page.
+**NextGenStock** — a production-grade multi-user AI trading platform. All specs consolidated in `SPEC.md` (V1 + V2 + V3 + Screener + Bitcoin). PRD in `PRD.md` (3 parts). V1 backend complete (60 files). V2 backend implemented (47 new files, 236 unit tests passing). V3 backend + frontend implemented (~88% complete, 167 unit tests passing, 10 bugs fixed). Frontend mostly implemented with Thai/English i18n on FAQ page.
 
 **Stack:**
 - **Frontend:** Next.js 14+ (App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Query
@@ -45,8 +45,9 @@ npm run lint
 ```
 backend/app/
   main.py               # FastAPI app + CORS + router registration
-  core/config.py        # Settings via pydantic-settings
-  core/security.py      # JWT encode/decode, password hashing
+  core/config.py        # Settings via pydantic-settings (includes `debug` flag for Swagger toggle)
+  core/security.py      # JWT encode/decode (PyJWT), password hashing (bcrypt/passlib), Fernet encryption
+  core/rate_limit.py    # slowapi rate limiter (shared instance)
   auth/                 # Register, login, refresh, logout, get_current_user
   api/                  # profile, broker, backtests, strategies, live, artifacts + v2: buy_zone, alerts, ideas, auto_buy, opportunities + v3: watchlist, scanner (extended)
   models/               # SQLAlchemy ORM models (all have user_id FK) + v2: buy_zone, alert, auto_buy, idea, theme_score + v3: buy_signal, generated_idea, user_watchlist
@@ -88,10 +89,17 @@ frontend/
 3. All DB queries are scoped `WHERE user_id = current_user.id` — never trust user-supplied IDs
 4. Broker credentials are decrypted in-memory at execution time only (Fernet); never returned in responses
 
-### Authentication
+### Authentication & Security
 - **Access token:** 15-min expiry, HTTP-only cookie, SameSite=Lax
-- **Refresh token:** 7-day expiry, stored as bcrypt hash in `UserSession` table, rotated on each use
+- **Refresh token:** 7-day expiry, stored as SHA-256 hash in `UserSession` table, rotated on each use
 - **Never use localStorage** for tokens
+- **JWT library:** PyJWT (`jwt` module), NOT python-jose — migrated for active maintenance
+- **Rate limiting:** slowapi on auth endpoints (10/min login, 5/min register, 10/min refresh) and trade execution (10/min)
+- **Account lockout:** 5 failed login attempts → 15-min lockout per email (in-memory tracker)
+- **Password policy:** min 8 chars, requires uppercase + lowercase + digit
+- **CORS:** Restricted to `settings.cors_origins_list` — never use `allow_origins=["*"]`
+- **Auto-buy real trading:** Requires password re-authentication to set `paper_mode=False`
+- **Swagger/Redoc:** Only enabled when `DEBUG=true` in `.env`
 
 ### Strategy Modes
 | Mode | Leverage | Min Confirms | Notes |
@@ -128,11 +136,12 @@ ENCRYPTION_KEY=<fernet-key>
 CORS_ORIGINS=http://localhost:3000
 COOKIE_SECURE=false
 COOKIE_SAMESITE=lax
+DEBUG=true
 ALPACA_BASE_URL=https://api.alpaca.markets
 ALPACA_PAPER_URL=https://paper-api.alpaca.markets
 ```
 
-Docker Postgres: `nextgen:nextgen@localhost:5432/nextgenstock` (host port 5432).
+Docker Postgres: `nextgen:nextgen@localhost:5432/nextgenstock` (bound to `127.0.0.1:5432`, dev-only credentials).
 
 **Frontend (`.env.local`):**
 ```
@@ -144,9 +153,14 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - **Multi-tenancy is non-negotiable:** Every service method must scope queries to `user_id`. Add `assert_ownership(record, current_user)` checks.
 - **Live trading defaults to dry-run.** Require explicit opt-in and a confirmation dialog before real execution.
 - **Broker keys are never returned in API responses.** Mask or omit entirely.
-- **`prompt.md` is authoritative for v1.** `prompt-feature.md` is authoritative for v2 features (buy zone, alerts, auto-buy, themes, ideas). `prompt-watchlist-scanner.md` is authoritative for v3 features (live scanner, buy signals, auto-generated ideas, news scanner). When in doubt about a spec detail, consult the relevant prompt file.
-- **V3 scanner alerts fire only when ALL 10 conditions pass.** Never partial alerts. See `PRD3.md` Section 4.3 for the full gate logic.
+- **`SPEC.md` is authoritative for all feature specs** (V1, V2, V3, Screener, Bitcoin sections). When in doubt about a spec detail, consult the relevant section in `SPEC.md`.
+- **V3 scanner alerts fire only when ALL 10 conditions pass.** Never partial alerts. See `PRD.md` Part 3, Section 4.3 for the full gate logic.
 - **V3 approved wording:** Never say "guaranteed", "safe", "certain to go up". Always use "historically favorable", "high-probability entry zone", "confidence score".
+- **CORS must never be `["*"]`.** Always use `settings.cors_origins_list`. Exception handlers must validate origin against allow-list before reflecting.
+- **All list endpoints must have bounded `limit` params:** Use `Query(default=50, ge=1, le=200)`.
+- **Credential test errors must not leak raw exception strings.** Return a generic message; log the real error server-side.
+- **FAQ page HTML rendering uses DOMPurify sanitization.** Never add `dangerouslySetInnerHTML` without sanitization.
+- **DELETE endpoints return `Response(status_code=204)`** — FastAPI 0.115+ forbids `status_code=204` with response body in decorator.
 
 ## Implementation Status
 
@@ -159,13 +173,13 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 | Frontend v1 pages | Complete (auth, dashboard, artifacts, artifacts/[id], backtests/[id], strategies, strategy-samples, live-trading, profile, faq, learn) — FAQ has 13 sections + Thai i18n |
 | Frontend v2 pages | Complete (opportunities, ideas, alerts, auto-buy) |
 | Shared watchlist | `lib/watchlist.ts` — syncs dashboard + opportunities via localStorage events |
-| v1 E2E tests (Playwright, 263 cases × 3 browsers) | Written in `tests/e2e/`; 421/789 passing (54%) — see `user_tests2.md` |
+| v1 E2E tests (Playwright, 263 cases × 3 browsers) | Written in `tests/e2e/`; 421/789 passing (54%) — see `TEST_REPORT.md` |
 | v2 E2E tests (159 cases) | Written in `tests/e2e/specs/`; buy-zone & opportunities 100%, alerts/auto-buy have failures |
 | v3 Backend (live scanner, buy signals, ideas engine) | Implemented — services, models, schemas, API endpoints, scheduler tasks, 167 unit tests passing |
 | v3 Frontend (opportunities + ideas page extensions) | Implemented — WatchlistTable, BuyNowBadge, EstimatedEntryPanel, GeneratedIdeaCard, IdeaFeed, AddToWatchlistButton, ScannerStatusDot; opportunities page has dashboard watchlist sidebar |
 | v3 API: POST /api/ideas/generated/run-now | Manual idea scan trigger (bypasses market hours) |
 | v3 E2E tests (34 cases) | Written in `tests/e2e/specs/v3-opportunities.spec.ts` + `v3-ideas.spec.ts` |
-| v3 Bug fixes (10 from test_report3.md) | All resolved — see V3 Bug Fixes section below |
+| v3 Bug fixes (10 from TEST_REPORT.md) | All resolved — see V3 Bug Fixes section below |
 
 ### Running E2E Tests
 ```bash
@@ -215,12 +229,14 @@ Tests require both backend (`uvicorn`) and frontend (`npm run dev`) running.
 - `auto_buy_engine.py`: Fixed dead-code `position_size_limit` safeguard (notional was self-referential)
 - `alert_engine_service.py`: Removed orphaned `_check_theme_score_changed`; fixed theme alert defaults (was always delta=0)
 
-### V2 Documentation
-- `PRD2.md` — Structured PRD for v2 features
-- `TASKS2.md` — 47 dependency-ordered tasks
-- `BACKEND2.md` — V2 backend handoff (endpoints, models, services)
-- `tests2_output.md` — V2 test report (236/236 passing)
-- `user_tests2.md` — Full E2E test report (2026-03-25): 421/789 v1 passing (54%), v2 buy-zone/opportunities 100%, alerts/auto-buy failing
+### Consolidated Documentation
+All documentation has been merged into single files with V1/V2/V3 sections:
+- `SPEC.md` — All feature specs (V1 core, V2 buy zone/alerts/auto-buy, V3 watchlist scanner, Screener & TA, Bitcoin theme)
+- `PRD.md` — Product requirements (Parts 1–3)
+- `TASKS.md` — Task breakdowns (Parts 1–3)
+- `BACKEND.md` — Backend architecture handoff (Parts 1–3)
+- `FRONTEND.md` — Frontend architecture handoff (Parts 1–3)
+- `TEST_REPORT.md` — All test reports (V1/V2/V3 unit tests, E2E results, bugs found)
 
 ### V3 Bug Fixes Applied
 - `api/watchlist.py`: Returns 409 on duplicate ticker (was 200, making frontend error path dead code)
@@ -251,6 +267,23 @@ Tests require both backend (`uvicorn`) and frontend (`npm run dev`) running.
 - `faq/page.tsx`: Fixed `onChange` TypeError — wrapped `setLang` in `useCallback` to avoid React 19 `current is not iterable` crash when passing raw dispatcher as prop
 - `faq/translations.ts`: Added ~80 new translation keys for V2/V3 feature FAQ sections (EN + TH)
 
+### OWASP Top 10 Security Hardening (2026-03-25)
+Full audit performed; 1 Critical, 4 High, 7 Medium, 6 Low findings identified and fixed:
+- **A01 CORS (CRITICAL):** `main.py` — replaced `allow_origins=["*"]` with `settings.cors_origins_list`; error handlers validate origin against allow-list before reflecting
+- **A04 Rate limiting (HIGH):** Added `slowapi` — auth endpoints (5-10/min), trade execution (10/min) via `core/rate_limit.py`
+- **A04 Auto-buy re-auth (HIGH):** `auto_buy.py` — `paper_mode=False` requires `current_password` field for re-authentication
+- **A05 Cookie secure (HIGH):** `main.py` lifespan — startup warning when `COOKIE_SECURE=false` in non-localhost env
+- **A05 Swagger (MEDIUM):** `main.py` — docs/redoc disabled unless `DEBUG=true`
+- **A06 python-jose → PyJWT (MEDIUM):** `security.py` + `dependencies.py` — migrated to `PyJWT[crypto]>=2.8.0`; `requirements.txt` updated
+- **A04 Password policy (MEDIUM):** `schemas/auth.py` — min 8 chars + uppercase + lowercase + digit validator
+- **A03 XSS (MEDIUM):** `faq/page.tsx` — added DOMPurify sanitization for `dangerouslySetInnerHTML` with strict tag/attr allowlist
+- **A05 Docker (MEDIUM):** `docker-compose.yml` — bound port to `127.0.0.1:5432`, credentials via env vars
+- **A07 Account lockout (MEDIUM):** `auth/service.py` — 5 failed attempts → 15-min lockout per email (in-memory)
+- **A01 Unbounded limits (LOW):** strategies, backtests, live, artifacts — added `Query(ge=1, le=200)` bounds
+- **A09 Error leaking (LOW):** `credential_service.py` — generic message instead of `str(exc)`
+- **A06 bcrypt (LOW):** Updated from pinned `4.0.1` to `>=4.1.0`
+- **FastAPI 0.115+ compat:** Fixed 5 DELETE endpoints (`broker`, `watchlist`, `alerts`, `ideas`, `auth/logout`) — `status_code=204` in decorator replaced with `Response(status_code=204)` return
+
 ### E2E Bug Fixes Applied (2026-03-25)
 - `schemas/alert.py`: Renamed `threshold` → `threshold_json` with backward-compat coercion from legacy `threshold` field
 - `schemas/idea.py`: Renamed `tags` → `tags_json` with backward-compat coercion from legacy `tags` field
@@ -265,18 +298,13 @@ Tests require both backend (`uvicorn`) and frontend (`npm run dev`) running.
 - `tests/e2e/specs/nextgenstock-live.spec.ts`: Fresh request context for API auth isolation
 - `tests/e2e/specs/live-trading.spec.ts`, `strategies.spec.ts`, `backtests.spec.ts`, `auto-buy-ui.spec.ts`: Fixed broken CSS comma-separated attribute selectors
 
-### V3 Documentation
-- `prompt-watchlist-scanner.md` — Raw feature spec for watchlist scanner, buy alerts, auto-idea engine
-- `PRD3.md` — Structured PRD for v3 features (live scanner, buy signals, news scanner, idea generator, megatrend/moat/financial quality filters)
-- `TASKS3.md` — 49 dependency-ordered tasks across 19 parallel work waves
-- `BACKEND3.md` — V3 backend handoff (endpoints, models, services, scheduler jobs)
-- `FRONTEND3.md` — V3 frontend handoff (new components, types, API functions, page modifications)
-- `test_report3.md` — V3 comprehensive test report (167 tests, 10 bugs found and fixed)
+### Former V3 Documentation (now consolidated above)
+All V3 docs have been merged into the consolidated files listed above.
 
 ### Git Status
 All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio.
 
-### Known E2E Test Failures (as of 2026-03-25, see `user_tests2.md`)
+### Known E2E Test Failures (as of 2026-03-25, see `TEST_REPORT.md`)
 Most issues from the 2026-03-25 test run have been fixed. Remaining open items:
 - Multi-tenancy tests: some assertions may still need investigation (test isolation vs real scoping bugs)
 - Auto-buy UI: some expected elements may still be missing (risk disclaimer, decision log table)

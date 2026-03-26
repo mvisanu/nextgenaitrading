@@ -204,8 +204,9 @@ export async function getAutoBuyDecisionLog(
   request: APIRequestContext,
   limit?: number
 ): Promise<{ ok: boolean; status: number; body: unknown[] }> {
+  // Backend uses page_size param (not limit)
   const url = limit
-    ? `${API_URL}/auto-buy/decision-log?limit=${limit}`
+    ? `${API_URL}/auto-buy/decision-log?page_size=${limit}`
     : `${API_URL}/auto-buy/decision-log`;
   const res = await request.get(url);
   const body = await res.json().catch(() => []);

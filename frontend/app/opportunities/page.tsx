@@ -9,8 +9,7 @@
  * Protected route: requires authentication.
  */
 
-import { useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Crosshair,
@@ -143,14 +142,7 @@ function OnboardingGuide() {
 // ─── Main page ──────────────────────────────────────────────────────────────
 
 export default function OpportunitiesPage() {
-  const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login?callbackUrl=/opportunities");
-    }
-  }, [authLoading, user, router]);
+  const { user } = useAuth();
 
   const {
     data: opportunities = [],
@@ -162,8 +154,6 @@ export default function OpportunitiesPage() {
     enabled: !!user,
     refetchInterval: 5 * 60_000,
   });
-
-  if (authLoading || !user) return null;
 
   const hasData = opportunities.length > 0;
 

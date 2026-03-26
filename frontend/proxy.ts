@@ -16,6 +16,8 @@ const PROTECTED_PREFIXES = [
   "/ideas",
   "/alerts",
   "/auto-buy",
+  "/screener",
+  "/trade-log",
 ];
 
 /**

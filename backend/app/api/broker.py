@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
@@ -46,13 +46,14 @@ async def update_credential(
     return await credential_service.update_credential(cred_id, payload, db, current_user)
 
 
-@router.delete("/{cred_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{cred_id}")
 async def delete_credential(
     cred_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
+) -> Response:
     await credential_service.delete_credential(cred_id, db, current_user)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{cred_id}/test", response_model=TestResult)

@@ -44,6 +44,10 @@ class AutoBuySettingsOut(BaseModel):
 class AutoBuySettingsUpdate(BaseModel):
     enabled: bool | None = None
     paper_mode: bool | None = None
+    current_password: str | None = Field(
+        default=None,
+        description="Required when setting paper_mode=False (real trading)",
+    )
     confidence_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     max_trade_amount: float | None = Field(default=None, gt=0)
     max_position_percent: float | None = Field(default=None, gt=0.0, le=1.0)
@@ -92,12 +96,12 @@ class OpportunityOut(BaseModel):
     current_price: float
     buy_zone_low: Optional[float] = None
     buy_zone_high: Optional[float] = None
-    distance_to_zone_pct: Optional[float] = Field(
+    distance_pct: Optional[float] = Field(
         default=None, description="Percent distance from current price to buy_zone_high"
     )
     confidence_score: Optional[float] = None
     entry_quality_score: Optional[float] = None
-    theme_score_total: Optional[float] = None
+    theme_score: Optional[float] = None
     alert_active: bool = False
     auto_buy_eligible: bool = False
     last_updated: Optional[datetime] = None

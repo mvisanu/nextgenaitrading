@@ -11,7 +11,7 @@ from app.schemas.strategy import TimeframeEnum
 class LiveRunRequest(BaseModel):
     symbol: str = Field(description="Valid yfinance ticker")
     timeframe: TimeframeEnum = Field(default="1d")
-    mode: Literal["conservative", "aggressive"] = Field(
+    mode: Literal["conservative", "aggressive", "squeeze"] = Field(
         description="Strategy mode for signal check"
     )
     credential_id: int = Field(description="Broker credential ID to use")
@@ -93,6 +93,20 @@ class ConfirmationDetail(BaseModel):
     value: str
 
 
+class SqueezeData(BaseModel):
+    """Bollinger Band Squeeze analysis for the current bar."""
+    bb_upper: float = 0.0
+    bb_lower: float = 0.0
+    bb_middle: float = 0.0
+    bb_width_pct: float = 0.0
+    bb_width_percentile: float = 50.0
+    is_squeeze: bool = False
+    squeeze_strength: float = 0.0
+    breakout_state: str = "none"
+    breakout_confirmed: bool = False
+    bars_since_squeeze: int = 0
+
+
 class SignalCheckOut(BaseModel):
     """Slim response for /live/run-signal-check — matches the frontend SignalCheckResult type."""
     model_config = ConfigDict(from_attributes=True)
@@ -104,7 +118,20 @@ class SignalCheckOut(BaseModel):
     strategy_run_id: int
     reason: str | None = None
     confirmation_details: list[ConfirmationDetail] = []
+    squeeze: SqueezeData | None = None
+
+
+class BollingerOverlayBar(BaseModel):
+    """Single bar of Bollinger Band overlay data for the chart."""
+    time: str
+    upper: float
+    lower: float
+    middle: float
+    is_squeeze: bool = False
 
 
 class LiveChartResponse(BaseModel):
     candles: list[dict] = Field(description="OHLCV bars for the price chart")
+    bollinger: list[BollingerOverlayBar] | None = Field(
+        default=None, description="Bollinger Band overlay data (when requested)"
+    )

@@ -191,6 +191,7 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
           render={({ field }) => (
             <input
               id="conviction-slider"
+              name="conviction_score"
               type="range"
               min={1}
               max={10}

@@ -14,7 +14,6 @@
  */
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -238,18 +237,12 @@ function StepCard({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AutoBuyPage() {
-  const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login?callbackUrl=/auto-buy");
-    }
-  }, [authLoading, user, router]);
 
   const [enableConfirmOpen, setEnableConfirmOpen] = useState(false);
   const [liveConfirmOpen, setLiveConfirmOpen] = useState(false);
+  const [livePassword, setLivePassword] = useState("");
   const [dryRunTicker, setDryRunTicker] = useState("AAPL");
   const [dryRunResult, setDryRunResult] = useState<AutoBuyDryRunResult | null>(null);
   const [logFilter, setLogFilter] = useState<string>("all");
@@ -346,12 +339,16 @@ export default function AutoBuyPage() {
   }
 
   function confirmLiveMode() {
-    updateSettings({ paper_mode: false });
+    if (!livePassword) {
+      toast.error("Enter your account password to switch to live mode");
+      return;
+    }
+    updateSettings({ paper_mode: false, current_password: livePassword });
+    setLivePassword("");
     setLiveConfirmOpen(false);
     toast.warning("Live mode enabled — real broker orders may be submitted");
   }
 
-  if (authLoading || !user) return null;
 
   return (
     <AppShell title="Auto-Buy">
@@ -535,7 +532,7 @@ export default function AutoBuyPage() {
           title="Decision Log"
           icon={ListChecks}
           iconColor="text-cyan-400"
-          defaultOpen={decisionLog.length > 0}
+          defaultOpen={true}
           badge={
             decisionLog.length > 0 ? (
               <Badge variant="secondary" className="text-[10px] mr-2">
@@ -579,13 +576,26 @@ export default function AutoBuyPage() {
             {logLoading ? (
               <Skeleton className="h-32 w-full" />
             ) : filteredLog.length === 0 ? (
-              <div className="text-center py-8">
+              <div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Time</TableHead>
+                      <TableHead className="text-xs">Ticker</TableHead>
+                      <TableHead className="text-xs">State</TableHead>
+                      <TableHead className="text-xs">Reason Codes</TableHead>
+                      <TableHead className="text-xs">Mode</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                </Table>
+                <div className="text-center py-8">
                 <ListChecks className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">
                   {logFilter === "all"
                     ? "No decisions logged yet. Try a dry run above to see how it works."
                     : "No entries match this filter."}
                 </p>
+              </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -705,7 +715,7 @@ export default function AutoBuyPage() {
       </Dialog>
 
       {/* Live mode confirmation dialog */}
-      <Dialog open={liveConfirmOpen} onOpenChange={setLiveConfirmOpen}>
+      <Dialog open={liveConfirmOpen} onOpenChange={(open) => { setLiveConfirmOpen(open); if (!open) setLivePassword(""); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-destructive">
@@ -717,9 +727,18 @@ export default function AutoBuyPage() {
               the system with dry runs.
               <br />
               <br />
-              Are you sure you want to switch to live execution?
+              Enter your account password to confirm.
             </DialogDescription>
           </DialogHeader>
+          <div className="py-2">
+            <Input
+              type="password"
+              placeholder="Your account password"
+              value={livePassword}
+              onChange={(e) => setLivePassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && confirmLiveMode()}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"

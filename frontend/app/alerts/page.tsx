@@ -11,7 +11,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, Bell, BellOff, Clock } from "lucide-react";
@@ -45,17 +44,10 @@ const ALERT_TYPE_LABELS: Record<AlertType, string> = {
 };
 
 export default function AlertsPage() {
-  const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newAlertOpen, setNewAlertOpen] = useState(false);
   const [deletingRule, setDeletingRule] = useState<PriceAlertRule | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login?callbackUrl=/alerts");
-    }
-  }, [authLoading, user, router]);
 
   const { data: alertRules = [], isLoading } = useQuery({
     queryKey: ["alerts"],
@@ -85,8 +77,6 @@ export default function AlertsPage() {
       toast.error(getErrorMessage(err, "Failed to delete alert"));
     },
   });
-
-  if (authLoading || !user) return null;
 
   return (
     <AppShell
@@ -242,6 +232,7 @@ function AlertRuleCard({
             className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
             onClick={onDelete}
             title="Delete alert"
+            aria-label="Delete alert"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

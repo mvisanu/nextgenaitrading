@@ -122,14 +122,20 @@ export const test = base.extend<AuthFixtures>({
     // 1. Ensure user exists
     await apiRegister(request, USER_A.email, USER_A.password);
 
-    // 2. Log in via API and retrieve cookies
-    const cookies = await apiLogin(request, USER_A.email, USER_A.password);
-
-    // 3. Create a fresh browser context with those cookies pre-loaded
-    const context = await browser.newContext();
-    if (cookies.length > 0) {
-      await context.addCookies(cookies);
+    // 2. Log in via API so cookies are stored in the request context
+    const loginRes = await request.post(`${API_URL}/auth/login`, {
+      data: { email: USER_A.email, password: USER_A.password },
+    });
+    if (!loginRes.ok()) {
+      throw new Error(`authenticatedPage login failed: ${loginRes.status()} ${await loginRes.text()}`);
     }
+
+    // 3. Capture the full storage state (cookies) and create a browser context
+    //    with those cookies pre-loaded.  Using storageState directly is more
+    //    reliable than addCookies() because it preserves domain/path/samesite
+    //    exactly as the server set them.
+    const storageState = await request.storageState();
+    const context = await browser.newContext({ storageState });
 
     const page = await context.newPage();
     await use(page);

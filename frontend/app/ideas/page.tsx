@@ -11,8 +11,7 @@
  * Protected route: requires authentication.
  */
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Plus,
@@ -60,16 +59,9 @@ const TABS: { key: Tab; label: string; icon: typeof Activity; description: strin
 ];
 
 export default function IdeasPage() {
-  const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [newIdeaOpen, setNewIdeaOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("pulse");
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login?callbackUrl=/ideas");
-    }
-  }, [authLoading, user, router]);
 
   const { data: ideas = [], isLoading } = useQuery({
     queryKey: ["ideas"],
@@ -83,8 +75,6 @@ export default function IdeasPage() {
     enabled: !!user,
     staleTime: 5 * 60_000,
   });
-
-  if (authLoading || !user) return null;
 
   return (
     <AppShell
@@ -141,7 +131,7 @@ export default function IdeasPage() {
           <DialogHeader>
             <DialogTitle>New idea</DialogTitle>
           </DialogHeader>
-          <IdeaForm onSuccess={() => setNewIdeaOpen(false)} />
+          <IdeaForm onSuccess={() => { setNewIdeaOpen(false); setActiveTab("my"); }} />
         </DialogContent>
       </Dialog>
     </AppShell>

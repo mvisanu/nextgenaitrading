@@ -16,7 +16,10 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import HTTPException
+
 from app.auth.dependencies import get_current_user
+from app.core.security import verify_password
 from app.db.session import get_db
 from app.models.auto_buy import AutoBuyDecisionLog, AutoBuySettings
 from app.models.user import User
@@ -57,6 +60,19 @@ async def update_settings(
     calling this endpoint with enabled=True.
     """
     settings_row = await _get_or_create_settings(current_user.id, db)
+
+    # Require re-authentication to enable real (non-paper) trading
+    if payload.paper_mode is False:
+        if not payload.current_password:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Password confirmation required to enable real trading mode.",
+            )
+        if not verify_password(payload.current_password, current_user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password.",
+            )
 
     if payload.enabled is not None:
         settings_row.enabled = payload.enabled

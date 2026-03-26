@@ -43,8 +43,14 @@ class Settings(BaseSettings):
     )
 
     # ── Cookies ────────────────────────────────────────────────────────────────
-    cookie_secure: bool = Field(default=False)
+    cookie_secure: bool = Field(
+        default=False,
+        description="Must be True in production (HTTPS). Set COOKIE_SECURE=true.",
+    )
     cookie_samesite: str = Field(default="lax")
+
+    # ── Debug / environment ──────────────────────────────────────────────────
+    debug: bool = Field(default=False, description="Set DEBUG=true for development mode")
 
     # ── Broker URLs ────────────────────────────────────────────────────────────
     alpaca_base_url: str = Field(default="https://api.alpaca.markets")
@@ -77,8 +83,16 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        """Return CORS origins as a list (splits on comma)."""
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        """Return CORS origins as a list (splits on comma).
+        In debug mode, also allows common local dev ports so E2E tests
+        running on a different port than 3000 work without .env changes."""
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        if self.debug:
+            for port in (3000, 3001, 3002, 3003, 3004, 3005, 5173, 8080):
+                origin = f"http://localhost:{port}"
+                if origin not in origins:
+                    origins.append(origin)
+        return origins
 
 
 settings = Settings()  # type: ignore[call-arg]

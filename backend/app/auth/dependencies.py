@@ -10,7 +10,7 @@ import logging
 from typing import Annotated, Optional
 
 from fastapi import Cookie, Depends, HTTPException, status
-from jose import JWTError
+from jwt.exceptions import PyJWTError as JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

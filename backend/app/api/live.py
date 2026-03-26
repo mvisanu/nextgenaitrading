@@ -1,25 +1,33 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models.live import BrokerOrder, PositionSnapshot
 from app.models.user import User
 from app.schemas.live import (
     AccountStatus,
+    BollingerOverlayBar,
     ExecuteRequest,
     LiveChartResponse,
     LiveRunRequest,
     OrderOut,
     PositionOut,
     SignalCheckOut,
+    SqueezeData,
 )
 from app.services import credential_service
 from app.services.execution_service import execute_order
@@ -59,11 +67,14 @@ async def run_signal_check(
     # Parse per-indicator confirmation details from notes JSON
     confirmation_details = []
     reason = None
+    squeeze_data = None
     if run.notes:
         try:
             notes_data = json.loads(run.notes)
             confirmation_details = notes_data.get("confirmation_details", [])
             reason = notes_data.get("reason")
+            if "squeeze" in notes_data:
+                squeeze_data = SqueezeData(**notes_data["squeeze"])
         except (json.JSONDecodeError, TypeError):
             pass
 
@@ -75,11 +86,14 @@ async def run_signal_check(
         strategy_run_id=run.id,
         reason=reason,
         confirmation_details=confirmation_details,
+        squeeze=squeeze_data,
     )
 
 
 @router.post("/execute", response_model=OrderOut)
+@limiter.limit("10/minute")
 async def execute_live_order(
+    request: Request,
     payload: ExecuteRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -92,7 +106,7 @@ async def execute_live_order(
 async def list_orders(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=200),
 ) -> list[OrderOut]:
     result = await db.execute(
         select(BrokerOrder)
@@ -186,12 +200,10 @@ async def get_live_chart_data(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     interval: str = "1d",
+    bollinger: bool = False,
 ) -> LiveChartResponse:
     """Fetch OHLCV candles for the live trading price chart."""
     symbol = symbol.strip().upper()
-    # Reject obviously invalid symbols before hitting yfinance.
-    # Valid examples: AAPL, BTC-USD, ETH-USD, SPY, TSLA
-    # Must be at least 2 chars, contain only letters/digits/hyphens, start with a letter.
     if not re.fullmatch(r"[A-Z][A-Z0-9\-]{1,19}", symbol):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -205,4 +217,26 @@ async def get_live_chart_data(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Symbol '{symbol}' not found or returned no data",
         ) from exc
-    return LiveChartResponse(candles=candles)
+
+    bollinger_overlay = None
+    if bollinger:
+        try:
+            from app.services.bollinger_squeeze_service import compute_bollinger_bands, detect_squeeze
+            bb = compute_bollinger_bands(df["Close"])
+            bollinger_overlay = []
+            for ts, row in bb.iterrows():
+                if any(pd.isna([row["bb_upper"], row["bb_lower"], row["bb_middle"]])):
+                    continue
+                t = ts
+                time_str = t.strftime("%Y-%m-%d") if hasattr(t, "strftime") else str(t)[:10]
+                bollinger_overlay.append(BollingerOverlayBar(
+                    time=time_str,
+                    upper=round(float(row["bb_upper"]), 4),
+                    lower=round(float(row["bb_lower"]), 4),
+                    middle=round(float(row["bb_middle"]), 4),
+                    is_squeeze=detect_squeeze(float(row["bb_width_percentile"])),
+                ))
+        except Exception as exc:
+            logger.warning("Bollinger overlay computation failed: %s", exc)
+
+    return LiveChartResponse(candles=candles, bollinger=bollinger_overlay)

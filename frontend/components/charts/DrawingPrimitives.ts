@@ -251,21 +251,20 @@ class FVGBoxRenderer {
       const width = right - left;
       const height = bottom - top;
 
-      // Filled rectangle
-      ctx.fillStyle = isBullish ? "rgba(38, 166, 154, 0.15)" : "rgba(239, 83, 80, 0.15)";
+      // Filled rectangle — higher opacity for visibility
+      ctx.fillStyle = isBullish ? "rgba(38, 166, 154, 0.35)" : "rgba(239, 83, 80, 0.35)";
       ctx.fillRect(left, top, width, height);
 
-      // Border
-      ctx.strokeStyle = isBullish ? "rgba(38, 166, 154, 0.5)" : "rgba(239, 83, 80, 0.5)";
-      ctx.lineWidth = 1 * hpr;
-      ctx.setLineDash([4 * hpr, 3 * hpr]);
-      ctx.strokeRect(left, top, width, height);
+      // Solid border
+      ctx.strokeStyle = isBullish ? "rgba(38, 166, 154, 0.85)" : "rgba(239, 83, 80, 0.85)";
+      ctx.lineWidth = 2 * hpr;
       ctx.setLineDash([]);
+      ctx.strokeRect(left, top, width, height);
 
       // Label
-      ctx.fillStyle = isBullish ? "rgba(38, 166, 154, 0.8)" : "rgba(239, 83, 80, 0.8)";
-      ctx.font = `${10 * hpr}px monospace`;
-      ctx.fillText("FVG", left + 4 * hpr, top + 12 * vpr);
+      ctx.fillStyle = isBullish ? "rgba(38, 166, 154, 1)" : "rgba(239, 83, 80, 1)";
+      ctx.font = `bold ${11 * hpr}px monospace`;
+      ctx.fillText("FVG", left + 4 * hpr, top + 14 * vpr);
     });
   }
 }

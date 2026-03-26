@@ -38,6 +38,7 @@ test.describe("Security — HttpOnly cookie", () => {
     await registerUser(request, USER_A.email, USER_A.password);
 
     await page.goto(ROUTES.login);
+    await page.waitForLoadState("networkidle");
     await page.fill('input[type="email"]', USER_A.email);
     await page.fill('input[type="password"]', USER_A.password);
     await page.click('button[type="submit"]');
@@ -57,6 +58,7 @@ test.describe("Security — HttpOnly cookie", () => {
     await registerUser(request, USER_A.email, USER_A.password);
 
     await page.goto(ROUTES.login);
+    await page.waitForLoadState("networkidle");
     await page.fill('input[type="email"]', USER_A.email);
     await page.fill('input[type="password"]', USER_A.password);
     await page.click('button[type="submit"]');
@@ -78,6 +80,7 @@ test.describe("Security — No tokens in localStorage", () => {
     await registerUser(request, USER_A.email, USER_A.password);
 
     await page.goto(ROUTES.login);
+    await page.waitForLoadState("networkidle");
     await page.fill('input[type="email"]', USER_A.email);
     await page.fill('input[type="password"]', USER_A.password);
     await page.click('button[type="submit"]');
@@ -104,6 +107,7 @@ test.describe("Security — No tokens in localStorage", () => {
     await registerUser(request, USER_A.email, USER_A.password);
 
     await page.goto(ROUTES.login);
+    await page.waitForLoadState("networkidle");
     await page.fill('input[type="email"]', USER_A.email);
     await page.fill('input[type="password"]', USER_A.password);
     await page.click('button[type="submit"]');
@@ -128,8 +132,12 @@ test.describe("Security — No tokens in localStorage", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("Security — Broker credential key masking", () => {
   test.beforeEach(async ({ request }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-    await loginUser(request, USER_A.email, USER_A.password);
+    // Use a unique email per test run to avoid rate-limit lockout accumulation.
+    // auth.spec.ts wrong-password tests use USER_A.email, which increments the
+    // in-memory failed-login counter. After 5 runs USER_A would be locked out.
+    const email = `sec-cred-${Date.now()}@nextgenstock.io`;
+    await registerUser(request, email, USER_A.password);
+    await loginUser(request, email, USER_A.password);
   });
 
   test("SEC-05: raw api_key never appears in POST /broker/credentials response", async ({

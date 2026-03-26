@@ -196,7 +196,7 @@ export interface OptimizationChartData {
 export interface SignalCheckRequest {
   symbol: string;
   timeframe: Timeframe;
-  mode: "conservative" | "aggressive";
+  mode: "conservative" | "aggressive" | "squeeze";
   credential_id: number;
 }
 
@@ -204,6 +204,27 @@ export interface ConfirmationDetail {
   name: string;
   met: boolean;
   value: string;
+}
+
+export interface SqueezeData {
+  bb_upper: number;
+  bb_lower: number;
+  bb_middle: number;
+  bb_width_pct: number;
+  bb_width_percentile: number;
+  is_squeeze: boolean;
+  squeeze_strength: number;
+  breakout_state: "none" | "bullish" | "bearish";
+  breakout_confirmed: boolean;
+  bars_since_squeeze: number;
+}
+
+export interface BollingerOverlayBar {
+  time: string;
+  upper: number;
+  lower: number;
+  middle: number;
+  is_squeeze: boolean;
 }
 
 export interface SignalCheckResult {
@@ -214,6 +235,7 @@ export interface SignalCheckResult {
   strategy_run_id: number;
   reason: string | null;
   confirmation_details: ConfirmationDetail[];
+  squeeze?: SqueezeData | null;
 }
 
 export interface ExecuteOrderRequest {
@@ -446,6 +468,7 @@ export interface AutoBuySettings {
 export interface UpdateAutoBuySettingsRequest {
   enabled?: boolean;
   paper_mode?: boolean;
+  current_password?: string;
   confidence_threshold?: number;
   max_trade_amount?: number;
   max_position_percent?: number;

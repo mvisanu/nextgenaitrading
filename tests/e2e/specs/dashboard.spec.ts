@@ -10,10 +10,7 @@
 
 import { test, expect } from "../fixtures/auth.fixture";
 import { API_URL, ROUTES, USER_A } from "../fixtures/test-data";
-import { createCredential, registerUser, runBacktest, ALPACA_CRED } from "../helpers/api.helper";
-
-// Re-export ALPACA_CRED is not needed — import directly
-import { ALPACA_CRED as ALPACA } from "../fixtures/test-data";
+import { registerUser, runBacktest } from "../helpers/api.helper";
 
 test.describe("Dashboard — /dashboard", () => {
   test("DASH-01: authenticated user lands on dashboard after login", async ({
@@ -35,8 +32,8 @@ test.describe("Dashboard — /dashboard", () => {
     await page.goto(ROUTES.dashboard);
     await page.waitForLoadState("networkidle");
 
-    const heading = page.locator('h1, h2, [data-testid="page-title"], title');
-    await expect(heading.first()).toContainText(/dashboard/i, { timeout: 8_000 });
+    const heading = page.locator('h1, h2, [data-testid="page-title"]').filter({ hasText: /dashboard/i });
+    await expect(heading.first()).toBeVisible({ timeout: 8_000 });
   });
 
   test("DASH-04: KPI metric cards are present", async ({

@@ -17,7 +17,6 @@ slowapi>=0.1.9
 
 # Auth
 PyJWT[crypto]>=2.8.0
-passlib[bcrypt]>=1.7.4
 bcrypt>=4.1.0
 
 # Encryption
