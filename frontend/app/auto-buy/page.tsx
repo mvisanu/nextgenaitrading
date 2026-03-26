@@ -243,6 +243,7 @@ export default function AutoBuyPage() {
   const [enableConfirmOpen, setEnableConfirmOpen] = useState(false);
   const [liveConfirmOpen, setLiveConfirmOpen] = useState(false);
   const [liveConfirmed, setLiveConfirmed] = useState(false);
+  const [livePassword, setLivePassword] = useState("");
   const [dryRunTicker, setDryRunTicker] = useState("AAPL");
   const [dryRunResult, setDryRunResult] = useState<AutoBuyDryRunResult | null>(null);
   const [logFilter, setLogFilter] = useState<string>("all");
