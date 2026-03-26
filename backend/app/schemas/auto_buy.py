@@ -44,9 +44,10 @@ class AutoBuySettingsOut(BaseModel):
 class AutoBuySettingsUpdate(BaseModel):
     enabled: bool | None = None
     paper_mode: bool | None = None
-    current_password: str | None = Field(
+    confirm_live_trading: bool | None = Field(
         default=None,
-        description="Required when setting paper_mode=False (real trading)",
+        description="Must be true when setting paper_mode=False (real trading). "
+                    "Explicit opt-in confirmation.",
     )
     confidence_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     max_trade_amount: float | None = Field(default=None, gt=0)

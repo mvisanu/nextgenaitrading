@@ -18,7 +18,7 @@ NextGenStock is a full-stack algorithmic trading platform that takes a user from
 This is a portfolio project. The points below are the ones technical evaluators typically look for.
 
 - **Async Python at scale** — FastAPI with SQLAlchemy 2.x `AsyncSession`, `asyncpg`, and a fully async service layer across 110+ backend files
-- **JWT security without localStorage** — HTTP-only cookie auth, SHA-256 refresh token hashing, silent rotation, strict SameSite=Lax controls; tokens are never exposed to JavaScript
+- **Passwordless auth via Supabase** — magic link login (no passwords stored), Supabase-issued JWT verified on the backend, auto-provisioning of new users on first API call
 - **Multi-tenant data isolation** — every query scoped to `user_id`; `assert_ownership()` enforced in every service method; no route trusts a user-supplied ID
 - **Quantitative strategy engine** — GaussianHMM regime detection (hmmlearn), 8-indicator confirmation gating, leveraged backtesting with trailing stops and cooldowns, 60/20/20 train/validate/test split
 - **Parameter optimisation** — 12-variant AI Pick grid and 8-variant Buy Low/Sell High grid, each ranked by `validation_score = validation_return / (1 + max_drawdown)` on a held-out split
@@ -60,20 +60,21 @@ Screenshots coming soon. The platform includes the following main views:
 │  Lightweight Charts (candlestick) · Recharts (equity/KPIs)       │
 │  Plotly.js (optimisation scatter) · TanStack Query v5            │
 │                                                                  │
-│  middleware.ts — cookie presence check → /login redirect         │
-│  lib/api.ts    — typed fetch wrappers + 401 silent-refresh       │
+│  middleware.ts — Supabase SSR session check → /login redirect    │
+│  lib/api.ts    — typed fetch wrappers + Bearer token auth        │
+│  lib/supabase.ts — Supabase browser client (@supabase/ssr)       │
 │  lib/watchlist.ts — shared watchlist hook (localStorage sync)    │
 └─────────────────────────┬────────────────────────────────────────┘
-                          │ HTTPS + HTTP-only cookies
+                          │ HTTPS + Bearer token (Supabase JWT)
                           │ CORS restricted to CORS_ORIGINS
 ┌─────────────────────────▼────────────────────────────────────────┐
 │                   FastAPI (Render)                               │
 │                                                                  │
-│  auth/     — register, login, refresh, logout, /me               │
+│  auth/     — Supabase JWT verification, /me, auto-provisioning   │
 │  api/      — profile, broker, backtests, strategies, live,       │
 │              artifacts, buy_zone, alerts, ideas, auto_buy,       │
 │              opportunities, watchlist, scanner                   │
-│  core/     — JWT, Fernet, assert_ownership()                     │
+│  core/     — Fernet encryption, assert_ownership(), config       │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐     │
 │  │  Strategy Engine                                        │     │
@@ -124,11 +125,13 @@ Screenshots coming soon. The platform includes the following main views:
 
 ### Request flow
 
-1. `middleware.ts` checks for JWT in the HTTP-only cookie; redirects to `/login` if absent
-2. All API calls go to FastAPI; `Depends(get_current_user)` validates the access token on every protected route
-3. Every DB query is scoped `WHERE user_id = current_user.id` — user-supplied IDs are never trusted
-4. Broker credentials are decrypted in-memory at execution time only via Fernet; never returned in responses
-5. Background scheduler jobs fire independently of user sessions; each job opens its own async DB session
+1. User enters email on `/login` → Supabase sends a magic link → user clicks link → `/auth/callback` exchanges code for session
+2. `middleware.ts` uses Supabase SSR server client to check session; redirects to `/login` if absent
+3. All API calls include `Authorization: Bearer <supabase_jwt>` header
+4. FastAPI `Depends(get_current_user)` decodes the Supabase JWT, looks up user by email, auto-provisions on first call
+5. Every DB query is scoped `WHERE user_id = current_user.id` — user-supplied IDs are never trusted
+6. Broker credentials are decrypted in-memory at execution time only via Fernet; never returned in responses
+7. Background scheduler jobs fire independently of user sessions; each job opens its own async DB session
 
 ---
 
@@ -136,7 +139,7 @@ Screenshots coming soon. The platform includes the following main views:
 
 | Layer | Choice | Rationale |
 |---|---|---|
-| Frontend framework | Next.js 14+ (App Router) | RSC for fast initial load; `middleware.ts` for edge-runtime cookie checks |
+| Frontend framework | Next.js 14+ (App Router) | RSC for fast initial load; `middleware.ts` for Supabase SSR session checks |
 | UI components | shadcn/ui + Radix primitives | Accessible, unstyled base with Tailwind customisation |
 | Server state | TanStack Query v5 | Declarative cache invalidation on mutations; no Redux boilerplate |
 | Candlestick charts | Lightweight Charts (TradingView) | Native OHLCV + volume + signal marker support; minimal bundle |
@@ -145,8 +148,8 @@ Screenshots coming soon. The platform includes the following main views:
 | Backend framework | FastAPI + Pydantic v2 | Async-first; automatic OpenAPI docs; Pydantic v2 performance |
 | ORM | SQLAlchemy 2.x async | Type-safe queries; Alembic migration support |
 | Database driver | asyncpg | Non-blocking PostgreSQL; required for async SQLAlchemy |
-| Auth tokens | python-jose (HS256) | Standard JWT; short-lived access tokens |
-| Password hashing | passlib[bcrypt] | Bcrypt with cost factor |
+| Auth | Supabase Auth (@supabase/ssr) | Passwordless magic links; JWT managed by Supabase |
+| JWT verification | PyJWT (HS256) | Backend verifies Supabase-issued tokens |
 | Credential encryption | cryptography (Fernet) | Symmetric authenticated encryption for broker API keys |
 | Market data | yfinance + pandas | Wide ticker coverage; 4h resampled from 1h |
 | HMM regime detection | hmmlearn (GaussianHMM) | 2-state bull/bear regime fitted on 730 days of log-returns, ATR, volume ratio |
@@ -165,7 +168,7 @@ Screenshots coming soon. The platform includes the following main views:
 
 | Feature | Description |
 |---|---|
-| JWT auth | Register, login, refresh token rotation, logout. HTTP-only cookies, SHA-256 refresh hash stored (not raw token) |
+| Supabase Auth | Passwordless magic link login via Supabase. Backend verifies Supabase JWT and auto-provisions users on first API call |
 | Multi-tenant isolation | Every table has `user_id FK ondelete=CASCADE`; every service method calls `assert_ownership()` |
 | Conservative strategy | GaussianHMM 2-state regime, 8 confirmation indicators, 2.5x leverage, 7/8 threshold |
 | Aggressive strategy | Same as conservative + 5% trailing stop, 4.0x leverage, 5/8 threshold |
@@ -244,7 +247,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 # Copy the example env file and fill in the required values
 cp .env.example .env
-# At minimum: DATABASE_URL, SECRET_KEY, ENCRYPTION_KEY
+# At minimum: DATABASE_URL, SECRET_KEY, ENCRYPTION_KEY, SUPABASE_JWT_SECRET
 
 # Run all database migrations (V1 + V2 + V3 tables)
 alembic upgrade head
@@ -271,7 +274,11 @@ cd frontend
 npm install
 
 # Create and configure the environment file
-echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:8000" > .env.local
+cat > .env.local << 'EOF'
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+EOF
 
 # Start the development server
 npm run dev                      # http://localhost:3000
@@ -292,14 +299,14 @@ npm run lint
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `DATABASE_URL` | Yes | — | `postgresql+asyncpg://user:pass@host/db` |
-| `SECRET_KEY` | Yes | — | HMAC secret for JWT signing (min 32 chars) |
+| `SECRET_KEY` | Yes | — | HMAC secret for legacy JWT signing (min 32 chars) |
 | `ENCRYPTION_KEY` | Yes | — | Fernet key for broker credential encryption |
+| `SUPABASE_URL` | Yes | — | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Yes | — | Supabase anon/public key |
+| `SUPABASE_JWT_SECRET` | Yes | — | Supabase JWT secret for backend token verification |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | — | Supabase service role key (server-side admin operations) |
 | `JWT_ALGORITHM` | No | `HS256` | JWT signing algorithm |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `15` | Access token lifetime |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | No | `7` | Refresh token lifetime |
 | `CORS_ORIGINS` | No | `http://localhost:3000` | Comma-separated allowed CORS origins |
-| `COOKIE_SECURE` | No | `false` | Set `true` in production (requires HTTPS) |
-| `COOKIE_SAMESITE` | No | `lax` | Cookie SameSite attribute |
 | `ALPACA_BASE_URL` | No | `https://api.alpaca.markets` | Alpaca live trading API URL |
 | `ALPACA_PAPER_URL` | No | `https://paper-api.alpaca.markets` | Alpaca paper trading API URL |
 
@@ -307,9 +314,11 @@ npm run lint
 
 | Variable | Required | Description |
 |---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon/public key (safe for client-side) |
 | `NEXT_PUBLIC_API_BASE_URL` | Yes | FastAPI backend URL, e.g. `http://localhost:8000` |
 
-No secrets belong in the frontend environment.
+No secrets belong in the frontend environment. The Supabase anon key is designed to be public.
 
 ---
 
@@ -359,15 +368,13 @@ No secrets belong in the frontend environment.
 
 ## API highlights
 
-### Auth
+### Auth (Supabase)
+
+Authentication is handled entirely by Supabase on the frontend (magic link login). The backend only needs one endpoint:
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/auth/register` | Create account; returns 201 + HTTP-only cookies |
-| `POST` | `/auth/login` | Authenticate; issues access + refresh cookies |
-| `GET` | `/auth/me` | Validate token; return current user |
-| `POST` | `/auth/refresh` | Rotate refresh token; issue new access token |
-| `POST` | `/auth/logout` | Revoke session; clear cookies |
+| `GET` | `/auth/me` | Validate Supabase JWT Bearer token; return current user (auto-provisions on first call) |
 
 ### Strategies and backtests
 
@@ -423,8 +430,8 @@ NextgenAiTrading/
 │   │   ├── main.py                       # FastAPI app, CORS, router registration
 │   │   ├── core/
 │   │   │   ├── config.py                 # pydantic-settings: all env vars
-│   │   │   └── security.py              # JWT, bcrypt, assert_ownership()
-│   │   ├── auth/                         # register, login, refresh, logout, /me
+│   │   │   └── security.py              # Fernet encryption, assert_ownership()
+│   │   ├── auth/                         # Supabase JWT verification, /me, auto-provisioning
 │   │   ├── api/                          # 14 router modules (V1 + V2 + V3)
 │   │   ├── models/                       # SQLAlchemy ORM models (24 tables)
 │   │   ├── schemas/                      # Pydantic v2 request/response DTOs
@@ -477,10 +484,12 @@ NextgenAiTrading/
 │   │   ├── ideas/                        # IdeaForm, IdeaList, GeneratedIdeaCard, IdeaFeed
 │   │   └── opportunities/                # WatchlistTable, BuyNowBadge, EstimatedEntryPanel
 │   ├── lib/
-│   │   ├── api.ts                        # Typed fetch wrappers + 401 interceptor (V1/V2/V3)
+│   │   ├── api.ts                        # Typed fetch wrappers + Bearer token auth (V1/V2/V3)
+│   │   ├── auth.ts                       # Supabase session helpers (getCurrentUser, getAccessToken)
+│   │   ├── supabase.ts                   # Supabase browser client singleton (@supabase/ssr)
 │   │   └── watchlist.ts                  # Shared useWatchlist hook (localStorage + cross-tab sync)
 │   ├── types/index.ts                    # All TypeScript DTO interfaces
-│   └── middleware.ts                     # Cookie presence check → /login redirect
+│   └── middleware.ts                     # Supabase SSR session check → /login redirect
 │
 ├── tests/
 │   └── e2e/                              # Playwright E2E tests
@@ -537,7 +546,7 @@ Test coverage by generation:
 
 ## Security design
 
-**Authentication:** Access tokens (15 min, HS256) and refresh tokens (7 days) are issued as HTTP-only, SameSite=Lax cookies. Tokens are never exposed to JavaScript and never stored in `localStorage`. The refresh token is not stored raw — only its SHA-256 hex hash is persisted in `UserSession.refresh_token_hash`. On refresh, the incoming token is hashed and compared; the old token is revoked immediately after rotation.
+**Authentication:** Supabase Auth with magic links (passwordless). No passwords are stored or transmitted. The frontend uses `@supabase/ssr` to manage sessions; token refresh is handled automatically by the Supabase SDK. The backend verifies Supabase-issued JWTs using the project's JWT secret and auto-provisions users in the local database on their first API call. All API requests use `Authorization: Bearer <token>` headers.
 
 **Multi-tenancy:** Every user-owned table carries `user_id FK ondelete=CASCADE`. Every service method queries with `WHERE user_id = current_user.id`. `assert_ownership(record_user_id, current_user_id)` in `core/security.py` raises HTTP 403 on mismatch and is called before every record read or modification.
 
@@ -562,7 +571,10 @@ Test coverage by generation:
 ### Vercel (frontend)
 
 1. Import the repository; set root directory to `frontend`
-2. Add environment variable: `NEXT_PUBLIC_API_BASE_URL=https://your-render-service.onrender.com`
+2. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key`
+   - `NEXT_PUBLIC_API_BASE_URL=https://your-render-service.onrender.com`
 3. Deploy. Auto-deploys on every push to `main`
 
 ### Render (backend)
@@ -570,14 +582,17 @@ Test coverage by generation:
 1. Create a Web Service pointing to the `backend` directory
 2. Build command: `pip install -r requirements.txt && alembic upgrade head`
 3. Start command: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
-4. Add all environment variables from the [Configuration](#configuration) section
-5. Set `COOKIE_SECURE=true` and `CORS_ORIGINS=https://your-vercel-app.vercel.app`
+4. Add all environment variables from the [Configuration](#configuration) section, including `SUPABASE_JWT_SECRET`
+5. Set `CORS_ORIGINS=https://your-vercel-app.vercel.app`
 
-### Supabase (database)
+### Supabase (database + auth)
 
 1. Create a Supabase project
-2. Copy the connection string from Settings > Database
-3. Set as `DATABASE_URL` in Render; migrations run automatically at startup
+2. Copy the connection string from Settings > Database; set as `DATABASE_URL` in Render
+3. Enable Magic Link in Authentication > Providers > Email
+4. Add redirect URLs: `http://localhost:3000/auth/callback` (dev) and `https://your-app.vercel.app/auth/callback` (prod)
+5. Copy the JWT Secret from Project Settings > API; set as `SUPABASE_JWT_SECRET` in Render
+6. Copy the anon key; set as `SUPABASE_ANON_KEY` in both Render and Vercel
 
 ### Generating secrets (one-time)
 
@@ -610,7 +625,7 @@ Supported timeframes: `1d`, `1h`, `4h` (resampled from 1h internally), `1wk`.
 
 | Area | Deviation | Reason |
 |---|---|---|
-| Refresh token storage | SHA-256 hash instead of bcrypt | Speed; bcrypt is too slow for token comparison |
+| Auth system | Supabase magic links instead of password-based JWT | Passwordless; no local password storage; managed token refresh |
 | AI Pick run | Returns 202 Accepted (async; up to 120s) | Long-running optimiser cannot return synchronously |
 | `GET /live/positions` | Returns DB snapshot, not live broker poll | Avoids broker rate limiting on every page load |
 | Robinhood client | Stub — all methods raise `NotImplementedError` except `ping()` | Official API requires Ed25519 signing; planned post-MVP |

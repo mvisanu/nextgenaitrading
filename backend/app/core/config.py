@@ -28,10 +28,16 @@ class Settings(BaseSettings):
     )
 
     # ── JWT ────────────────────────────────────────────────────────────────────
-    secret_key: str = Field(description="HMAC secret for JWT signing")
+    secret_key: str = Field(description="HMAC secret for JWT signing (legacy)")
     jwt_algorithm: str = Field(default="HS256")
     access_token_expire_minutes: int = Field(default=15)
     refresh_token_expire_days: int = Field(default=7)
+
+    # ── Supabase Auth ────────────────────────────────────────────────────────
+    supabase_url: str = Field(default="", description="Supabase project URL")
+    supabase_anon_key: str = Field(default="", description="Supabase anon/public key")
+    supabase_jwt_secret: str = Field(default="", description="Supabase JWT secret for token verification")
+    supabase_service_role_key: str = Field(default="", description="Supabase service role key (server-side only)")
 
     # ── Fernet encryption ──────────────────────────────────────────────────────
     encryption_key: str = Field(description="Base64-URL Fernet key for broker creds")

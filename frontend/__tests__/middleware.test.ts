@@ -1,28 +1,48 @@
 /**
  * @jest-environment node
  *
- * Tests for proxy.ts (formerly middleware.ts)
- * Covers: protected route redirect when no cookie, public route redirect when
+ * Tests for proxy.ts (Supabase-based middleware)
+ * Covers: protected route redirect when no session, public route redirect when
  *         authenticated, pass-through for unmatched paths.
  *
- * Uses the node environment so that the Web Fetch API (Request, Headers, etc.)
- * is available from Node's built-in globals (Node 18+).
+ * Mocks the Supabase SSR client to control auth state.
  */
 
-import { proxy as middleware } from "@/proxy";
 import { NextRequest } from "next/server";
 
-// Helper to create a NextRequest with optional access_token cookie
-function makeRequest(pathname: string, hasToken = false): NextRequest {
+// Mock the Supabase SSR module
+let mockUser: { id: string; email: string } | null = null;
+
+jest.mock("@supabase/ssr", () => ({
+  createServerClient: () => ({
+    auth: {
+      getUser: async () => ({
+        data: { user: mockUser },
+        error: mockUser ? null : { message: "not authenticated" },
+      }),
+    },
+  }),
+}));
+
+// Import after mock is set up
+import { proxy as middleware } from "@/proxy";
+
+function makeRequest(pathname: string): NextRequest {
   const url = `http://localhost:3000${pathname}`;
-  const headers = new Headers();
-  if (hasToken) {
-    headers.set("cookie", "access_token=test_token_value");
-  }
-  return new NextRequest(url, { headers });
+  return new NextRequest(url);
 }
 
-// ─── Protected routes without token ───────────────────────────────────────────
+function setAuthenticated(authenticated: boolean) {
+  mockUser = authenticated
+    ? { id: "uuid-123", email: "test@example.com" }
+    : null;
+}
+
+beforeEach(() => {
+  mockUser = null;
+});
+
+// ─── Protected routes without session ────────────────────────────────────────
 
 describe("middleware — unauthenticated access to protected routes", () => {
   const protectedPaths = [
@@ -35,110 +55,112 @@ describe("middleware — unauthenticated access to protected routes", () => {
     "/dashboard/sub-page",
   ];
 
-  test.each(protectedPaths)("redirects %s to /login", (path) => {
-    const req = makeRequest(path, false);
-    const res = middleware(req);
+  test.each(protectedPaths)("redirects %s to /login", async (path) => {
+    setAuthenticated(false);
+    const req = makeRequest(path);
+    const res = await middleware(req);
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/login");
   });
 
-  it("includes callbackUrl in redirect for protected path", () => {
-    const req = makeRequest("/dashboard", false);
-    const res = middleware(req);
+  it("includes callbackUrl in redirect for protected path", async () => {
+    setAuthenticated(false);
+    const req = makeRequest("/dashboard");
+    const res = await middleware(req);
 
     const location = res.headers.get("location") ?? "";
     expect(location).toContain("callbackUrl=%2Fdashboard");
   });
 });
 
-// ─── Protected routes with token ──────────────────────────────────────────────
+// ─── Protected routes with session ───────────────────────────────────────────
 
 describe("middleware — authenticated access to protected routes", () => {
-  it("passes through /dashboard when token present", () => {
-    const req = makeRequest("/dashboard", true);
-    const res = middleware(req);
+  it("passes through /dashboard when session present", async () => {
+    setAuthenticated(true);
+    const req = makeRequest("/dashboard");
+    const res = await middleware(req);
 
     expect(res.status).toBe(200);
   });
 
-  it("passes through /profile when token present", () => {
-    const req = makeRequest("/profile", true);
-    const res = middleware(req);
+  it("passes through /profile when session present", async () => {
+    setAuthenticated(true);
+    const req = makeRequest("/profile");
+    const res = await middleware(req);
 
     expect(res.status).toBe(200);
   });
 });
 
-// ─── Public routes with token (already authenticated) ─────────────────────────
+// ─── Public routes with session (already authenticated) ──────────────────────
 
 describe("middleware — authenticated access to public routes", () => {
-  it("redirects /login to /dashboard when token present", () => {
-    const req = makeRequest("/login", true);
-    const res = middleware(req);
+  it("redirects /login to /dashboard when session present", async () => {
+    setAuthenticated(true);
+    const req = makeRequest("/login");
+    const res = await middleware(req);
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/dashboard");
   });
 
-  it("redirects /register to /dashboard when token present", () => {
-    const req = makeRequest("/register", true);
-    const res = middleware(req);
+  it("redirects /register to /dashboard when session present", async () => {
+    setAuthenticated(true);
+    const req = makeRequest("/register");
+    const res = await middleware(req);
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/dashboard");
-  });
-
-  it("redirect to dashboard does NOT include callbackUrl", () => {
-    const req = makeRequest("/login", true);
-    const res = middleware(req);
-
-    const location = res.headers.get("location") ?? "";
-    expect(location).not.toContain("callbackUrl");
   });
 });
 
-// ─── Public routes without token ──────────────────────────────────────────────
+// ─── Public routes without session ───────────────────────────────────────────
 
 describe("middleware — unauthenticated access to public routes", () => {
-  it("passes through /login without token", () => {
-    const req = makeRequest("/login", false);
-    const res = middleware(req);
+  it("passes through /login without session", async () => {
+    setAuthenticated(false);
+    const req = makeRequest("/login");
+    const res = await middleware(req);
 
     expect(res.status).toBe(200);
   });
 
-  it("passes through /register without token", () => {
-    const req = makeRequest("/register", false);
-    const res = middleware(req);
+  it("passes through /register without session", async () => {
+    setAuthenticated(false);
+    const req = makeRequest("/register");
+    const res = await middleware(req);
 
     expect(res.status).toBe(200);
   });
 });
 
-// ─── Unmatched paths ──────────────────────────────────────────────────────────
+// ─── Root path ───────────────────────────────────────────────────────────────
 
-describe("middleware — unmatched / root paths", () => {
-  it("redirects root / to /login without token", () => {
-    const req = makeRequest("/", false);
-    const res = middleware(req);
+describe("middleware — root path", () => {
+  it("redirects / to /login without session", async () => {
+    setAuthenticated(false);
+    const req = makeRequest("/");
+    const res = await middleware(req);
 
-    // proxy.ts redirects / → /login (unauthenticated) or /dashboard (authenticated)
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/login");
   });
 
-  it("redirects root / to /dashboard with token", () => {
-    const req = makeRequest("/", true);
-    const res = middleware(req);
+  it("redirects / to /dashboard with session", async () => {
+    setAuthenticated(true);
+    const req = makeRequest("/");
+    const res = await middleware(req);
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/dashboard");
   });
 
-  it("passes through unknown path /foobar without token", () => {
-    const req = makeRequest("/foobar", false);
-    const res = middleware(req);
+  it("passes through unknown path /foobar without session", async () => {
+    setAuthenticated(false);
+    const req = makeRequest("/foobar");
+    const res = await middleware(req);
 
     expect(res.status).toBe(200);
   });

@@ -131,10 +131,10 @@ test.describe("Auto-Buy API — settings GET/PATCH", () => {
   });
 
   test("AB-06: PATCH /api/auto-buy/settings can switch paper_mode", async ({ request }) => {
-    // paper_mode=false requires current_password (re-auth for real trading)
+    // paper_mode=false requires confirm_live_trading=true (explicit opt-in)
     const { ok, body } = await updateAutoBuySettings(request, {
       paper_mode: false,
-      current_password: USER_A.password,
+      confirm_live_trading: true,
     } as any);
     expect(ok).toBe(true);
     expect(body).toHaveProperty("paper_mode", false);

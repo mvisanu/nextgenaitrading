@@ -4,9 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useMutation } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -18,28 +17,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2, Zap, Mail, CheckCircle } from "lucide-react";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
-const registerSchema = z
-  .object({
-    email: z.string().email("Please enter a valid email address"),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(100),
-    confirm_password: z.string(),
-  })
-  .refine((data) => data.password === data.confirm_password, {
-    message: "Passwords do not match",
-    path: ["confirm_password"],
-  });
+const registerSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState("");
 
   const {
     register,
@@ -49,24 +39,84 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
   });
 
-  const { mutate: doRegister, isPending, error: registerError } = useMutation({
-    mutationFn: (values: { email: string; password: string }) =>
-      authApi.register(values),
-    onSuccess: () => {
-      // Set marker cookie for cross-origin auth detection in middleware
-      document.cookie = "auth_session=1; path=/; max-age=604800; SameSite=Lax";
-      toast.success("Account created! Welcome to NextGenStock.");
-      router.push("/dashboard");
-    },
-    onError: (err: Error) => {
-      // getErrorMessage returns err.message, which apiFetch sets to the
-      // backend's detail string (e.g. "An account with this email already exists.")
-      toast.error(getErrorMessage(err, "Registration failed. Please try again."));
-    },
-  });
+  const [isPending, setIsPending] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
 
-  function onSubmit({ email, password }: RegisterFormValues) {
-    doRegister({ email, password });
+  async function onSubmit(values: RegisterFormValues) {
+    setIsPending(true);
+    setRegisterError(null);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email: values.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        setRegisterError(error.message);
+        toast.error(error.message);
+      } else {
+        setMagicLinkSent(true);
+        setSentEmail(values.email);
+        toast.success("Magic link sent! Check your email to complete signup.");
+      }
+    } catch (err) {
+      const msg = getErrorMessage(
+        err as Error,
+        "Failed to send magic link."
+      );
+      setRegisterError(msg);
+      toast.error(msg);
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  if (magicLinkSent) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="flex items-center justify-center gap-2">
+            <Zap className="h-7 w-7 text-primary" />
+            <span className="text-xl font-semibold">NextGenStock</span>
+          </div>
+
+          <Card>
+            <CardHeader className="space-y-1 text-center">
+              <div className="flex justify-center mb-2">
+                <CheckCircle className="h-12 w-12 text-green-500" />
+              </div>
+              <CardTitle className="text-2xl">Check your email</CardTitle>
+              <CardDescription>
+                We sent a magic link to <strong>{sentEmail}</strong>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                Click the link in the email to create your account and sign in.
+                The link expires in 1 hour.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setMagicLinkSent(false);
+                  setRegisterError(null);
+                }}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Try a different email
+              </Button>
+            </CardContent>
+          </Card>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Educational software only. Live trading carries real financial risk.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -82,7 +132,7 @@ export default function RegisterPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Create account</CardTitle>
             <CardDescription>
-              Sign up for your NextGenStock account
+              Enter your email to get started with NextGenStock
             </CardDescription>
           </CardHeader>
 
@@ -105,48 +155,19 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Min. 8 characters"
-                  disabled={isPending}
-                  {...register("password")}
-                />
-                {errors.password && (
-                  <p className="text-xs text-destructive">
-                    {errors.password.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm_password">Confirm password</Label>
-                <Input
-                  id="confirm_password"
-                  type="password"
-                  autoComplete="new-password"
-                  disabled={isPending}
-                  {...register("confirm_password")}
-                />
-                {errors.confirm_password && (
-                  <p className="text-xs text-destructive">
-                    {errors.confirm_password.message}
-                  </p>
-                )}
-              </div>
-
               {registerError && (
                 <p role="alert" className="text-sm text-destructive">
-                  {getErrorMessage(registerError, "Registration failed. Please try again.")}
+                  {registerError}
                 </p>
               )}
 
               <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Create account
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4 mr-2" />
+                )}
+                Send magic link
               </Button>
             </form>
           </CardContent>

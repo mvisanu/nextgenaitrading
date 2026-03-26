@@ -13,6 +13,21 @@
       "createdAt": "2026-03-25T11:46:59.516Z",
       "model": "haiku",
       "modelRoutedBy": "router"
+    },
+    "login-refactor-coder": {
+      "agentId": "login-refactor-coder",
+      "agentType": "coder",
+      "status": "completed",
+      "health": 1,
+      "taskCount": 0,
+      "config": {
+        "priority": "high",
+        "model": "opus"
+      },
+      "createdAt": "2026-03-26T16:46:48.753Z",
+      "domain": "authentication",
+      "model": "opus",
+      "modelRoutedBy": "explicit"
     }
   },
   "version": "3.0.0"

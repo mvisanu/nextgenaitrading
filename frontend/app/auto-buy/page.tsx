@@ -242,7 +242,7 @@ export default function AutoBuyPage() {
 
   const [enableConfirmOpen, setEnableConfirmOpen] = useState(false);
   const [liveConfirmOpen, setLiveConfirmOpen] = useState(false);
-  const [livePassword, setLivePassword] = useState("");
+  const [liveConfirmed, setLiveConfirmed] = useState(false);
   const [dryRunTicker, setDryRunTicker] = useState("AAPL");
   const [dryRunResult, setDryRunResult] = useState<AutoBuyDryRunResult | null>(null);
   const [logFilter, setLogFilter] = useState<string>("all");
@@ -339,12 +339,12 @@ export default function AutoBuyPage() {
   }
 
   function confirmLiveMode() {
-    if (!livePassword) {
-      toast.error("Enter your account password to switch to live mode");
+    if (!liveConfirmed) {
+      toast.error("You must check the confirmation box to switch to live mode");
       return;
     }
-    updateSettings({ paper_mode: false, current_password: livePassword });
-    setLivePassword("");
+    updateSettings({ paper_mode: false, confirm_live_trading: true });
+    setLiveConfirmed(false);
     setLiveConfirmOpen(false);
     toast.warning("Live mode enabled — real broker orders may be submitted");
   }
@@ -727,17 +727,20 @@ export default function AutoBuyPage() {
               the system with dry runs.
               <br />
               <br />
-              Enter your account password to confirm.
+              Check the box below to confirm.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
-            <Input
-              type="password"
-              placeholder="Your account password"
-              value={livePassword}
-              onChange={(e) => setLivePassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && confirmLiveMode()}
+          <div className="py-2 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="confirm-live"
+              checked={liveConfirmed}
+              onChange={(e) => setLiveConfirmed(e.target.checked)}
+              className="h-4 w-4"
             />
+            <label htmlFor="confirm-live" className="text-sm">
+              I understand this will use real money and accept the risk
+            </label>
           </div>
           <DialogFooter>
             <Button

@@ -19,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
 from app.auth.dependencies import get_current_user
-from app.core.security import verify_password
 from app.db.session import get_db
 from app.models.auto_buy import AutoBuyDecisionLog, AutoBuySettings
 from app.models.user import User
@@ -61,17 +60,16 @@ async def update_settings(
     """
     settings_row = await _get_or_create_settings(current_user.id, db)
 
-    # Require re-authentication to enable real (non-paper) trading
+    # Require explicit confirmation to enable real (non-paper) trading.
+    # With Supabase auth (magic links, no passwords), the valid Bearer token
+    # already proves the user's identity. The frontend must send
+    # confirm_live_trading=True as an explicit opt-in.
     if payload.paper_mode is False:
-        if not payload.current_password:
+        if not payload.confirm_live_trading:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Password confirmation required to enable real trading mode.",
-            )
-        if not verify_password(payload.current_password, current_user.password_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect password.",
+                detail="Explicit confirmation required to enable real trading mode. "
+                       "Send confirm_live_trading=true.",
             )
 
     if payload.enabled is not None:

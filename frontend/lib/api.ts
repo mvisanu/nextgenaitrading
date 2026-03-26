@@ -2,15 +2,12 @@
  * lib/api.ts
  *
  * Typed fetch wrappers for all NextGenStock backend endpoints.
- * All calls include `credentials: 'include'` so HTTP-only cookies are sent.
- * On a 401 response, a silent refresh is attempted once; on second 401 the
- * user is redirected to /login.
+ * Uses Supabase JWT Bearer tokens for authentication (no cookies).
+ * On a 401 response, the user is redirected to /login.
  */
 
 import type {
   UserResponse,
-  RegisterRequest,
-  LoginRequest,
   UserProfile,
   UpdateProfileRequest,
   BrokerCredential,
@@ -65,63 +62,57 @@ import type {
   TopMoverRow,
 } from "@/types";
 
+import { getSupabaseBrowserClient } from "./supabase";
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 // ─── Low-level fetch wrapper ──────────────────────────────────────────────────
 
-let refreshPromise: Promise<void> | null = null;
-
-function refreshTokenOnce(): Promise<void> {
-  if (!refreshPromise) {
-    refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error("refresh failed");
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
+/**
+ * Get the current Supabase access token for API calls.
+ */
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      return { Authorization: `Bearer ${session.access_token}` };
+    }
+  } catch {
+    // No session available
   }
-  return refreshPromise;
+  return {};
 }
 
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
-  isRetry = false
 ): Promise<T> {
+  const authHeaders = await getAuthHeaders();
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...authHeaders,
       ...(options.headers ?? {}),
     },
   });
 
-  // On 401, attempt a silent token refresh once, then retry the original request.
-  // If the refresh also fails, redirect to /login.
-  if (res.status === 401 && !isRetry) {
-    try {
-      await refreshTokenOnce();
-      return apiFetch<T>(path, options, true);
-    } catch {
-      // Refresh failed — redirect to login (only if not already on an auth page)
-      if (typeof window !== "undefined") {
-        const onAuthPage = ["/login", "/register"].some((p) =>
-          window.location.pathname === p || window.location.pathname.startsWith(p + "/")
-        );
-        if (!onAuthPage) {
-          // Clear cross-origin auth marker so middleware doesn't loop
-          document.cookie = "auth_session=; path=/; max-age=0";
-          window.location.href = "/login";
-        }
+  // On 401, redirect to login
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      const onAuthPage = ["/login", "/register"].some((p) =>
+        window.location.pathname === p || window.location.pathname.startsWith(p + "/")
+      );
+      if (!onAuthPage) {
+        window.location.href = "/login";
       }
-      throw new Error("Session expired. Please log in again.");
     }
+    throw new Error("Session expired. Please log in again.");
   }
 
   if (!res.ok) {
@@ -132,7 +123,6 @@ async function apiFetch<T>(
         errors?: { field: string; message: string }[];
       };
       if (body.errors?.length) {
-        // Surface specific validation field errors instead of generic "Validation error"
         detail = body.errors
           .map((e) => `${e.field}: ${e.message}`)
           .join("; ");
@@ -173,19 +163,29 @@ function del<T>(path: string): Promise<T> {
   return apiFetch<T>(path, { method: "DELETE" });
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
+// ─── Auth (Supabase) ─────────────────────────────────────────────────────────
 
 export const authApi = {
-  register: (body: RegisterRequest) =>
-    post<UserResponse>("/auth/register", body),
+  me: async (): Promise<UserResponse | null> => {
+    const supabase = getSupabaseBrowserClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+    if (error || !user) return null;
+    return {
+      id: user.id,
+      email: user.email ?? "",
+      is_active: true,
+      created_at: user.created_at,
+    };
+  },
 
-  login: (body: LoginRequest) => post<UserResponse>("/auth/login", body),
-
-  me: () => get<UserResponse>("/auth/me"),
-
-  refresh: () => post<{ ok: boolean }>("/auth/refresh"),
-
-  logout: () => post<{ ok: boolean }>("/auth/logout"),
+  logout: async (): Promise<{ ok: boolean }> => {
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    return { ok: true };
+  },
 };
 
 // ─── Profile ──────────────────────────────────────────────────────────────────

@@ -1,20 +1,10 @@
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 export interface UserResponse {
-  id: number;
+  id: number | string;
   email: string;
   is_active: boolean;
   created_at: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
 }
 
 // ─── Profile ─────────────────────────────────────────────────────────────────
@@ -468,7 +458,7 @@ export interface AutoBuySettings {
 export interface UpdateAutoBuySettingsRequest {
   enabled?: boolean;
   paper_mode?: boolean;
-  current_password?: string;
+  confirm_live_trading?: boolean;
   confidence_threshold?: number;
   max_trade_amount?: number;
   max_position_percent?: number;

@@ -94,3 +94,47 @@ async def reset_test_data(
         "deleted_users": deleted_users,
         "emails_cleared": list(_TEST_EMAILS),
     }
+
+
+@router.post("/token", status_code=200)
+async def create_test_token(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    body: dict,
+) -> dict:
+    """
+    Create a valid JWT for E2E testing. Auto-provisions the user if needed.
+    Only available when DEBUG=true. Accepts { "email": "..." }.
+
+    Returns { "access_token": "...", "user_id": ... }
+    """
+    _require_debug()
+
+    import jwt as pyjwt
+    from datetime import datetime, timedelta, timezone
+    from app.models.user import User
+
+    email = body.get("email")
+    if not email:
+        raise HTTPException(status_code=422, detail="email is required")
+
+    # Find or create user
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(email=email, password_hash="e2e_test_managed", is_active=True)
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    # Sign JWT with the same secret the backend accepts
+    secret = settings.supabase_jwt_secret or settings.secret_key
+    payload = {
+        "sub": str(user.id),
+        "email": user.email,
+        "aud": "authenticated",
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+    }
+    token = pyjwt.encode(payload, secret, algorithm=settings.jwt_algorithm)
+
+    return {"access_token": token, "user_id": user.id, "email": user.email}

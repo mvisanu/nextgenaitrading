@@ -46,9 +46,9 @@ npm run lint
 backend/app/
   main.py               # FastAPI app + CORS + router registration
   core/config.py        # Settings via pydantic-settings (includes `debug` flag for Swagger toggle)
-  core/security.py      # JWT encode/decode (PyJWT), password hashing (bcrypt/passlib), Fernet encryption
+  core/security.py      # Fernet encryption, assert_ownership()
   core/rate_limit.py    # slowapi rate limiter (shared instance)
-  auth/                 # Register, login, refresh, logout, get_current_user
+  auth/                 # Supabase JWT verification via Bearer token, /me endpoint, auto-provisioning
   api/                  # profile, broker, backtests, strategies, live, artifacts + v2: buy_zone, alerts, ideas, auto_buy, opportunities + v3: watchlist, scanner (extended)
   models/               # SQLAlchemy ORM models (all have user_id FK) + v2: buy_zone, alert, auto_buy, idea, theme_score + v3: buy_signal, generated_idea, user_watchlist
   schemas/              # Pydantic request/response DTOs + v2: buy_zone, alert, auto_buy, idea, theme_score + v3: buy_signal, generated_idea, watchlist, scanner
@@ -78,27 +78,31 @@ frontend/
     alerts/             # AlertConfigForm
     ideas/              # IdeaForm, IdeaList + v3: GeneratedIdeaCard, IdeaFeed, AddToWatchlistButton
     opportunities/      # v3: WatchlistTable, BuyNowBadge, EstimatedEntryPanel
-  lib/api.ts            # Typed fetch wrappers for all backend endpoints (v1 + v2 + v3)
+  lib/api.ts            # Typed fetch wrappers for all backend endpoints (v1 + v2 + v3), Bearer token auth
+  lib/auth.ts           # Supabase session helpers (getCurrentUser, getAccessToken)
+  lib/supabase.ts       # Supabase browser client singleton (@supabase/ssr)
   lib/watchlist.ts      # Shared watchlist hook (useWatchlist) — syncs dashboard + opportunities via localStorage
-  middleware.ts         # Route protection via cookie validation
+  app/auth/callback/    # Magic link callback route — exchanges code for Supabase session
+  middleware.ts         # Route protection via Supabase SSR session check
 ```
 
 ### Request Flow
-1. Frontend middleware checks JWT in HTTP-only cookie → redirects if missing
-2. API calls go to FastAPI; `Depends(get_current_user)` validates access token on every protected route
-3. All DB queries are scoped `WHERE user_id = current_user.id` — never trust user-supplied IDs
-4. Broker credentials are decrypted in-memory at execution time only (Fernet); never returned in responses
+1. Frontend middleware uses Supabase SSR server client to check session → redirects to `/login` if no session
+2. API calls include `Authorization: Bearer <supabase_access_token>` header
+3. FastAPI `Depends(get_current_user)` decodes Supabase JWT, looks up user by email, auto-provisions on first call
+4. All DB queries are scoped `WHERE user_id = current_user.id` — never trust user-supplied IDs
+5. Broker credentials are decrypted in-memory at execution time only (Fernet); never returned in responses
 
 ### Authentication & Security
-- **Access token:** 15-min expiry, HTTP-only cookie, SameSite=Lax
-- **Refresh token:** 7-day expiry, stored as SHA-256 hash in `UserSession` table, rotated on each use
-- **Never use localStorage** for tokens
+- **Supabase Auth:** Magic link (passwordless, email-only) — no passwords stored locally
+- **Login flow:** `signInWithOtp({ email })` → magic link email → `/auth/callback` exchanges code for session
+- **Backend JWT verification:** Decodes Supabase-issued JWT using `SUPABASE_JWT_SECRET` (HS256), extracts email, looks up/auto-provisions user in local DB
+- **Bearer token auth:** Frontend sends `Authorization: Bearer <token>` on every API call (no cookies for auth)
+- **Session management:** Supabase SDK handles token refresh automatically via `@supabase/ssr`
+- **Legacy fallback:** Backend still accepts tokens signed with `SECRET_KEY` for migration compatibility
 - **JWT library:** PyJWT (`jwt` module), NOT python-jose — migrated for active maintenance
-- **Rate limiting:** slowapi on auth endpoints (10/min login, 5/min register, 10/min refresh) and trade execution (10/min)
-- **Account lockout:** 5 failed login attempts → 15-min lockout per email (in-memory tracker)
-- **Password policy:** min 8 chars, requires uppercase + lowercase + digit
+- **Rate limiting:** slowapi on trade execution (10/min)
 - **CORS:** Restricted to `settings.cors_origins_list` — never use `allow_origins=["*"]`
-- **Auto-buy real trading:** Requires password re-authentication to set `paper_mode=False`
 - **Swagger/Redoc:** Only enabled when `DEBUG=true` in `.env`
 
 ### Strategy Modes
@@ -131,21 +135,25 @@ Optimizers backtest multiple variants, rank by risk-adjusted score, save winner 
 DATABASE_URL=postgresql+asyncpg://nextgen:nextgen@localhost:5432/nextgenstock
 SECRET_KEY=<generated>
 JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=15
-REFRESH_TOKEN_EXPIRE_DAYS=7
 ENCRYPTION_KEY=<fernet-key>
 CORS_ORIGINS=http://localhost:3000
-COOKIE_SECURE=false
-COOKIE_SAMESITE=lax
 DEBUG=true
 ALPACA_BASE_URL=https://api.alpaca.markets
 ALPACA_PAPER_URL=https://paper-api.alpaca.markets
+
+# Supabase Auth
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_JWT_SECRET=your-jwt-secret
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 Docker Postgres: `nextgen:nextgen@localhost:5432/nextgenstock` (bound to `127.0.0.1:5432`, dev-only credentials).
 
 **Frontend (`.env.local`):**
 ```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
@@ -182,8 +190,9 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 | v3 E2E tests (34 cases) | Written in `tests/e2e/specs/v3-opportunities.spec.ts` + `v3-ideas.spec.ts` |
 | v3 Bug fixes (10 from TEST_REPORT.md) | All resolved — see V3 Bug Fixes section below |
 | Bollinger Band Squeeze strategy | Complete — backend service + strategy + API + frontend chart overlay + dashboard toggle |
-| Cross-origin auth (Vercel ↔ Render) | Complete — auth_session marker cookie + pgbouncer fix |
+| Cross-origin auth (Vercel ↔ Render) | Replaced by Supabase Auth (see below) |
 | Mobile responsiveness | Complete — all pages phone-friendly (hamburger menus, scrollable tables, responsive grids) |
+| Supabase Auth migration | Complete — magic link login, Bearer token API auth, backend JWT verification, auto-provisioning |
 
 ### Running E2E Tests
 ```bash
@@ -194,7 +203,7 @@ npx playwright test --config=e2e/playwright.config.ts
 Tests require both backend (`uvicorn`) and frontend (`npm run dev`) running.
 
 ### Known Spec Deviations (see BACKEND.md for full list)
-- Refresh token stored as SHA-256 (not bcrypt) — speed, not security compromise
+- Auth uses Supabase magic links instead of original password-based JWT — passwordless, no local password storage
 - `POST /strategies/ai-pick/run` returns 202 Accepted (long-running)
 - `GET /live/positions` returns DB snapshot, not live broker poll
 - Robinhood client is a stub — all methods raise `NotImplementedError` except `ping()`
@@ -342,8 +351,33 @@ Comprehensive mobile/phone viewing fixes across all pages:
 ### FVG Visibility Fix (2026-03-25)
 - **`DrawingPrimitives.ts`**: Increased FVG fill opacity 0.15→0.35, border 0.5→0.85 solid (was dashed), label font bold 11px at full opacity
 
+### Webull-Style Dashboard Timeline (2026-03-26)
+Replicated Webull's dual timeline layout on the dashboard chart:
+- **Bottom period bar** (new): Added `1D`, `5D`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `5Y`, `Max` buttons below the chart. Each maps to an appropriate candle interval (1D→5m, 5D→15m, 1M→1h, 3M/6M/YTD/1Y→1d, 5Y→1wk, Max→1mo). Right side has Adj/Night/Ext/Linear/Auto chart options matching Webull.
+- **Intraday time axis fix**: `df_to_candles()` in `market_data.py` now accepts `interval` param; for intraday intervals (1m–4h) outputs Unix timestamps (`int`) instead of `"YYYY-MM-DD"` strings. This makes Lightweight Charts show hours/minutes (e.g. "12:10", "14:00") on the x-axis instead of months.
+- **Backend**: `live.py` passes interval to `df_to_candles()`; Bollinger overlay also outputs Unix timestamps for intraday. `BollingerOverlayBar.time` schema accepts `str | int`.
+- **Frontend types**: `CandleBar.time`, `SignalMarker.time`, `BollingerOverlayBar.time`, `DrawingPoint.time`, `FVGData.startTime/endTime`, `CandleInput.time`, `MAPoint.time`, `MACDPoint.time`, `RSIPoint.time` all updated to `string | number`.
+- **Top bar**: Interval buttons (1m–4h) clear active period highlight when manually selected.
+
+### Supabase Auth Migration (2026-03-26)
+Replaced password-based JWT auth with Supabase Auth magic links (passwordless):
+- **`frontend/lib/supabase.ts`** (NEW): Supabase browser client singleton via `@supabase/ssr`
+- **`frontend/app/auth/callback/route.ts`** (NEW): Exchanges magic link code for Supabase session
+- **`frontend/app/(auth)/login/page.tsx`**: Replaced password form with email-only `signInWithOtp()`
+- **`frontend/app/(auth)/register/page.tsx`**: Replaced password registration with magic link
+- **`frontend/proxy.ts`**: Uses Supabase SSR server client for session check (replaces cookie check)
+- **`frontend/lib/auth.ts`**: Uses `supabase.auth.getUser()` instead of backend `/auth/me`
+- **`frontend/lib/api.ts`**: Sends `Authorization: Bearer <token>` instead of cookie-based auth
+- **`frontend/components/layout/AppShell.tsx`**: Logout uses `supabase.auth.signOut()`
+- **`backend/app/auth/dependencies.py`**: Decodes Supabase JWT via `SUPABASE_JWT_SECRET`, auto-provisions users by email
+- **`backend/app/auth/router.py`**: Simplified to `GET /auth/me` only (legacy register/login/refresh/logout removed)
+- **`backend/app/auth/service.py`**: Legacy password auth service stripped (Supabase handles auth)
+- **`backend/app/core/config.py`**: Added `supabase_url`, `supabase_anon_key`, `supabase_jwt_secret`, `supabase_service_role_key`
+- **`AUTH.md`**: Documents the complete Supabase auth flow, setup steps, and env vars
+- **Packages added**: `@supabase/ssr`, `@supabase/supabase-js` (frontend)
+
 ### Git Status
-All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25 — uncommitted.
+All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25. Webull-style dashboard timeline (bottom period bar + intraday time axis fix) added 2026-03-26. Supabase Auth migration added 2026-03-26 — uncommitted.
 
 ### Known E2E Test Failures (as of 2026-03-25, see `TEST_REPORT.md`)
 Most issues from the 2026-03-25 test run have been fixed. Remaining open items:

@@ -15,28 +15,72 @@ import {
 } from "../fixtures/test-data";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Auth
+// Auth — Supabase-compatible (uses /test/token for E2E JWT generation)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Obtain a valid JWT for the given email via the debug-only /test/token endpoint.
+ * Auto-provisions the user in the DB if needed. Returns the Bearer token string.
+ */
+export async function getTestToken(
+  request: APIRequestContext,
+  email: string
+): Promise<{ token: string; userId: number }> {
+  const res = await request.post(`${API_URL}/test/token`, {
+    data: { email },
+  });
+  if (!res.ok()) {
+    throw new Error(`/test/token failed: ${res.status()} ${await res.text()}`);
+  }
+  const body = await res.json();
+  return { token: body.access_token, userId: body.user_id };
+}
+
+/**
+ * Create an authenticated API request context with the Bearer token set.
+ * Returns a new APIRequestContext that includes the Authorization header.
+ * Caller must dispose() when done.
+ */
+export async function createAuthenticatedContext(
+  playwright: { request: { newContext: (opts: Record<string, unknown>) => Promise<APIRequestContext> } },
+  token: string
+): Promise<APIRequestContext> {
+  return playwright.request.newContext({
+    baseURL: API_URL,
+    extraHTTPHeaders: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+/**
+ * Legacy registerUser — calls /test/token to provision user (register endpoint removed).
+ * Kept for backward compatibility with existing test code.
+ */
 export async function registerUser(
   request: APIRequestContext,
   email: string,
-  password: string
+  _password?: string
 ): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
-  const res = await request.post(`${API_URL}/auth/register`, {
-    data: { email, password },
+  const res = await request.post(`${API_URL}/test/token`, {
+    data: { email },
   });
   const body = await res.json().catch(() => ({}));
   return { ok: res.ok(), status: res.status(), body };
 }
 
+/**
+ * Legacy loginUser — now uses /test/token to get JWT and sets it on the request context.
+ * Note: Playwright request contexts don't support setting headers after creation,
+ * so this returns the token info. Use createAuthenticatedContext for Bearer auth.
+ */
 export async function loginUser(
   request: APIRequestContext,
   email: string,
-  password: string
+  _password?: string
 ): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
-  const res = await request.post(`${API_URL}/auth/login`, {
-    data: { email, password },
+  const res = await request.post(`${API_URL}/test/token`, {
+    data: { email },
   });
   const body = await res.json().catch(() => ({}));
   return { ok: res.ok(), status: res.status(), body };
@@ -50,16 +94,26 @@ export async function getMe(
   return { ok: res.ok(), status: res.status(), body };
 }
 
-export async function logoutUser(request: APIRequestContext): Promise<void> {
-  await request.post(`${API_URL}/auth/logout`);
+export async function getMeWithToken(
+  request: APIRequestContext,
+  token: string
+): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
+  const res = await request.get(`${API_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok(), status: res.status(), body };
+}
+
+export async function logoutUser(_request: APIRequestContext): Promise<void> {
+  // Supabase handles logout on the frontend — no backend endpoint needed
 }
 
 export async function refreshToken(
-  request: APIRequestContext
+  _request: APIRequestContext
 ): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
-  const res = await request.post(`${API_URL}/auth/refresh`);
-  const body = await res.json().catch(() => ({}));
-  return { ok: res.ok(), status: res.status(), body };
+  // Supabase handles refresh — no backend endpoint
+  return { ok: false, status: 404, body: { detail: "removed" } };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -311,13 +365,7 @@ export async function setupTwoUsers(
   request: APIRequestContext
 ): Promise<void> {
   for (const user of [USER_A, USER_B]) {
-    const res = await request.post(`${API_URL}/auth/register`, {
-      data: { email: user.email, password: user.password },
-    });
-    // 409 = already exists; that is fine
-    if (!res.ok() && res.status() !== 409) {
-      throw new Error(`Failed to register ${user.email}: ${res.status()}`);
-    }
+    await getTestToken(request, user.email);
   }
 }
 

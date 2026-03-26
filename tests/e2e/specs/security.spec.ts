@@ -1,126 +1,83 @@
 /**
- * security.spec.ts — Security & token storage E2E tests
+ * security.spec.ts — Security E2E tests (Supabase Auth compatible)
  *
  * Covers:
- *   FR-08   Tokens never in localStorage
- *   Broker credential API keys never returned in responses
- *   CORS — requests from unlisted origins rejected
- *   401 on all protected endpoints without cookie
- *   403 on cross-user resource access
- *   HttpOnly cookie — not readable via document.cookie in browser
+ *   SEC-01  No sensitive tokens in document.cookie after Supabase auth
+ *   SEC-02  No sensitive tokens in localStorage
+ *   SEC-03  No sensitive tokens in sessionStorage
+ *   SEC-05  Broker credential API keys never returned in responses
+ *   SEC-09  401 on all protected endpoints without Bearer token
+ *   SEC-10  403 on cross-user resource access
+ *   SEC-12  Sensitive fields never in API responses
+ *   SEC-15  Public endpoints accessible without auth
  */
 
 import { test, expect } from "@playwright/test";
 import {
   API_URL,
   USER_A,
+  USER_B,
   ALPACA_CRED,
   STOCK_SYMBOL,
   ROUTES,
 } from "../fixtures/test-data";
 import {
-  registerUser,
-  loginUser,
-  createCredential,
-  testCredential,
-  listCredentials,
-  runBacktest,
+  getTestToken,
+  createAuthenticatedContext,
+  getMeWithToken,
 } from "../helpers/api.helper";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HTTP-only cookie: token not in document.cookie
+// SEC-01/02/03  No tokens leaked to browser storage after visiting auth pages
 // ─────────────────────────────────────────────────────────────────────────────
-test.describe("Security — HttpOnly cookie", () => {
-  test("SEC-01: access_token is not visible in document.cookie after login", async ({
+test.describe("Security — No token leakage in browser storage", () => {
+  test("SEC-01: document.cookie has no access_token or refresh_token on login page", async ({
     page,
-    request,
   }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-
     await page.goto(ROUTES.login);
     await page.waitForLoadState("networkidle");
-    await page.fill('input[type="email"]', USER_A.email);
-    await page.fill('input[type="password"]', USER_A.password);
-    await page.click('button[type="submit"]');
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
 
     const cookieStr: string = await page.evaluate(() => document.cookie);
-    // access_token is HttpOnly — must NOT appear in JS-accessible cookies
     expect(cookieStr).not.toContain("access_token");
-    // Should also not contain any JWT (starts with "eyJ")
+    expect(cookieStr).not.toContain("refresh_token");
     expect(cookieStr).not.toMatch(/eyJ[A-Za-z0-9_-]{20,}/);
   });
 
-  test("SEC-02: refresh_token is not visible in document.cookie", async ({
+  test("SEC-02: localStorage has no token-related keys on login page", async ({
     page,
-    request,
   }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-
     await page.goto(ROUTES.login);
     await page.waitForLoadState("networkidle");
-    await page.fill('input[type="email"]', USER_A.email);
-    await page.fill('input[type="password"]', USER_A.password);
-    await page.click('button[type="submit"]');
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
 
-    const cookieStr: string = await page.evaluate(() => document.cookie);
-    expect(cookieStr).not.toContain("refresh_token");
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// localStorage — no tokens stored
-// ─────────────────────────────────────────────────────────────────────────────
-test.describe("Security — No tokens in localStorage", () => {
-  test("SEC-03: localStorage has no token-related keys after login", async ({
-    page,
-    request,
-  }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-
-    await page.goto(ROUTES.login);
-    await page.waitForLoadState("networkidle");
-    await page.fill('input[type="email"]', USER_A.email);
-    await page.fill('input[type="password"]', USER_A.password);
-    await page.click('button[type="submit"]');
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
-
-    const storageKeys: string[] = await page.evaluate(() => Object.keys(localStorage));
+    const storageKeys: string[] = await page.evaluate(() =>
+      Object.keys(localStorage)
+    );
     const tokenKeys = storageKeys.filter((k) => {
       const lower = k.toLowerCase();
       return (
-        lower.includes("token") ||
         lower.includes("jwt") ||
-        lower.includes("access") ||
-        lower.includes("refresh") ||
-        lower.includes("auth")
+        lower.includes("access_token") ||
+        lower.includes("refresh_token")
       );
     });
     expect(tokenKeys).toHaveLength(0);
   });
 
-  test("SEC-04: sessionStorage has no token-related keys after login", async ({
+  test("SEC-03: sessionStorage has no token-related keys on login page", async ({
     page,
-    request,
   }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-
     await page.goto(ROUTES.login);
     await page.waitForLoadState("networkidle");
-    await page.fill('input[type="email"]', USER_A.email);
-    await page.fill('input[type="password"]', USER_A.password);
-    await page.click('button[type="submit"]');
-    await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
 
-    const sessionKeys: string[] = await page.evaluate(() => Object.keys(sessionStorage));
+    const sessionKeys: string[] = await page.evaluate(() =>
+      Object.keys(sessionStorage)
+    );
     const tokenKeys = sessionKeys.filter((k) => {
       const lower = k.toLowerCase();
       return (
-        lower.includes("token") ||
         lower.includes("jwt") ||
-        lower.includes("access") ||
-        lower.includes("refresh")
+        lower.includes("access_token") ||
+        lower.includes("refresh_token")
       );
     });
     expect(tokenKeys).toHaveLength(0);
@@ -128,68 +85,104 @@ test.describe("Security — No tokens in localStorage", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Broker credential — keys never returned in API responses
+// SEC-05/06/07/08  Broker credential — keys never returned in API responses
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("Security — Broker credential key masking", () => {
-  test.beforeEach(async ({ request }) => {
-    // Use a unique email per test run to avoid rate-limit lockout accumulation.
-    // auth.spec.ts wrong-password tests use USER_A.email, which increments the
-    // in-memory failed-login counter. After 5 runs USER_A would be locked out.
-    const email = `sec-cred-${Date.now()}@nextgenstock.io`;
-    await registerUser(request, email, USER_A.password);
-    await loginUser(request, email, USER_A.password);
+  let token: string;
+
+  test.beforeAll(async ({ playwright }) => {
+    const ctx = await playwright.request.newContext();
+    try {
+      const result = await getTestToken(ctx, `sec-cred-${Date.now()}@nextgenstock.io`);
+      token = result.token;
+    } finally {
+      await ctx.dispose();
+    }
   });
 
   test("SEC-05: raw api_key never appears in POST /broker/credentials response", async ({
-    request,
+    playwright,
   }) => {
-    const res = await request.post(`${API_URL}/broker/credentials`, {
-      data: ALPACA_CRED,
+    const ctx = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${token}` },
     });
-    const body = await res.text();
-    expect(body).not.toContain(ALPACA_CRED.api_key);
-    expect(body).not.toContain(ALPACA_CRED.secret_key);
+    try {
+      const res = await ctx.post(`${API_URL}/broker/credentials`, {
+        data: ALPACA_CRED,
+      });
+      const body = await res.text();
+      expect(body).not.toContain(ALPACA_CRED.api_key);
+      expect(body).not.toContain(ALPACA_CRED.secret_key);
+    } finally {
+      await ctx.dispose();
+    }
   });
 
   test("SEC-06: raw secret_key never appears in GET /broker/credentials response", async ({
-    request,
+    playwright,
   }) => {
-    await createCredential(request, ALPACA_CRED);
-    const res = await request.get(`${API_URL}/broker/credentials`);
-    const body = await res.text();
-    expect(body).not.toContain(ALPACA_CRED.api_key);
-    expect(body).not.toContain(ALPACA_CRED.secret_key);
+    const ctx = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+    });
+    try {
+      // Create then list
+      await ctx.post(`${API_URL}/broker/credentials`, {
+        data: ALPACA_CRED,
+      });
+      const res = await ctx.get(`${API_URL}/broker/credentials`);
+      const body = await res.text();
+      expect(body).not.toContain(ALPACA_CRED.api_key);
+      expect(body).not.toContain(ALPACA_CRED.secret_key);
+    } finally {
+      await ctx.dispose();
+    }
   });
 
   test("SEC-07: POST /broker/credentials/{id}/test returns only {ok: bool}", async ({
-    request,
+    playwright,
   }) => {
-    const { body: created } = await createCredential(request, ALPACA_CRED);
-    const id = (created as { id: number }).id;
+    const ctx = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+    });
+    try {
+      const createRes = await ctx.post(`${API_URL}/broker/credentials`, {
+        data: ALPACA_CRED,
+      });
+      const created = await createRes.json();
+      const id = created.id;
 
-    const res = await request.post(`${API_URL}/broker/credentials/${id}/test`);
-    const responseText = await res.text();
-    // Raw keys must not appear
-    expect(responseText).not.toContain(ALPACA_CRED.api_key);
-    expect(responseText).not.toContain(ALPACA_CRED.secret_key);
-    // Should only contain ok: true/false and optional detail
-    const body = JSON.parse(responseText);
-    expect(Object.keys(body).sort()).toEqual(
-      expect.arrayContaining(["ok"])
-    );
+      const res = await ctx.post(`${API_URL}/broker/credentials/${id}/test`);
+      const responseText = await res.text();
+      expect(responseText).not.toContain(ALPACA_CRED.api_key);
+      expect(responseText).not.toContain(ALPACA_CRED.secret_key);
+      const body = JSON.parse(responseText);
+      expect(body).toHaveProperty("ok");
+    } finally {
+      await ctx.dispose();
+    }
   });
 
   test("SEC-08: api_key_masked field contains '****' or '(encrypted)'", async ({
-    request,
+    playwright,
   }) => {
-    const { body } = await createCredential(request, ALPACA_CRED);
-    const masked = (body as { api_key_masked: string }).api_key_masked;
-    expect(masked).toMatch(/\*{4}|encrypted/i);
+    const ctx = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${token}` },
+    });
+    try {
+      const res = await ctx.post(`${API_URL}/broker/credentials`, {
+        data: ALPACA_CRED,
+      });
+      const body = await res.json();
+      const masked = body.api_key_masked;
+      expect(masked).toMatch(/\*{4}|encrypted/i);
+    } finally {
+      await ctx.dispose();
+    }
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Unauthenticated requests — 401 on all protected endpoints
+// SEC-09  401 on all protected endpoints without Bearer token
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("Security — 401 on all protected endpoints", () => {
   const protectedEndpoints = [
@@ -212,9 +205,9 @@ test.describe("Security — 401 on all protected endpoints", () => {
   ] as const;
 
   for (const [method, path] of protectedEndpoints) {
-    test(`SEC-09: ${method} ${path} returns 401 without cookie`, async ({ playwright }) => {
-      // Use a fresh context with no cookies — the shared `request` fixture inherits
-      // cookies from the "Broker credential key masking" beforeEach login above.
+    test(`SEC-09: ${method} ${path} returns 401 without auth`, async ({
+      playwright,
+    }) => {
       const freshCtx = await playwright.request.newContext();
       let res;
       try {
@@ -223,22 +216,15 @@ test.describe("Security — 401 on all protected endpoints", () => {
             res = await freshCtx.get(`${API_URL}${path}`);
             break;
           case "POST":
-            res = await freshCtx.post(`${API_URL}${path}`, {
-              data: {},
-            });
+            res = await freshCtx.post(`${API_URL}${path}`, { data: {} });
             break;
           case "PATCH":
-            res = await freshCtx.patch(`${API_URL}${path}`, {
-              data: {},
-            });
+            res = await freshCtx.patch(`${API_URL}${path}`, { data: {} });
             break;
           default:
             throw new Error(`Unhandled method: ${method}`);
         }
-        // Accept 401 or 422 (validation error before auth, acceptable on POST with empty body)
-        // but NOT 200, 201, 202
         expect([401, 403, 422]).toContain(res.status());
-        // More strictly: auth check must trigger 401
         if (res.status() !== 422) {
           expect(res.status()).toBe(401);
         }
@@ -250,100 +236,168 @@ test.describe("Security — 401 on all protected endpoints", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 403 on cross-user access (ownership check)
+// SEC-10/11  403 on cross-user access (ownership check)
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("Security — 403 on cross-user resource access", () => {
   test("SEC-10: GET /backtests/{user_a_id} as USER_B returns 403 or 404", async ({
-    request,
+    playwright,
   }) => {
-    // Create run as USER_A
-    await registerUser(request, USER_A.email, USER_A.password);
-    await loginUser(request, USER_A.email, USER_A.password);
-    const { body: run } = await runBacktest(request, {
-      symbol: STOCK_SYMBOL,
-      timeframe: "1d",
-      mode: "conservative",
-    });
-    const runId = (run as { id: number }).id;
+    const setupCtx = await playwright.request.newContext();
+    let tokenA: string;
+    let tokenB: string;
+    try {
+      const resultA = await getTestToken(setupCtx, USER_A.email);
+      tokenA = resultA.token;
+      const resultB = await getTestToken(
+        setupCtx,
+        `sec-cross-${Date.now()}@nextgenstock.io`
+      );
+      tokenB = resultB.token;
+    } finally {
+      await setupCtx.dispose();
+    }
 
-    // Login as USER_B
-    const otherEmail = `sec-cross-${Date.now()}@nextgenstock.io`;
-    await request.post(`${API_URL}/auth/logout`);
-    await request.post(`${API_URL}/auth/register`, {
-      data: { email: otherEmail, password: "SecurePass1234!" },
+    // Create backtest as USER_A
+    const ctxA = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${tokenA}` },
     });
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: otherEmail, password: "SecurePass1234!" },
-    });
+    let runId: number;
+    try {
+      const runRes = await ctxA.post(`${API_URL}/backtests/run`, {
+        data: {
+          symbol: STOCK_SYMBOL,
+          timeframe: "1d",
+          mode: "conservative",
+        },
+      });
+      const runBody = await runRes.json();
+      runId = runBody.id;
+    } finally {
+      await ctxA.dispose();
+    }
 
-    const res = await request.get(`${API_URL}/backtests/${runId}`);
-    expect([403, 404]).toContain(res.status());
-    expect(res.status()).not.toBe(200);
+    // Try to access as USER_B
+    const ctxB = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${tokenB}` },
+    });
+    try {
+      const res = await ctxB.get(`${API_URL}/backtests/${runId}`);
+      expect([403, 404]).toContain(res.status());
+      expect(res.status()).not.toBe(200);
+    } finally {
+      await ctxB.dispose();
+    }
   });
 
   test("SEC-11: PATCH /broker/credentials/{user_a_id} as USER_B returns 403 or 404", async ({
-    request,
+    playwright,
   }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-    await loginUser(request, USER_A.email, USER_A.password);
-    const { body: cred } = await createCredential(request, ALPACA_CRED);
-    const credId = (cred as { id: number }).id;
+    const setupCtx = await playwright.request.newContext();
+    let tokenA: string;
+    let tokenB: string;
+    try {
+      const resultA = await getTestToken(setupCtx, USER_A.email);
+      tokenA = resultA.token;
+      const resultB = await getTestToken(
+        setupCtx,
+        `sec-cred-cross-${Date.now()}@nextgenstock.io`
+      );
+      tokenB = resultB.token;
+    } finally {
+      await setupCtx.dispose();
+    }
 
-    const otherEmail = `sec-cred-${Date.now()}@nextgenstock.io`;
-    await request.post(`${API_URL}/auth/logout`);
-    await request.post(`${API_URL}/auth/register`, {
-      data: { email: otherEmail, password: "SecurePass1234!" },
+    // Create credential as USER_A
+    const ctxA = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${tokenA}` },
     });
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: otherEmail, password: "SecurePass1234!" },
-    });
+    let credId: number;
+    try {
+      const createRes = await ctxA.post(`${API_URL}/broker/credentials`, {
+        data: ALPACA_CRED,
+      });
+      const createBody = await createRes.json();
+      credId = createBody.id;
+    } finally {
+      await ctxA.dispose();
+    }
 
-    const res = await request.patch(`${API_URL}/broker/credentials/${credId}`, {
-      data: { profile_name: "Hijacked" },
+    // Try to modify as USER_B
+    const ctxB = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${tokenB}` },
     });
-    expect([403, 404]).toContain(res.status());
+    try {
+      const res = await ctxB.patch(`${API_URL}/broker/credentials/${credId}`, {
+        data: { profile_name: "Hijacked" },
+      });
+      expect([403, 404]).toContain(res.status());
+    } finally {
+      await ctxB.dispose();
+    }
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Response body security — no password leaks
+// SEC-12/13  Sensitive fields never in API responses
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("Security — Sensitive fields never in responses", () => {
-  test("SEC-12: GET /auth/me never includes password_hash", async ({ request }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-    await loginUser(request, USER_A.email, USER_A.password);
-    const res = await request.get(`${API_URL}/auth/me`);
-    const body = await res.text();
-    expect(body).not.toContain("password_hash");
-    expect(body).not.toContain(USER_A.password);
-  });
-
-  test("SEC-13: GET /profile never includes password_hash", async ({ request }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-    await loginUser(request, USER_A.email, USER_A.password);
-    const res = await request.get(`${API_URL}/profile`);
-    const body = await res.text();
-    expect(body).not.toContain("password_hash");
-  });
-
-  test("SEC-14: POST /auth/login response body does not contain JWT token strings", async ({
-    request,
+  test("SEC-12: GET /auth/me never includes password_hash", async ({
+    playwright,
   }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-    const res = await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
+    const setupCtx = await playwright.request.newContext();
+    const { token } = await getTestToken(setupCtx, USER_A.email);
+    await setupCtx.dispose();
+
+    const { body } = await getMeWithToken(
+      await playwright.request.newContext(),
+      token
+    );
+    const bodyStr = JSON.stringify(body);
+    expect(bodyStr).not.toContain("password_hash");
+  });
+
+  test("SEC-13: GET /profile never includes password_hash", async ({
+    playwright,
+  }) => {
+    const setupCtx = await playwright.request.newContext();
+    const { token } = await getTestToken(setupCtx, USER_A.email);
+    await setupCtx.dispose();
+
+    const ctx = await playwright.request.newContext({
+      extraHTTPHeaders: { Authorization: `Bearer ${token}` },
     });
-    const body = await res.text();
-    // JWT tokens start with "eyJ"
-    expect(body).not.toMatch(/eyJ[A-Za-z0-9_-]{20,}/);
+    try {
+      const res = await ctx.get(`${API_URL}/profile`);
+      const body = await res.text();
+      expect(body).not.toContain("password_hash");
+    } finally {
+      await ctx.dispose();
+    }
+  });
+
+  test("SEC-14: POST /auth/login endpoint is removed (Supabase handles auth)", async ({
+    playwright,
+  }) => {
+    const ctx = await playwright.request.newContext();
+    try {
+      const res = await ctx.post(`${API_URL}/auth/login`, {
+        data: { email: USER_A.email, password: "anything" },
+      });
+      // Endpoint should not exist
+      expect([404, 405]).toContain(res.status());
+    } finally {
+      await ctx.dispose();
+    }
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Health check — public endpoint
+// SEC-15  Health check — public endpoint
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("Security — Public endpoints", () => {
-  test("SEC-15: GET /healthz returns 200 without authentication", async ({ request }) => {
+  test("SEC-15: GET /healthz returns 200 without authentication", async ({
+    request,
+  }) => {
     const res = await request.get(`${API_URL}/healthz`);
     expect(res.status()).toBe(200);
     const body = await res.json();

@@ -4,9 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useMutation } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -18,19 +17,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2, Zap, Mail, CheckCircle } from "lucide-react";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter();
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState("");
 
   const {
     register,
@@ -40,22 +39,81 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  const { mutate: login, isPending, error: loginError } = useMutation({
-    mutationFn: authApi.login,
-    onSuccess: () => {
-      // Set a lightweight marker cookie so Next.js edge middleware can detect
-      // the authenticated state even when the httponly access_token cookie
-      // lives on a different domain (cross-origin Vercel ↔ Render deployment).
-      document.cookie = "auth_session=1; path=/; max-age=604800; SameSite=Lax";
-      router.push("/dashboard");
-    },
-    onError: (err: Error) => {
-      toast.error(getErrorMessage(err, "Login failed. Please try again."));
-    },
-  });
+  const [isPending, setIsPending] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
-  function onSubmit(values: LoginFormValues) {
-    login(values);
+  async function onSubmit(values: LoginFormValues) {
+    setIsPending(true);
+    setLoginError(null);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email: values.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        setLoginError(error.message);
+        toast.error(error.message);
+      } else {
+        setMagicLinkSent(true);
+        setSentEmail(values.email);
+        toast.success("Magic link sent! Check your email.");
+      }
+    } catch (err) {
+      const msg = getErrorMessage(err as Error, "Failed to send magic link.");
+      setLoginError(msg);
+      toast.error(msg);
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  if (magicLinkSent) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="flex items-center justify-center gap-2">
+            <Zap className="h-7 w-7 text-primary" />
+            <span className="text-xl font-semibold">NextGenStock</span>
+          </div>
+
+          <Card>
+            <CardHeader className="space-y-1 text-center">
+              <div className="flex justify-center mb-2">
+                <CheckCircle className="h-12 w-12 text-green-500" />
+              </div>
+              <CardTitle className="text-2xl">Check your email</CardTitle>
+              <CardDescription>
+                We sent a magic link to <strong>{sentEmail}</strong>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                Click the link in the email to sign in. The link expires in 1
+                hour.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setMagicLinkSent(false);
+                  setLoginError(null);
+                }}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Try a different email
+              </Button>
+            </CardContent>
+          </Card>
+
+          <p className="text-center text-xs text-muted-foreground">
+            Educational software only. Live trading carries real financial risk.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -71,12 +129,16 @@ export default function LoginPage() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Sign in</CardTitle>
             <CardDescription>
-              Enter your credentials to access your account
+              Enter your email to receive a magic link
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-4"
+              noValidate
+            >
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -94,31 +156,19 @@ export default function LoginPage() {
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  disabled={isPending}
-                  {...register("password")}
-                />
-                {errors.password && (
-                  <p className="text-xs text-destructive">
-                    {errors.password.message}
-                  </p>
-                )}
-              </div>
-
               {loginError && (
                 <p role="alert" className="text-sm text-destructive">
-                  {getErrorMessage(loginError, "Login failed. Please try again.")}
+                  {loginError}
                 </p>
               )}
 
               <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Sign in
+                {isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4 mr-2" />
+                )}
+                Send magic link
               </Button>
             </form>
           </CardContent>

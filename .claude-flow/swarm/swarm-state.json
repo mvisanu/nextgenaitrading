@@ -35,6 +35,24 @@
       },
       "createdAt": "2026-03-25T12:13:08.939Z",
       "updatedAt": "2026-03-25T12:13:08.939Z"
+    },
+    "swarm-1774543583822-139u5q": {
+      "swarmId": "swarm-1774543583822-139u5q",
+      "topology": "adaptive",
+      "maxAgents": 10,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "adaptive",
+        "maxAgents": 10,
+        "strategy": "adaptive",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-03-26T16:46:23.822Z",
+      "updatedAt": "2026-03-26T16:46:23.822Z"
     }
   },
   "version": "3.0.0"

@@ -1,20 +1,23 @@
 """
 FastAPI dependencies for authenticated routes.
 
-Real JWT authentication: reads the access_token cookie, decodes it,
-and loads the corresponding User from the database.
+Supabase JWT authentication: reads the Authorization header (Bearer token),
+decodes the Supabase-issued JWT, and loads/creates the corresponding User
+from the database.
 """
 from __future__ import annotations
 
 import logging
 from typing import Annotated, Optional
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import PyJWTError as JWTError
+import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_token
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 
@@ -26,30 +29,96 @@ _credentials_exception = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
+# HTTPBearer extracts the token from the Authorization: Bearer <token> header
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def _decode_supabase_token(token: str) -> dict:
+    """
+    Decode and validate a Supabase-issued JWT.
+    Uses the Supabase JWT secret for HMAC verification.
+    Falls back to the legacy secret_key if supabase_jwt_secret is not configured.
+    """
+    secret = settings.supabase_jwt_secret or settings.secret_key
+    try:
+        payload = jwt.decode(
+            token,
+            secret,
+            algorithms=[settings.jwt_algorithm],
+            audience="authenticated",
+            options={"verify_aud": bool(settings.supabase_jwt_secret)},
+        )
+        return payload
+    except JWTError:
+        # If Supabase secret fails, try legacy secret_key as fallback
+        if settings.supabase_jwt_secret and settings.secret_key:
+            try:
+                return jwt.decode(
+                    token,
+                    settings.secret_key,
+                    algorithms=[settings.jwt_algorithm],
+                )
+            except JWTError:
+                pass
+        raise
+
 
 async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
-    access_token: Annotated[Optional[str], Cookie()] = None,
+    credentials: Annotated[
+        Optional[HTTPAuthorizationCredentials], Depends(_bearer_scheme)
+    ] = None,
 ) -> User:
     """
-    Validate the access_token cookie and return the authenticated User.
+    Validate the Bearer token and return the authenticated User.
     Raises HTTP 401 if the token is missing, invalid, or expired.
+
+    For Supabase tokens, the `sub` claim contains the Supabase user UUID.
+    We look up the user by email from the token, creating one if needed
+    (auto-provisioning on first API call after Supabase auth).
     """
-    if not access_token:
+    if not credentials:
         raise _credentials_exception
 
     try:
-        payload = decode_token(access_token)
-        if payload.get("type") != "access":
+        payload = _decode_supabase_token(credentials.credentials)
+        # Supabase tokens have `sub` (user UUID) and `email` in the payload
+        user_email = payload.get("email")
+        user_sub = payload.get("sub")
+        if not user_email and not user_sub:
             raise _credentials_exception
-        user_id = int(payload["sub"])
     except (JWTError, KeyError, ValueError):
         raise _credentials_exception
 
-    result = await db.execute(
-        select(User).where(User.id == user_id, User.is_active.is_(True))
-    )
-    user = result.scalar_one_or_none()
+    # Look up user by email (Supabase tokens always include email)
+    if user_email:
+        result = await db.execute(
+            select(User).where(User.email == user_email, User.is_active.is_(True))
+        )
+        user = result.scalar_one_or_none()
+
+        # Auto-provision user on first API call if they authenticated via Supabase
+        if user is None and user_email:
+            user = User(
+                email=user_email,
+                password_hash="supabase_managed",  # No local password — Supabase handles auth
+                is_active=True,
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+            logger.info("Auto-provisioned user %s from Supabase token", user_email)
+    else:
+        # Fallback: look up by legacy integer ID (for old tokens during migration)
+        try:
+            user_id = int(user_sub)
+            result = await db.execute(
+                select(User).where(User.id == user_id, User.is_active.is_(True))
+            )
+            user = result.scalar_one_or_none()
+        except (ValueError, TypeError):
+            user = None
+
     if user is None:
         raise _credentials_exception
 
@@ -58,24 +127,17 @@ async def get_current_user(
 
 async def optional_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
-    access_token: Annotated[Optional[str], Cookie()] = None,
+    credentials: Annotated[
+        Optional[HTTPAuthorizationCredentials], Depends(_bearer_scheme)
+    ] = None,
 ) -> User | None:
     """
     Like get_current_user but returns None instead of raising on missing/invalid token.
-    Used for endpoints that can serve both authenticated and anonymous users.
     """
-    if not access_token:
+    if not credentials:
         return None
 
     try:
-        payload = decode_token(access_token)
-        if payload.get("type") != "access":
-            return None
-        user_id = int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
+        return await get_current_user(db, credentials)
+    except HTTPException:
         return None
-
-    result = await db.execute(
-        select(User).where(User.id == user_id, User.is_active.is_(True))
-    )
-    return result.scalar_one_or_none()

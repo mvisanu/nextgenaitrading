@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 /**
  * Routes that require authentication.
@@ -25,34 +26,74 @@ const PROTECTED_PREFIXES = [
  */
 const AUTH_ROUTES = ["/login", "/register"];
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check for auth: either the httponly access_token (same-origin deployment)
-  // or the lightweight auth_session marker (cross-origin deployment where
-  // the httponly cookie is on a different domain and invisible to middleware).
-  const hasToken = request.cookies.has("access_token") || request.cookies.has("auth_session");
+  // Create a Supabase server client to refresh the session if needed
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Update request cookies for downstream server components
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value);
+          });
+          // Update response cookies so they're sent back to the browser
+          response = NextResponse.next({
+            request: { headers: request.headers },
+          });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
+  // Refresh the session — this also refreshes expired tokens
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const hasSession = !!user;
 
   // Redirect authenticated users away from auth pages
-  if (hasToken && AUTH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) {
+  if (
+    hasSession &&
+    AUTH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))
+  ) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // Redirect unauthenticated users away from protected routes
-  if (!hasToken && PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+  if (
+    !hasSession &&
+    PROTECTED_PREFIXES.some(
+      (p) => pathname === p || pathname.startsWith(p + "/")
+    )
+  ) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Root redirect: / → /dashboard (authenticated) or /login (unauthenticated)
+  // Root redirect: / -> /dashboard (authenticated) or /login (unauthenticated)
   if (pathname === "/") {
     return NextResponse.redirect(
-      new URL(hasToken ? "/dashboard" : "/login", request.url)
+      new URL(hasSession ? "/dashboard" : "/login", request.url)
     );
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

@@ -28,55 +28,8 @@ function makeFetchMock(responses: Array<{ status: number; body?: unknown }>) {
 }
 
 // ─── authApi ──────────────────────────────────────────────────────────────────
-
-describe("authApi", () => {
-  it("login sends POST to /auth/login with credentials:include and JSON body", async () => {
-    globalThis.fetch = makeFetchMock([{ status: 200, body: { id: 1, email: "a@b.com" } }]);
-    const { authApi } = await import("@/lib/api");
-
-    await authApi.login({ email: "a@b.com", password: "secret" });
-
-    expect(fetch).toHaveBeenCalledTimes(1);
-    const [url, opts] = (fetch as jest.Mock).mock.calls[0];
-    expect(url).toBe(`${BASE}/auth/login`);
-    expect(opts.method).toBe("POST");
-    expect(opts.credentials).toBe("include");
-    expect(opts.headers["Content-Type"]).toBe("application/json");
-    expect(JSON.parse(opts.body)).toEqual({ email: "a@b.com", password: "secret" });
-  });
-
-  it("register sends POST to /auth/register", async () => {
-    globalThis.fetch = makeFetchMock([{ status: 200, body: { id: 2, email: "x@y.com" } }]);
-    const { authApi } = await import("@/lib/api");
-
-    await authApi.register({ email: "x@y.com", password: "pass1234" });
-
-    const [url, opts] = (fetch as jest.Mock).mock.calls[0];
-    expect(url).toBe(`${BASE}/auth/register`);
-    expect(opts.method).toBe("POST");
-  });
-
-  it("me sends GET to /auth/me", async () => {
-    globalThis.fetch = makeFetchMock([{ status: 200, body: { id: 1 } }]);
-    const { authApi } = await import("@/lib/api");
-
-    await authApi.me();
-
-    const [url, opts] = (fetch as jest.Mock).mock.calls[0];
-    expect(url).toBe(`${BASE}/auth/me`);
-    expect(opts.method).toBe("GET");
-  });
-
-  it("logout sends POST to /auth/logout", async () => {
-    globalThis.fetch = makeFetchMock([{ status: 200, body: { ok: true } }]);
-    const { authApi } = await import("@/lib/api");
-
-    await authApi.logout();
-
-    const [url] = (fetch as jest.Mock).mock.calls[0];
-    expect(url).toBe(`${BASE}/auth/logout`);
-  });
-});
+// authApi.me() and authApi.logout() now call Supabase directly, not the backend.
+// These are tested via Supabase integration tests, not unit tests on fetch.
 
 // ─── profileApi ───────────────────────────────────────────────────────────────
 
@@ -339,9 +292,9 @@ describe("artifactApi", () => {
 describe("apiFetch error handling", () => {
   it("throws with detail message on 4xx", async () => {
     globalThis.fetch = makeFetchMock([{ status: 422, body: { detail: "Invalid payload" } }]);
-    const { authApi } = await import("@/lib/api");
+    const { profileApi } = await import("@/lib/api");
 
-    await expect(authApi.login({ email: "bad", password: "x" })).rejects.toThrow("Invalid payload");
+    await expect(profileApi.get()).rejects.toThrow("Invalid payload");
   });
 
   it("throws with HTTP status fallback when no detail", async () => {
@@ -350,9 +303,9 @@ describe("apiFetch error handling", () => {
       status: 500,
       json: () => Promise.reject(new Error("not json")),
     });
-    const { authApi } = await import("@/lib/api");
+    const { profileApi } = await import("@/lib/api");
 
-    await expect(authApi.me()).rejects.toThrow("HTTP 500");
+    await expect(profileApi.get()).rejects.toThrow("HTTP 500");
   });
 
   it("returns empty object for 204 No Content", async () => {
@@ -361,9 +314,9 @@ describe("apiFetch error handling", () => {
       status: 204,
       json: () => Promise.resolve(null),
     });
-    const { authApi } = await import("@/lib/api");
+    const { brokerApi } = await import("@/lib/api");
 
-    const result = await authApi.logout();
+    const result = await brokerApi.delete(1);
     expect(result).toEqual({});
   });
 
