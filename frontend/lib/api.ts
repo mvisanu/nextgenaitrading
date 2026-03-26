@@ -77,11 +77,13 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   // 1. Try Supabase session
   try {
     const supabase = getSupabaseBrowserClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      return { Authorization: `Bearer ${session.access_token}` };
+    if (supabase) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        return { Authorization: `Bearer ${session.access_token}` };
+      }
     }
   } catch {
     // No session available
@@ -181,17 +183,19 @@ export const authApi = {
     // Try Supabase session first
     try {
       const supabase = getSupabaseBrowserClient();
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-      if (!error && user) {
-        return {
-          id: user.id,
-          email: user.email ?? "",
-          is_active: true,
-          created_at: user.created_at,
-        };
+      if (supabase) {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+        if (!error && user) {
+          return {
+            id: user.id,
+            email: user.email ?? "",
+            is_active: true,
+            created_at: user.created_at,
+          };
+        }
       }
     } catch {
       // Fall through to dev token
@@ -219,7 +223,7 @@ export const authApi = {
 
   logout: async (): Promise<{ ok: boolean }> => {
     const supabase = getSupabaseBrowserClient();
-    await supabase.auth.signOut();
+    if (supabase) await supabase.auth.signOut();
     // Also clear dev token
     if (typeof document !== "undefined") {
       document.cookie = "dev_token=; path=/; max-age=0; SameSite=Lax";

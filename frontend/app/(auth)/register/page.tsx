@@ -47,6 +47,7 @@ export default function RegisterPage() {
     setRegisterError(null);
     try {
       const supabase = getSupabaseBrowserClient();
+      if (!supabase) throw new Error("Supabase not configured. Use Dev Login on the login page.");
       const { error } = await supabase.auth.signInWithOtp({
         email: values.email,
         options: {

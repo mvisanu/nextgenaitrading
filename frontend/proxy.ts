@@ -34,20 +34,20 @@ export async function proxy(request: NextRequest) {
     request: { headers: request.headers },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+
+  let user = null;
+  if (supabaseUrl && supabaseKey) {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Update request cookies for downstream server components
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
-          // Update response cookies so they're sent back to the browser
           response = NextResponse.next({
             request: { headers: request.headers },
           });
@@ -56,15 +56,14 @@ export async function proxy(request: NextRequest) {
           });
         },
       },
-    }
-  );
+    });
 
-  // Refresh the session — this also refreshes expired tokens
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // Refresh the session — this also refreshes expired tokens
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  }
 
-  // Also accept dev_token cookie for local development (set via /test/token)
+  // Also accept dev_token cookie (set via /test/token dev login)
   const devToken = request.cookies.get("dev_token")?.value;
   const hasSession = !!user || !!devToken;
 

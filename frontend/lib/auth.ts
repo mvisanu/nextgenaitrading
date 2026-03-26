@@ -2,7 +2,7 @@
  * lib/auth.ts
  *
  * Auth helper — uses Supabase client to get the current user session.
- * Tokens are managed by Supabase (in-memory / sessionStorage).
+ * Returns null gracefully when Supabase is not configured.
  */
 
 import type { UserResponse } from "@/types";
@@ -11,6 +11,7 @@ import { getSupabaseBrowserClient } from "./supabase";
 export async function getCurrentUser(): Promise<UserResponse | null> {
   try {
     const supabase = getSupabaseBrowserClient();
+    if (!supabase) return null;
     const {
       data: { user },
       error,
@@ -33,6 +34,7 @@ export async function getCurrentUser(): Promise<UserResponse | null> {
 export async function getAccessToken(): Promise<string | null> {
   try {
     const supabase = getSupabaseBrowserClient();
+    if (!supabase) return null;
     const {
       data: { session },
     } = await supabase.auth.getSession();

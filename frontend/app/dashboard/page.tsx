@@ -673,8 +673,8 @@ function KpiCardsPanel() {
             )}
           </div>
           <div className="w-px h-3 bg-border shrink-0" />
-          {/* Quick links */}
-          <div className="flex items-center gap-1 shrink-0" data-testid="kpi-card">
+          {/* Quick links — hidden on mobile (available via bottom nav) */}
+          <div className="hidden sm:flex items-center gap-1 shrink-0" data-testid="kpi-card">
             <Link href="/strategies" className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground hover:text-primary hover:bg-secondary/80 transition-colors">
               <TrendingUp className="h-3 w-3" />
               Strategies
@@ -1047,21 +1047,21 @@ function DashboardContent() {
           <button
             onClick={() => { setShowNews((v) => !v); setNewsMaximized(false); }}
             className={cn(
-              "hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
+              "flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors shrink-0",
               showNews ? "bg-amber-500/20 text-amber-400" : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
             )}
           >
             News
           </button>
 
-          {/* Alert button — hidden on mobile */}
-          <button className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0">
+          {/* Alert button — icon only on mobile */}
+          <button className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-colors shrink-0">
             <Bell className="h-3.5 w-3.5" />
-            <span>Alert</span>
+            <span className="hidden sm:inline">Alert</span>
           </button>
 
-          {/* Divider — hidden on mobile */}
-          <div className="hidden sm:block w-px h-5 bg-border mx-0.5 shrink-0" />
+          {/* Divider */}
+          <div className="w-px h-5 bg-border mx-0.5 shrink-0" />
 
           {/* Drawing tools toggle */}
           <button
@@ -1224,13 +1224,13 @@ function DashboardContent() {
           <div className="relative flex flex-col flex-1 min-w-0 border-r border-border">
 
             {/* Price ticker + OHLCV header bar */}
-            <div className="flex items-center gap-3 px-3 h-8 shrink-0 border-b border-border bg-card/50 text-[11px] font-mono overflow-x-auto">
-              <span className="text-primary font-bold text-[13px]">
+            <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 h-8 shrink-0 border-b border-border bg-card/50 text-[11px] font-mono overflow-x-auto">
+              <span className="text-primary font-bold text-sm sm:text-[13px] shrink-0">
                 {chartSymbol}
               </span>
               {lastCandle && (
                 <span
-                  className="font-bold text-[13px] tabular-nums"
+                  className="font-bold text-base sm:text-[13px] tabular-nums shrink-0"
                   style={{ color: isPositive ? "#26a69a" : "#ef5350" }}
                 >
                   {formatPrice(lastCandle.close, chartSymbol)}
@@ -1238,15 +1238,15 @@ function DashboardContent() {
               )}
               {priceChange !== null && pricePct !== null && (
                 <span
-                  className="text-[11px] tabular-nums"
+                  className="text-[11px] tabular-nums shrink-0"
                   style={{ color: isPositive ? "#26a69a" : "#ef5350" }}
                 >
-                  {isPositive ? "+" : ""}{priceChange.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  {" "}{isPositive ? "+" : ""}{pricePct.toFixed(2)}%
+                  {isPositive ? "+" : ""}{pricePct.toFixed(2)}%
                 </span>
               )}
+              {/* OHLC values — hidden on mobile to reduce clutter */}
               {lastCandle && (
-                <>
+                <span className="hidden sm:contents">
                   <span className="text-muted-foreground">
                     O:{" "}
                     <span className="text-foreground">
@@ -1271,7 +1271,7 @@ function DashboardContent() {
                       {lastCandle.close.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </span>
-                </>
+                </span>
               )}
               {chartLoading && (
                 <span className="text-muted-foreground">Loading...</span>
@@ -1312,7 +1312,7 @@ function DashboardContent() {
             </div>
 
             {/* ── Bottom timeline bar (Webull-style period range + chart options) ── */}
-            <div className="flex items-center h-8 shrink-0 border-t border-border bg-card/50 px-3 gap-1">
+            <div className="flex items-center h-8 shrink-0 border-t border-border bg-card/50 px-1.5 sm:px-3 gap-0 sm:gap-1">
               {/* Period range buttons: 1D, 5D, 1M, 3M, 6M, YTD, 1Y, 5Y, Max */}
               <div className="flex items-center gap-0">
                 {PERIOD_RANGES.map((p) => (
@@ -1320,7 +1320,7 @@ function DashboardContent() {
                     key={p.label}
                     onClick={() => handlePeriodSelect(p)}
                     className={cn(
-                      "px-2 py-0.5 text-[12px] font-medium transition-colors rounded-sm",
+                      "px-1.5 sm:px-2 py-0.5 text-[11px] sm:text-[12px] font-medium transition-colors rounded-sm",
                       activePeriod === p.label
                         ? "text-primary font-bold"
                         : "text-muted-foreground hover:text-foreground"
