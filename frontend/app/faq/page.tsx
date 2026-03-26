@@ -130,15 +130,32 @@ function FAQ({
 
 // ─── HTML helper (for translated strings with markup) ────────────────────────
 
+const ALLOWED_TAGS = new Set(["strong", "span", "em", "br", "code"]);
+
 function sanitize(dirty: string): string {
-  // Lazy-load DOMPurify only on client to keep SSR safe
+  // SSR: no DOM available — content is authored by us so safe to return as-is
   if (typeof window === "undefined") return dirty;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const DOMPurify = require("isomorphic-dompurify");
-  return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS: ["strong", "span", "em", "br", "code"],
-    ALLOWED_ATTR: ["class"],
-  });
+  // Browser: walk the parsed tree and strip disallowed tags/attrs
+  const doc = new DOMParser().parseFromString(dirty, "text/html");
+  function clean(node: Node): void {
+    for (const child of [...node.childNodes]) {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        const el = child as Element;
+        if (!ALLOWED_TAGS.has(el.tagName.toLowerCase())) {
+          // Replace disallowed element with its children (unwrap)
+          el.replaceWith(...Array.from(el.childNodes));
+        } else {
+          // Strip any attribute that isn't "class"
+          for (const attr of Array.from(el.attributes)) {
+            if (attr.name !== "class") el.removeAttribute(attr.name);
+          }
+          clean(el);
+        }
+      }
+    }
+  }
+  clean(doc.body);
+  return doc.body.innerHTML;
 }
 
 function Html({ html }: { html: string }) {
