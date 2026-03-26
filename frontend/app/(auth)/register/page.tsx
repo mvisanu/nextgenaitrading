@@ -53,6 +53,8 @@ export default function RegisterPage() {
     mutationFn: (values: { email: string; password: string }) =>
       authApi.register(values),
     onSuccess: () => {
+      // Set marker cookie for cross-origin auth detection in middleware
+      document.cookie = "auth_session=1; path=/; max-age=604800; SameSite=Lax";
       toast.success("Account created! Welcome to NextGenStock.");
       router.push("/dashboard");
     },

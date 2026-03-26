@@ -28,7 +28,10 @@ const AUTH_ROUTES = ["/login", "/register"];
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const hasToken = request.cookies.has("access_token");
+  // Check for auth: either the httponly access_token (same-origin deployment)
+  // or the lightweight auth_session marker (cross-origin deployment where
+  // the httponly cookie is on a different domain and invisible to middleware).
+  const hasToken = request.cookies.has("access_token") || request.cookies.has("auth_session");
 
   // Redirect authenticated users away from auth pages
   if (hasToken && AUTH_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"))) {

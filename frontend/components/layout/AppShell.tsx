@@ -54,6 +54,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch {
       // Logout failed silently — still clear state
     }
+    // Clear the cross-origin auth marker cookie
+    document.cookie = "auth_session=; path=/; max-age=0";
     queryClient.clear();
     router.push("/login");
   }, [router, queryClient]);

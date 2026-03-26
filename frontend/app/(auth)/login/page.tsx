@@ -43,6 +43,10 @@ export default function LoginPage() {
   const { mutate: login, isPending, error: loginError } = useMutation({
     mutationFn: authApi.login,
     onSuccess: () => {
+      // Set a lightweight marker cookie so Next.js edge middleware can detect
+      // the authenticated state even when the httponly access_token cookie
+      // lives on a different domain (cross-origin Vercel ↔ Render deployment).
+      document.cookie = "auth_session=1; path=/; max-age=604800; SameSite=Lax";
       router.push("/dashboard");
     },
     onError: (err: Error) => {

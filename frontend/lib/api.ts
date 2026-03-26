@@ -114,6 +114,8 @@ async function apiFetch<T>(
           window.location.pathname === p || window.location.pathname.startsWith(p + "/")
         );
         if (!onAuthPage) {
+          // Clear cross-origin auth marker so middleware doesn't loop
+          document.cookie = "auth_session=; path=/; max-age=0";
           window.location.href = "/login";
         }
       }
