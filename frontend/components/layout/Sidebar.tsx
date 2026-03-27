@@ -157,7 +157,7 @@ export function Sidebar() {
             NextGenAi Trading
           </span>
           <span className="text-3xs text-primary tracking-widest uppercase opacity-80">
-            Institutional Tier
+            Work hard, Play hard
           </span>
         </div>
         <button

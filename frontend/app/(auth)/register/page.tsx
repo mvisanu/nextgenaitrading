@@ -72,7 +72,7 @@ export default function RegisterPage() {
               <Activity className="h-6 w-6 text-primary" />
             </div>
             <span className="text-xl font-black tracking-tighter text-foreground">NextGenAi Trading</span>
-            <span className="text-3xs text-primary tracking-widest uppercase">Institutional Tier</span>
+            <span className="text-3xs text-primary tracking-widest uppercase">Work hard, Play hard</span>
           </div>
 
           <div className="bg-surface-low border border-border/10 rounded-sm p-6 space-y-4">
@@ -117,7 +117,7 @@ export default function RegisterPage() {
             <Activity className="h-6 w-6 text-primary" />
           </div>
           <span className="text-xl font-black tracking-tighter text-foreground">NextGenAi Trading</span>
-          <span className="text-3xs text-primary tracking-widest uppercase">Institutional Tier</span>
+          <span className="text-3xs text-primary tracking-widest uppercase">Work hard, Play hard</span>
         </div>
 
         {/* Register card */}

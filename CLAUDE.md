@@ -124,7 +124,7 @@ Optimizers backtest multiple variants, rank by risk-adjusted score, save winner 
 ### Database Tables
 **V1 (14 tables):** `User`, `UserProfile`, `UserSession`, `BrokerCredential`, `StrategyRun`, `TradeDecision`, `BrokerOrder`, `PositionSnapshot`, `CooldownState`, `TrailingStopState`, `VariantBacktestResult`, `WinningStrategyArtifact`, `BacktestTrade`
 
-**V2 (7 new tables):** `StockBuyZoneSnapshot`, `StockThemeScore` (system-wide, no user_id), `WatchlistIdea`, `WatchlistIdeaTicker`, `PriceAlertRule`, `AutoBuySettings` (unique per user), `AutoBuyDecisionLog`
+**V2 (7 new tables):** `StockBuyZoneSnapshot`, `StockThemeScore` (system-wide, no user_id), `WatchlistIdea`, `WatchlistIdeaTicker`, `PriceAlertRule`, `AutoBuySettings` (unique per user; includes `execution_timeframe`, `start_date`, `end_date`, `target_buy_price`, `target_sell_price`), `AutoBuyDecisionLog`
 
 **V3 (3 new tables — implemented):** `UserWatchlist` (user_id + ticker, direct watchlist), `BuyNowSignal` (10-condition audit trail per evaluation), `GeneratedIdea` (auto-generated idea cards with megatrend/moat/financial quality scores, `reason_summary`/`news_headline` use `Text` columns)
 
@@ -182,8 +182,8 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 | Frontend v1 pages | Complete (auth, dashboard, artifacts, artifacts/[id], backtests/[id], strategies, strategy-samples, live-trading, profile, faq, learn) — FAQ has 13 sections + Thai i18n |
 | Frontend v2 pages | Complete (opportunities, ideas, alerts, auto-buy) |
 | Shared watchlist | `lib/watchlist.ts` — syncs dashboard + opportunities via localStorage events |
-| v1 E2E tests (Playwright, 263 cases × 3 browsers) | Written in `tests/e2e/`; 421/789 passing (54%) — see `TEST_REPORT.md` |
-| v2 E2E tests (159 cases) | Written in `tests/e2e/specs/`; buy-zone & opportunities 100%, alerts/auto-buy have failures |
+| v1 E2E tests (Playwright, 263 cases × 3 browsers) | Written in `tests/e2e/`; auth system fixed (2026-03-27) — see `test_results.md` |
+| v2 E2E tests (159 cases) | Written in `tests/e2e/specs/`; auth system fixed; buy-zone & opportunities 100% |
 | v3 Backend (live scanner, buy signals, ideas engine) | Implemented — services, models, schemas, API endpoints, scheduler tasks, 167 unit tests passing |
 | v3 Frontend (opportunities + ideas page extensions) | Implemented — WatchlistTable, BuyNowBadge, EstimatedEntryPanel, GeneratedIdeaCard, IdeaFeed, AddToWatchlistButton, ScannerStatusDot; opportunities page has dashboard watchlist sidebar |
 | v3 API: POST /api/ideas/generated/run-now | Manual idea scan trigger (bypasses market hours) |
@@ -414,12 +414,37 @@ Complete frontend redesign to match "Sovereign Terminal" / "Titanium Terminal" d
 ### Sidebar Layout Fix (2026-03-27)
 - **`components/layout/AppShell.tsx`**: Sidebar changed from `lg:fixed lg:inset-y-0` to `lg:flex lg:shrink-0` — now a normal flex sibling so hover-expansion pushes content instead of overlaying it. Removed `lg:pl-[220px]`/`lg:pl-12` padding compensation (no longer needed). Removed unused `useSidebarPinned` import from AppShell.
 
-### Git Status
-All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25. Webull-style dashboard timeline (bottom period bar + intraday time axis fix) added 2026-03-26. Supabase Auth migration + Dev Login + mobile improvements added 2026-03-26. Sovereign Terminal redesign + sidebar layout fix added 2026-03-27 — uncommitted.
+### Portfolio Page (localStorage persistence) (2026-03-27)
+- **`frontend/app/portfolio/page.tsx`**: Replaced static demo data with fully editable localStorage-persisted holdings and activity log. Features: `useLocalStorage` hook, `HoldingModal` + `ActivityModal` for CRUD, computed summary values (total market value, day P&L, unrealized P&L), asset allocation + sector exposure donuts derived from live data, CSV export, per-row edit/delete.
 
-### Known E2E Test Failures (as of 2026-03-26, see `test_result.md`)
-Auth E2E tests: **supabase-auth.spec.ts 61/61 (100%)**, **security.spec.ts 29/29 (100%)**. Legacy `auth.spec.ts` deleted (superseded). Remaining open items:
-- Multi-tenancy tests: some assertions may still need investigation (test isolation vs real scoping bugs)
+### E2E Auth System Fix (2026-03-27)
+Root cause of ~325 test failures: old `POST /auth/register` + `POST /auth/login` endpoints removed in Supabase migration, but tests still called them. Full fix:
+- **`backend/app/api/test_reset.py`**: `POST /test/token` now sets a `dev_token` cookie in the response so Playwright's `APIRequestContext` cookie jar is populated automatically
+- **`backend/app/auth/dependencies.py`**: `get_current_user` and `optional_current_user` check `dev_token` cookie as Bearer fallback (debug mode only)
+- **`tests/e2e/fixtures/auth.fixture.ts`**: Rewritten — uses `POST /test/token`, transfers `dev_token` + `auth_session` cookies to browser context via `storageState()` + `addCookies()`
+- **`tests/e2e/helpers/api.helper.ts`**: Added `setBrowserAuth()` helper for cookie injection; `registerUser`/`loginUser` now proxy through `/test/token`
+- **`tests/e2e/helpers/v2-api.helper.ts`**: `loginAsNewUser` fixed to use `/test/token`
+- **`tests/e2e/specs/nextgenstock-live.spec.ts`**: Full rewrite — removed password-based API/UI tests, added `loginViaBrowser` (cookie injection), branding updated to "NextGenAi Trading"
+- **`tests/e2e/specs/broker-credentials.spec.ts`**: Removed extra `auth/login` in `beforeEach`; CRED-07/08 use fresh contexts
+- **`tests/e2e/specs/supabase-auth.spec.ts`**: SA-01-03 updated to assert "NextGenAi Trading" branding
+- **13 other spec files** (`dashboard`, `live-trading`, `auto-buy`, `buy-zone`, `artifacts`, `backtests`, `profile`, `theme-score`, `strategies`, `alerts`, `ideas`, `opportunities`, `v2-integration`): All stale `auth/login`, `auth/logout`, `auth/register` calls removed or replaced — `auth/logout` + 401-check patterns replaced with `playwright.request.newContext()` fresh contexts; user-switch patterns replaced with `POST /test/token`
+
+### Auto-Buy Execution Scheduling (2026-03-27)
+Added execution scheduling fields to auto-buy so users can configure when and at what price levels the engine executes buy/sell:
+- **`models/auto_buy.py`**: 5 new nullable columns — `execution_timeframe` (String), `start_date` (Date), `end_date` (Date), `target_buy_price` (Float), `target_sell_price` (Float)
+- **`schemas/auto_buy.py`**: `AutoBuySettingsOut` + `AutoBuySettingsUpdate` + `from_orm` updated with new fields; validation `gt=0` on price fields
+- **`api/auto_buy.py`**: `PATCH /auto-buy/settings` applies all 5 new fields
+- **`frontend/types/index.ts`**: `AutoBuySettings` + `UpdateAutoBuySettingsRequest` interfaces extended
+- **`frontend/app/auto-buy/page.tsx`**: `ExecutionSettings` component (Section 4) now includes: execution timeframe dropdown (1m–1wk), start/end date pickers with validation, target buy/sell price inputs with `$` prefix and validation (sell > buy)
+- **DB migration needed**: `ALTER TABLE auto_buy_settings ADD COLUMN execution_timeframe VARCHAR(10), ADD COLUMN start_date DATE, ADD COLUMN end_date DATE, ADD COLUMN target_buy_price DOUBLE PRECISION, ADD COLUMN target_sell_price DOUBLE PRECISION;`
+
+### Git Status
+All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25. Webull-style dashboard timeline (bottom period bar + intraday time axis fix) added 2026-03-26. Supabase Auth migration + Dev Login + mobile improvements added 2026-03-26. Sovereign Terminal redesign + sidebar layout fix added 2026-03-27. Portfolio localStorage + E2E auth system fix + auto-buy execution scheduling added 2026-03-27 — uncommitted.
+
+### Known E2E Test Failures (as of 2026-03-27, see `test_results.md`)
+Previous auth system mismatch (~325 failures) resolved. Remaining open items:
+- Some UI assertions may still fail if frontend pages have evolved (check selectors)
+- Multi-tenancy tests rely on fresh contexts — should be correct after auth fix
 - Auto-buy UI: some expected elements may still be missing (risk disclaimer, decision log table)
 
 ### Scan Universe Themes
