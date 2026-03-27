@@ -144,44 +144,49 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
     >
       {/* Title */}
       <div className="space-y-1.5">
-        <Label htmlFor="idea-title">Title</Label>
+        <Label htmlFor="idea-title" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Title
+        </Label>
         <Input
           id="idea-title"
           placeholder="e.g. AI infrastructure buildout wave"
           {...register("title")}
+          className="bg-surface-lowest border-none text-xs p-2.5 focus:ring-1 focus:ring-primary"
         />
         {errors.title && (
-          <p className="text-xs text-destructive">{errors.title.message}</p>
+          <p className="text-2xs text-destructive">{errors.title.message}</p>
         )}
       </div>
 
       {/* Thesis */}
       <div className="space-y-1.5">
-        <Label htmlFor="idea-thesis">Thesis</Label>
+        <Label htmlFor="idea-thesis" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Thesis
+        </Label>
         <textarea
           id="idea-thesis"
           rows={4}
           placeholder="Describe your investment thesis, key catalysts, and assumptions..."
           className={cn(
-            "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2",
-            "text-sm ring-offset-background placeholder:text-muted-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            "disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+            "flex min-h-[80px] w-full rounded-md bg-surface-lowest px-3 py-2.5",
+            "text-xs placeholder:text-muted-foreground/50",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+            "disabled:cursor-not-allowed disabled:opacity-50 resize-y border-none"
           )}
           {...register("thesis")}
         />
         {errors.thesis && (
-          <p className="text-xs text-destructive">{errors.thesis.message}</p>
+          <p className="text-2xs text-destructive">{errors.thesis.message}</p>
         )}
       </div>
 
-      {/* Conviction slider — HTML range, styled with Tailwind */}
+      {/* Conviction slider */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="conviction-slider">
+          <Label htmlFor="conviction-slider" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Conviction score
           </Label>
-          <span className="text-sm font-semibold text-primary">
+          <span className="text-sm font-bold text-primary tabular-nums">
             {convictionScore}/10
           </span>
         </div>
@@ -202,7 +207,7 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
             />
           )}
         />
-        <div className="flex justify-between text-[11px] text-muted-foreground">
+        <div className="flex justify-between text-2xs text-muted-foreground">
           <span>1 — Speculative</span>
           <span>10 — High conviction</span>
         </div>
@@ -210,22 +215,24 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
 
       {/* Theme tags */}
       <div className="space-y-2">
-        <Label>Theme tags</Label>
+        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Theme tags
+        </Label>
         <Controller
           name="tags_json"
           control={control}
           render={({ field }) => (
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
               {SUPPORTED_THEMES.map((theme) => {
                 const checked = field.value.includes(theme);
                 return (
                   <label
                     key={theme}
                     className={cn(
-                      "flex items-center gap-2 rounded-md border px-2.5 py-1.5 cursor-pointer text-xs transition-colors",
+                      "flex items-center gap-2 rounded-sm px-2.5 py-1.5 cursor-pointer text-xs transition-colors",
                       checked
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:bg-secondary text-muted-foreground"
+                        ? "bg-primary/15 text-primary"
+                        : "bg-surface-high text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <input
@@ -253,20 +260,23 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
 
       {/* Linked tickers */}
       <div className="space-y-1.5">
-        <Label htmlFor="idea-tickers">Linked tickers (comma-separated)</Label>
+        <Label htmlFor="idea-tickers" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Linked tickers (comma-separated)
+        </Label>
         <Input
           id="idea-tickers"
           placeholder="NVDA, AMD, INTC"
           {...register("tickers_raw")}
+          className="bg-surface-lowest border-none text-xs p-2.5 focus:ring-1 focus:ring-primary font-mono"
         />
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-2xs text-muted-foreground">
           First ticker is treated as the primary symbol. Leave blank for
           watch-only thesis ideas.
         </p>
       </div>
 
       {/* Watch-only toggle */}
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 py-1">
         <Controller
           name="watch_only"
           control={control}
@@ -280,10 +290,10 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
           )}
         />
         <div>
-          <Label htmlFor="watch-only" className="cursor-pointer">
+          <Label htmlFor="watch-only" className="text-xs font-bold text-foreground cursor-pointer">
             Watch-only
           </Label>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
+          <p className="text-2xs text-muted-foreground mt-0.5">
             Watch-only ideas are tracked but never sent to a broker. Use this
             for non-tradable or pre-IPO ideas.
           </p>
@@ -291,7 +301,7 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
       </div>
 
       {/* Tradable toggle */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 py-1">
         <Controller
           name="tradable"
           control={control}
@@ -303,12 +313,16 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
             />
           )}
         />
-        <Label htmlFor="tradable" className="cursor-pointer">
+        <Label htmlFor="tradable" className="text-xs font-bold text-foreground cursor-pointer">
           Tradable (allow broker actions)
         </Label>
       </div>
 
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button
+        type="submit"
+        className="w-full bg-primary text-primary-foreground font-bold uppercase tracking-widest text-xs"
+        disabled={isPending}
+      >
         {isPending
           ? isEditing
             ? "Saving..."

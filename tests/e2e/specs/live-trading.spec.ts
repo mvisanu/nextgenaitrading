@@ -40,9 +40,6 @@ test.describe("Live Trading API", () => {
 
   test.beforeEach(async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
 
     // Create an Alpaca credential to use in live tests
     const { body } = await createCredential(request, ALPACA_CRED);
@@ -86,19 +83,23 @@ test.describe("Live Trading API", () => {
   });
 
   test("LIVE-03: POST /live/run-signal-check returns 401 when unauthenticated", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.post(`${API_URL}/live/run-signal-check`, {
-      data: {
-        symbol: STOCK_SYMBOL,
-        timeframe: "1d",
-        mode: "conservative",
-        credential_id: 1,
-        dry_run: true,
-      },
-    });
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(`${API_URL}/live/run-signal-check`, {
+        data: {
+          symbol: STOCK_SYMBOL,
+          timeframe: "1d",
+          mode: "conservative",
+          credential_id: 1,
+          dry_run: true,
+        },
+      });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   // ── Execute (dry-run) ───────────────────────────────────────────────────────
@@ -162,19 +163,23 @@ test.describe("Live Trading API", () => {
   });
 
   test("LIVE-07: POST /live/execute returns 401 when unauthenticated", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.post(`${API_URL}/live/execute`, {
-      data: {
-        symbol: STOCK_SYMBOL,
-        side: "buy",
-        quantity: 1,
-        credential_id: 1,
-        dry_run: true,
-      },
-    });
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(`${API_URL}/live/execute`, {
+        data: {
+          symbol: STOCK_SYMBOL,
+          side: "buy",
+          quantity: 1,
+          credential_id: 1,
+          dry_run: true,
+        },
+      });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   // ── Orders ──────────────────────────────────────────────────────────────────
@@ -185,11 +190,15 @@ test.describe("Live Trading API", () => {
   });
 
   test("LIVE-09: GET /live/orders returns 401 when unauthenticated", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/live/orders`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/live/orders`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   // ── Positions ───────────────────────────────────────────────────────────────
@@ -200,11 +209,15 @@ test.describe("Live Trading API", () => {
   });
 
   test("LIVE-11: GET /live/positions returns 401 when unauthenticated", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/live/positions`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/live/positions`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   // ── Status ──────────────────────────────────────────────────────────────────
@@ -231,11 +244,15 @@ test.describe("Live Trading API", () => {
   });
 
   test("LIVE-14: GET /live/status returns 401 when unauthenticated", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/live/status`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/live/status`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   // ── Chart data ──────────────────────────────────────────────────────────────
@@ -270,14 +287,8 @@ test.describe("Live Trading API", () => {
     });
 
     // Switch to USER_B
-    await request.post(`${API_URL}/auth/logout`);
     const otherEmail = `live-cross-${Date.now()}@nextgenstock.io`;
-    await request.post(`${API_URL}/auth/register`, {
-      data: { email: otherEmail, password: "OtherUser123!" },
-    });
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: otherEmail, password: "OtherUser123!" },
-    });
+    await request.post(`${API_URL}/test/token`, { data: { email: otherEmail } });
 
     const { body: otherOrders } = await getLiveOrders(request);
     const userAOrders = (otherOrders as { symbol: string }[]).filter(
@@ -328,9 +339,6 @@ test.describe("Live Trading UI — /live-trading page", () => {
   }) => {
     // Create a credential so the live trading page is functional
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
     await createCredential(request, ALPACA_CRED);
 
     await page.goto(ROUTES.liveTrading);

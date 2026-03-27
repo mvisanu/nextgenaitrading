@@ -1,23 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Activity, BarChart3, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import {
-  Activity,
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TAResult, TATimeframe, TAIndicator } from "@/types";
 
@@ -37,20 +21,20 @@ const TIMEFRAMES: { value: TATimeframe; label: string }[] = [
 ];
 
 function recColor(rec: string) {
-  if (rec.includes("BUY")) return "text-bull";
-  if (rec.includes("SELL")) return "text-bear";
+  if (rec.includes("BUY")) return "text-primary";
+  if (rec.includes("SELL")) return "text-destructive";
   return "text-muted-foreground";
 }
 
-function recBg(rec: string) {
-  if (rec.includes("BUY")) return "bg-bull/10 border-bull/30";
-  if (rec.includes("SELL")) return "bg-bear/10 border-bear/30";
-  return "bg-secondary border-border";
+function recPanelClasses(rec: string) {
+  if (rec.includes("BUY")) return "bg-primary/10 border border-primary/20";
+  if (rec.includes("SELL")) return "bg-destructive/10 border border-destructive/20";
+  return "bg-surface-high border border-white/5";
 }
 
 function SignalIcon({ signal }: { signal?: string }) {
-  if (signal === "BUY") return <TrendingUp className="h-3 w-3 text-bull" />;
-  if (signal === "SELL") return <TrendingDown className="h-3 w-3 text-bear" />;
+  if (signal === "BUY") return <TrendingUp className="h-3 w-3 text-primary" />;
+  if (signal === "SELL") return <TrendingDown className="h-3 w-3 text-destructive" />;
   return <Minus className="h-3 w-3 text-muted-foreground" />;
 }
 
@@ -70,72 +54,67 @@ function GaugeBar({
   const sellPct = (sells / total) * 100;
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex h-2 rounded-full overflow-hidden bg-secondary">
+    <div className="space-y-2">
+      <div className="flex h-2 rounded-full overflow-hidden bg-surface-high">
         <div
-          className="bg-bull transition-all"
+          className="bg-primary transition-all"
           style={{ width: `${buyPct}%` }}
         />
         <div
-          className="bg-muted-foreground/40 transition-all"
+          className="bg-muted-foreground/30 transition-all"
           style={{ width: `${neutralPct}%` }}
         />
         <div
-          className="bg-bear transition-all"
+          className="bg-destructive transition-all"
           style={{ width: `${sellPct}%` }}
         />
       </div>
-      <div className="flex justify-between text-[10px]">
-        <span className="text-bull font-medium">{buys} Buy</span>
+      <div className="flex justify-between text-3xs font-bold uppercase tracking-wider">
+        <span className="text-primary">{buys} Buy</span>
         <span className="text-muted-foreground">{neutrals} Neutral</span>
-        <span className="text-bear font-medium">{sells} Sell</span>
+        <span className="text-destructive">{sells} Sell</span>
       </div>
     </div>
   );
 }
 
-function IndicatorTable({
-  indicators,
-  title,
-}: {
-  indicators: TAIndicator[];
-  title: string;
-}) {
+function IndicatorRow({ ind }: { ind: TAIndicator }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-surface-high/60 transition-colors">
+      <div className="flex items-center gap-2">
+        <SignalIcon signal={ind.signal} />
+        <span className="text-2xs">{ind.name}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-3xs font-mono text-muted-foreground">
+          {typeof ind.value === "number" ? ind.value.toFixed(2) : (ind.value ?? "\u2014")}
+        </span>
+        <span
+          className={cn(
+            "text-3xs font-black uppercase tracking-widest px-1.5 py-0.5 rounded",
+            ind.signal === "BUY"
+              ? "bg-primary/20 text-primary"
+              : ind.signal === "SELL"
+              ? "bg-destructive/20 text-destructive"
+              : "bg-surface-high text-muted-foreground"
+          )}
+        >
+          {ind.signal ?? "\u2014"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function IndicatorSection({ indicators, title }: { indicators: TAIndicator[]; title: string }) {
   return (
     <div>
-      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+      <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground mb-2 px-2">
         {title}
-      </h4>
-      <div className="space-y-1">
+      </p>
+      <div className="space-y-0.5">
         {indicators.map((ind) => (
-          <div
-            key={ind.name}
-            className="flex items-center justify-between py-1 px-2 rounded hover:bg-secondary/50"
-          >
-            <div className="flex items-center gap-2">
-              <SignalIcon signal={ind.signal} />
-              <span className="text-xs">{ind.name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-muted-foreground">
-                {typeof ind.value === "number"
-                  ? ind.value.toFixed(2)
-                  : (ind.value ?? "\u2014")}
-              </span>
-              <Badge
-                variant={
-                  ind.signal === "BUY"
-                    ? "bull"
-                    : ind.signal === "SELL"
-                    ? "bear"
-                    : "secondary"
-                }
-                className="text-[9px] px-1 h-4 min-w-[36px] justify-center"
-              >
-                {ind.signal ?? "\u2014"}
-              </Badge>
-            </div>
-          </div>
+          <IndicatorRow key={ind.name} ind={ind} />
         ))}
       </div>
     </div>
@@ -150,33 +129,30 @@ export function TechnicalAnalysis({
 }: TechnicalAnalysisProps) {
   if (!result && !isLoading) {
     return (
-      <Card className="border-border bg-card">
-        <CardContent className="py-16 text-center">
-          <Activity className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Select an asset to view technical analysis
-          </p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
-            Click any row in the screener results
-          </p>
-        </CardContent>
-      </Card>
+      <div className="bg-surface-low border border-white/5 rounded-lg py-16 text-center">
+        <Activity className="h-10 w-10 text-muted-foreground/20 mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">
+          Select an asset to view technical analysis
+        </p>
+        <p className="text-3xs text-muted-foreground/60 mt-1 uppercase tracking-widest">
+          Click any row in the screener results
+        </p>
+      </div>
     );
   }
 
   if (isLoading) {
     return (
-      <Card className="border-border bg-card">
-        <CardHeader className="pb-2">
-          <Skeleton className="h-5 w-32" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </CardContent>
-      </Card>
+      <div className="bg-surface-low border border-white/5 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-white/5 bg-surface-lowest/60">
+          <Skeleton className="h-4 w-32 bg-surface-high/50" />
+        </div>
+        <div className="p-4 space-y-3">
+          <Skeleton className="h-16 w-full bg-surface-high/50" />
+          <Skeleton className="h-4 w-full bg-surface-high/50" />
+          <Skeleton className="h-32 w-full bg-surface-high/50" />
+        </div>
+      </div>
     );
   }
 
@@ -185,109 +161,111 @@ export function TechnicalAnalysis({
   const rec = result.recommendation;
 
   return (
-    <Card className="border-border bg-card">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-primary" />
+    <div className="bg-surface-low border border-white/5 rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-surface-lowest/60">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-3.5 w-3.5 text-primary" />
+          <span className="text-sm font-bold text-foreground tracking-tight">
             {result.symbol}
-            <span className="text-xs text-muted-foreground font-normal">
-              @ {result.exchange}
-            </span>
-          </CardTitle>
+          </span>
+          <span className="text-3xs text-muted-foreground">
+            @ {result.exchange}
+          </span>
         </div>
         {/* Timeframe selector */}
-        <div className="flex gap-1 mt-2">
+        <div className="flex gap-0.5">
           {TIMEFRAMES.map((tf) => (
-            <Button
+            <button
               key={tf.value}
-              variant={currentTimeframe === tf.value ? "default" : "outline"}
-              size="sm"
-              className="h-6 text-[10px] px-2"
               onClick={() => onTimeframeChange(tf.value)}
+              className={cn(
+                "px-2 py-1 text-3xs font-bold uppercase tracking-wider rounded transition-all",
+                currentTimeframe === tf.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-surface-high"
+              )}
             >
               {tf.label}
-            </Button>
+            </button>
           ))}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Recommendation badge */}
-        <div className={cn("rounded-lg border p-3 text-center", recBg(rec))}>
-          <div className={cn("text-lg font-bold", recColor(rec))}>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Overall recommendation */}
+        <div className={cn("rounded-lg p-3 text-center", recPanelClasses(rec))}>
+          <div className={cn("text-lg font-black uppercase tracking-tight", recColor(rec))}>
             {rec.replace("_", " ")}
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">
+          <div className="text-3xs text-muted-foreground mt-0.5 uppercase tracking-widest">
             Overall Recommendation &bull; {result.timeframe}
           </div>
         </div>
 
-        {/* Gauge */}
+        {/* Gauge bar */}
         <GaugeBar
           buys={result.buy_count}
           sells={result.sell_count}
           neutrals={result.neutral_count}
         />
 
-        <Separator />
+        {/* Divider */}
+        <div className="border-t border-white/5" />
 
-        {/* Indicator tabs */}
-        <Tabs defaultValue="oscillators">
-          <TabsList className="w-full h-8">
-            <TabsTrigger value="oscillators" className="text-xs flex-1">
-              Oscillators
-            </TabsTrigger>
-            <TabsTrigger value="moving_averages" className="text-xs flex-1">
-              Moving Averages
-            </TabsTrigger>
-            {result.volume_data && (
-              <TabsTrigger value="volume" className="text-xs flex-1">
-                Volume
-              </TabsTrigger>
-            )}
-          </TabsList>
-          <TabsContent value="oscillators" className="mt-3">
-            <IndicatorTable
-              indicators={result.oscillators ?? []}
-              title="Oscillators"
-            />
-          </TabsContent>
-          <TabsContent value="moving_averages" className="mt-3">
-            <IndicatorTable
-              indicators={result.moving_averages ?? []}
-              title="Moving Averages"
-            />
-          </TabsContent>
-          {result.volume_data && (
-            <TabsContent value="volume" className="mt-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
+        {/* Tab bar */}
+        <div className="border-b border-white/5">
+          {/* Using a simple state-free design: show both sections scrollable */}
+        </div>
+
+        {/* Oscillators */}
+        <IndicatorSection
+          indicators={result.oscillators ?? []}
+          title="Oscillators"
+        />
+
+        {/* Moving averages */}
+        <IndicatorSection
+          indicators={result.moving_averages ?? []}
+          title="Moving Averages"
+        />
+
+        {/* Volume data */}
+        {result.volume_data && (
+          <>
+            <div className="border-t border-white/5" />
+            <div>
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground mb-3 px-2">
+                Volume Analysis
+              </p>
+              <div className="space-y-2 px-2">
+                <div className="flex justify-between text-2xs">
                   <span className="text-muted-foreground">Volume Ratio</span>
-                  <span className="font-mono">
+                  <span className="font-mono font-bold">
                     {result.volume_data.volume_ratio}x
                   </span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-2xs">
                   <span className="text-muted-foreground">Price Change</span>
                   <span
                     className={cn(
-                      "font-mono",
+                      "font-mono font-bold",
                       (result.volume_data.price_change ?? 0) >= 0
-                        ? "text-bull"
-                        : "text-bear"
+                        ? "text-primary"
+                        : "text-destructive"
                     )}
                   >
                     {result.volume_data.price_change}%
                   </span>
                 </div>
-                <div className="text-xs text-muted-foreground mt-2 p-2 bg-secondary/50 rounded">
+                <div className="text-2xs text-muted-foreground p-2 bg-surface-high/50 rounded">
                   {result.volume_data.confirmation}
                 </div>
               </div>
-            </TabsContent>
-          )}
-        </Tabs>
-      </CardContent>
-    </Card>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

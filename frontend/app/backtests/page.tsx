@@ -6,9 +6,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/layout/AppShell";
 import { ResultsPanel } from "@/components/strategy/ResultsPanel";
 import { StrategyForm } from "@/components/strategy/StrategyForm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -144,14 +142,21 @@ export default function BacktestsPage() {
     );
   }
 
+  const signalClass = (signal: string) => {
+    const v = getSignalVariant(signal);
+    if (v === "default") return "bg-primary/15 text-primary";
+    if (v === "destructive") return "bg-destructive/15 text-destructive";
+    return "bg-muted/40 text-muted-foreground";
+  };
+
   return (
     <AppShell
       title="Backtests"
       actions={
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4" />
+            <Button size="sm" className="bg-primary text-primary-foreground font-bold uppercase tracking-widest text-xs gap-1.5 h-8 px-3">
+              <Plus className="h-3.5 w-3.5" />
               New Backtest
             </Button>
           </DialogTrigger>
@@ -168,93 +173,92 @@ export default function BacktestsPage() {
         </Dialog>
       }
     >
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">
-            Backtest Runs ({runs.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : runs.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              No backtests yet. Run your first backtest above.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+      <div className="bg-surface-low border border-border/10 rounded-sm">
+        {/* Panel header */}
+        <div className="px-4 py-3 border-b border-border/10 flex items-center gap-2">
+          <span className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground">
+            Backtest Runs
+          </span>
+          <span className="text-[11px] font-bold text-muted-foreground/50 tabular-nums">({runs.length})</span>
+        </div>
+
+        {isLoading ? (
+          <div className="p-4 space-y-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-full" />
+            ))}
+          </div>
+        ) : runs.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="text-sm text-muted-foreground">No backtests yet. Run your first backtest above.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-surface-lowest hover:bg-surface-lowest border-border/10">
                   <TableHead
-                    className="cursor-pointer"
+                    className="text-3xs font-bold uppercase tracking-widest text-muted-foreground cursor-pointer py-2 px-4"
                     onClick={() => toggleSort("symbol")}
                   >
                     Symbol <SortIcon field="symbol" />
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer"
+                    className="text-3xs font-bold uppercase tracking-widest text-muted-foreground cursor-pointer py-2 px-4"
                     onClick={() => toggleSort("mode_name")}
                   >
                     Mode <SortIcon field="mode_name" />
                   </TableHead>
-                  <TableHead>Timeframe</TableHead>
-                  <TableHead>Signal</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">TF</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Signal</TableHead>
                   <TableHead
-                    className="cursor-pointer"
+                    className="text-3xs font-bold uppercase tracking-widest text-muted-foreground cursor-pointer py-2 px-4"
                     onClick={() => toggleSort("created_at")}
                   >
                     Created <SortIcon field="created_at" />
                   </TableHead>
-                  <TableHead />
+                  <TableHead className="py-2 px-2 w-6" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedRuns.map((run) => (
                   <React.Fragment key={run.id}>
                     <TableRow
-                      className="cursor-pointer"
+                      className="cursor-pointer border-border/10 hover:bg-surface-high/30 transition-colors"
                       onClick={() => handleRowClick(run.id)}
                     >
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono text-xs tabular-nums text-foreground py-2.5 px-4">
                         {run.symbol}
                       </TableCell>
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs text-muted-foreground py-2.5 px-4">
                         {getModeLabel(run.mode_name)}
                       </TableCell>
-                      <TableCell className="text-xs">{run.timeframe}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs tabular-nums text-muted-foreground py-2.5 px-4">{run.timeframe}</TableCell>
+                      <TableCell className="py-2.5 px-4">
                         {run.current_signal ? (
-                          <Badge
-                            variant={getSignalVariant(run.current_signal)}
-                            className="text-xs"
-                          >
+                          <span className={`text-3xs font-bold px-2 py-0.5 rounded-sm ${signalClass(run.current_signal)}`}>
                             {run.current_signal.toUpperCase()}
-                          </Badge>
+                          </span>
                         ) : (
-                          <span className="text-muted-foreground text-xs">-</span>
+                          <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs tabular-nums text-muted-foreground py-2.5 px-4">
                         {formatDateTime(run.created_at)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2.5 px-2">
                         {selectedRunId === run.id ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                         ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
                       </TableCell>
                     </TableRow>
 
                     {/* Expanded detail row */}
                     {selectedRunId === run.id && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="bg-card/50 p-4">
+                      <TableRow className="border-border/10">
+                        <TableCell colSpan={6} className="bg-surface-lowest p-4">
                           {isDetailLoading ? (
                             <div className="space-y-2">
                               {Array.from({ length: 3 }).map((_, i) => (
@@ -276,10 +280,9 @@ export default function BacktestsPage() {
                 ))}
               </TableBody>
             </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
     </AppShell>
   );
 }

@@ -9,107 +9,26 @@
  *     // ... already logged in as USER_A
  *   });
  *
- * The fixture registers USER_A (if needed) via the API, logs in, and
- * exposes a `page` that has a valid session cookie.  It does NOT go
- * through the UI login form — that is tested explicitly in auth.spec.ts.
- */
-
-import { test as base, expect, type Page, type APIRequestContext } from "@playwright/test";
-import { API_URL, USER_A, ACCESS_COOKIE, REFRESH_COOKIE } from "./test-data";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Register a user via the backend API (no browser involved).
- * Silently ignores 409 Conflict (user already exists).
- */
-export async function apiRegister(
-  request: APIRequestContext,
-  email: string,
-  password: string
-): Promise<void> {
-  const res = await request.post(`${API_URL}/auth/register`, {
-    data: { email, password },
-  });
-  if (!res.ok() && res.status() !== 409) {
-    throw new Error(
-      `apiRegister failed: ${res.status()} ${await res.text()}`
-    );
-  }
-}
-
-/**
- * Log in via the backend API by logging in with the request context (which
- * stores cookies internally), then transferring those cookies to a new browser
- * context using storageState().
+ * Authentication uses POST /test/token (debug-only) which:
+ * 1. Auto-provisions the user if needed
+ * 2. Returns a signed JWT in the JSON body
+ * 3. Sets a `dev_token` cookie in the response
  *
- * Returns the Playwright storageState object for use with browser.newContext().
+ * The `dev_token` cookie is captured via storageState() and transferred to
+ * the browser context. The frontend middleware (proxy.ts) accepts `dev_token`
+ * as a valid session, and the backend accepts it as a fallback Bearer token
+ * in debug mode (auth/dependencies.py).
  */
-export async function apiLogin(
-  request: APIRequestContext,
-  email: string,
-  password: string,
-  _domain: string = "localhost"
-): Promise<
-  {
-    name: string;
-    value: string;
-    domain: string;
-    path: string;
-    httpOnly?: boolean;
-    secure?: boolean;
-    sameSite?: "Strict" | "Lax" | "None";
-  }[]
-> {
-  const res = await request.post(`${API_URL}/auth/login`, {
-    data: { email, password },
-  });
-  if (!res.ok()) {
-    throw new Error(`apiLogin failed: ${res.status()} ${await res.text()}`);
-  }
 
-  // Use Playwright's storageState to capture cookies set by the login response.
-  // This is more robust than parsing Set-Cookie headers manually (which breaks
-  // on cookies containing commas in their expires attribute).
-  const state = await request.storageState();
-  const cookies = state.cookies
-    .filter((c) => c.name === ACCESS_COOKIE || c.name === REFRESH_COOKIE)
-    .map((c) => ({
-      name: c.name,
-      value: c.value,
-      // For localhost, Playwright requires the domain to include leading dot or
-      // be exactly "localhost". Use the value from storageState when available.
-      // If empty, fall back to "localhost".
-      domain: c.domain || "localhost",
-      path: c.path || "/",
-      httpOnly: c.httpOnly ?? true,
-      secure: c.secure ?? false,
-      // Playwright's addCookies() expects "Strict" | "Lax" | "None"
-      sameSite: (c.sameSite === "None"
-        ? "None"
-        : c.sameSite === "Strict"
-        ? "Strict"
-        : "Lax") as "Strict" | "Lax" | "None",
-    }));
-
-  return cookies;
-}
-
-/**
- * Log out via the backend API (invalidates the refresh token session record).
- */
-export async function apiLogout(request: APIRequestContext): Promise<void> {
-  await request.post(`${API_URL}/auth/logout`);
-}
+import { test as base, expect, type Page } from "@playwright/test";
+import { API_URL, USER_A } from "./test-data";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fixture types
 // ─────────────────────────────────────────────────────────────────────────────
 
 type AuthFixtures = {
-  /** A Playwright Page with a valid USER_A session cookie already set. */
+  /** A Playwright Page with a valid USER_A dev_token session cookie already set. */
   authenticatedPage: Page;
 };
 
@@ -119,29 +38,53 @@ type AuthFixtures = {
 
 export const test = base.extend<AuthFixtures>({
   authenticatedPage: async ({ browser, request }, use) => {
-    // 1. Ensure user exists
-    await apiRegister(request, USER_A.email, USER_A.password);
-
-    // 2. Log in via API so cookies are stored in the request context
-    const loginRes = await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
+    // 1. Provision user and get JWT via /test/token.
+    //    The endpoint sets `dev_token` cookie in the response, which Playwright
+    //    stores in the request context's cookie jar automatically.
+    const tokenRes = await request.post(`${API_URL}/test/token`, {
+      data: { email: USER_A.email },
     });
-    if (!loginRes.ok()) {
-      throw new Error(`authenticatedPage login failed: ${loginRes.status()} ${await loginRes.text()}`);
+    if (!tokenRes.ok()) {
+      throw new Error(
+        `authenticatedPage /test/token failed: ${tokenRes.status()} ${await tokenRes.text()}`
+      );
     }
 
-    // 3. Capture the full storage state (cookies) and create a browser context
-    //    with those cookies pre-loaded.  Using storageState directly is more
-    //    reliable than addCookies() because it preserves domain/path/samesite
-    //    exactly as the server set them.
+    // 2. Capture cookies (including dev_token) from the API request context
+    //    and transfer them to a fresh browser context.
     const storageState = await request.storageState();
-    const context = await browser.newContext({ storageState });
 
+    // Filter/remap cookies for the browser context — ensure domain is set correctly
+    const cookies = storageState.cookies
+      .filter((c) => c.name === "dev_token" || c.name === "auth_session")
+      .map((c) => ({
+        ...c,
+        domain: c.domain || "localhost",
+        path: c.path || "/",
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax" as const,
+      }));
+
+    // Also inject auth_session=1 so the cross-origin auth check passes
+    if (!cookies.find((c) => c.name === "auth_session")) {
+      cookies.push({
+        name: "auth_session",
+        value: "1",
+        domain: "localhost",
+        path: "/",
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax",
+      });
+    }
+
+    const context = await browser.newContext();
+    await context.addCookies(cookies);
     const page = await context.newPage();
+
     await use(page);
 
-    // 4. Clean up
-    await apiLogout(request);
     await context.close();
   },
 });

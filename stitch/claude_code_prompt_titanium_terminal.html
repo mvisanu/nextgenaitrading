@@ -1,0 +1,46 @@
+# Claude Code Prompt: Titanium Terminal - Institutional Trading Platform
+
+## 1. Project Overview & Role
+You are an expert Frontend Engineer and UI/UX Designer specialized in high-density, institutional-grade financial applications. Your goal is to develop a comprehensive stock trading web app called "Titanium Terminal," modeled after professional platforms like Webull and TradingView.
+
+## 2. Design System Strategy: "Titanium Terminal"
+The visual language must prioritize "High-Density Financial Precision."
+
+### Core Visual Principles:
+- **Theme:** Strict Dark Mode. Use a deep, neutral palette to minimize eye strain during long sessions.
+- **Base Background:** `#12151A` (Titanium Black).
+- **Primary Action Color:** `#44DFA3` (Terminal Green) for 'Buy' and 'Up' indicators.
+- **Secondary Alert Color:** `#FF5252` (Alert Red) for 'Sell' and 'Down' indicators.
+- **Neutral Accents:** `#9A9DAC` (Cool Gray) for secondary text and borders.
+- **Typography:** 'Inter' or a clean Sans-Serif. Use tabular figures for all numerical data to ensure column alignment.
+- **Roundness:** Sharp to minimal (`ROUND_FOUR` / 4px). Avoid "bubbly" or consumer-grade rounded corners.
+- **Density:** High. Maximize "Information per Pixel." Use condensed spacing and smaller, highly legible font sizes (11px-13px for data).
+
+## 3. Key Functional Modules to Implement
+
+### A. Market Intelligence Suite
+1. **Trading Dashboard:** Central hub with advanced multi-pane candlestick charts, real-time watchlist, and integrated order book.
+2. **Stock Screener:** Data-rich table with multi-dimensional filtering (Market Cap, P/E, Sector, Analyst Rating) and technical 'Buy/Strong Buy' tags.
+3. **Market Scanner:** High-velocity view for "Hot Stocks" with real-time momentum indicators and 7-day sparklines.
+
+### B. Analysis Tools
+1. **Multi-Chart View:** A 2x3 grid comparison layout for simultaneous symbol monitoring with synced timeframes.
+2. **Deep-Dive Analysis:** Detailed fundamental and technical view for individual symbols, including key stats, financials, and analyst consensus.
+
+### C. Execution & Strategy
+1. **Live Trading Terminal:** A workflow-oriented desk featuring broker connection, signal analysis, and a one-click execution module.
+2. **Strategy Simulator (Dry Run):** A backtesting environment to simulate strategies (Conservative, Aggressive, AI-driven) against historical and live data without risk.
+3. **Auto-Buy Configuration:** A multi-step setup for automated trading with precise 'Target Buy' and 'Target Sell' price triggers and execution timeframes.
+
+### D. Account Management
+1. **Portfolio Dashboard:** Comprehensive view of equity performance over time (1D to MAX), asset allocation donuts, and a detailed sortable holdings ledger.
+
+## 4. Technical Requirements
+- **Framework:** React or Next.js preferred.
+- **Styling:** Tailwind CSS for layout and consistent spacing.
+- **Charts:** Use a professional charting library (e.g., lightweight-charts, Recharts, or D3.js) capable of high-performance real-time updates.
+- **Data Handling:** Implement efficient state management for real-time WebSocket data streams.
+- **Responsiveness:** Optimize primarily for Desktop (Full HD+), ensuring a multi-window/multi-monitor friendly layout.
+
+## 5. Implementation Goal
+Build the "Titanium Terminal" as a cohesive, single-page application (SPA) where users can seamlessly transition between market discovery, deep analysis, and rapid execution, all while maintaining a consistent "Sovereign Analyst" aesthetic.

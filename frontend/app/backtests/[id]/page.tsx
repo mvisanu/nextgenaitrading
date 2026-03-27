@@ -5,8 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -60,7 +58,7 @@ export default function BacktestDetailPage({ params }: PageProps) {
   return (
     <AppShell title="Backtest Detail">
       <div className="mb-4">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" asChild className="hover:bg-surface-high/50">
           <Link href="/backtests">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Backtests
@@ -74,112 +72,109 @@ export default function BacktestDetailPage({ params }: PageProps) {
           <Skeleton className="h-64 w-full" />
         </div>
       ) : run ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Run summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">
+          <div className="bg-surface-low border border-border/10 rounded-sm">
+            <div className="px-4 py-3 border-b border-border/10">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                 {getModeLabel(run.mode_name)} — {run.symbol}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs space-y-1 text-muted-foreground">
-              <div className="flex gap-4 flex-wrap">
-                <span>Timeframe: <span className="text-foreground font-mono">{run.timeframe}</span></span>
-                <span>Leverage: <span className="text-foreground">{run.leverage}x</span></span>
-                {run.current_signal && (
-                  <span>Signal: <span className="text-foreground">{run.current_signal}</span></span>
-                )}
-                {run.selected_variant_name && (
-                  <span>Winner: <span className="text-foreground font-mono">{run.selected_variant_name}</span></span>
-                )}
-                <span>Created: {formatDateTime(run.created_at)}</span>
-              </div>
-            </CardContent>
-          </Card>
+              </span>
+            </div>
+            <div className="px-4 py-3 flex gap-4 flex-wrap text-2xs text-muted-foreground">
+              <span>Timeframe: <span className="text-foreground font-mono tabular-nums">{run.timeframe}</span></span>
+              <span>Leverage: <span className="text-foreground tabular-nums">{run.leverage}x</span></span>
+              {run.current_signal && (
+                <span>Signal: <span className="text-foreground">{run.current_signal}</span></span>
+              )}
+              {run.selected_variant_name && (
+                <span>Winner: <span className="text-foreground font-mono">{run.selected_variant_name}</span></span>
+              )}
+              <span>Created: {formatDateTime(run.created_at)}</span>
+            </div>
+          </div>
 
           {/* Equity curve */}
           {chartData && chartData.equity.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Equity Curve</CardTitle>
-              </CardHeader>
-              <CardContent data-testid="equity-curve">
+            <div className="bg-surface-low border border-border/10 rounded-sm">
+              <div className="px-4 py-3 border-b border-border/10">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Equity Curve</span>
+              </div>
+              <div className="px-4 py-4" data-testid="equity-curve">
                 <EquityCurve equityPoints={chartData.equity} />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Trade list */}
           {trades.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Trades ({trades.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
+            <div className="bg-surface-low border border-border/10 rounded-sm">
+              <div className="px-4 py-3 border-b border-border/10">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Trades ({trades.length})
+                </span>
+              </div>
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Entry</TableHead>
-                      <TableHead>Exit</TableHead>
-                      <TableHead className="text-right">Entry Price</TableHead>
-                      <TableHead className="text-right">Exit Price</TableHead>
-                      <TableHead className="text-right">Return</TableHead>
-                      <TableHead>Exit Reason</TableHead>
+                    <TableRow className="bg-surface-lowest hover:bg-surface-lowest border-border/10">
+                      <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Entry</TableHead>
+                      <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Exit</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Entry Price</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Exit Price</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Return</TableHead>
+                      <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Exit Reason</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {trades.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="text-xs">{t.entry_time ? formatDateTime(t.entry_time) : "—"}</TableCell>
-                        <TableCell className="text-xs">{t.exit_time ? formatDateTime(t.exit_time) : "—"}</TableCell>
-                        <TableCell className="text-right text-xs font-mono">{t.entry_price.toFixed(2)}</TableCell>
-                        <TableCell className="text-right text-xs font-mono">{t.exit_price.toFixed(2)}</TableCell>
-                        <TableCell className={`text-right text-xs font-semibold ${t.return_pct >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      <TableRow key={t.id} className="border-border/10 hover:bg-surface-high/30">
+                        <TableCell className="text-xs tabular-nums py-2 px-4">{t.entry_time ? formatDateTime(t.entry_time) : "—"}</TableCell>
+                        <TableCell className="text-xs tabular-nums py-2 px-4">{t.exit_time ? formatDateTime(t.exit_time) : "—"}</TableCell>
+                        <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-4">{t.entry_price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-4">{t.exit_price.toFixed(2)}</TableCell>
+                        <TableCell className={`text-right text-xs font-semibold tabular-nums py-2 px-4 ${t.return_pct >= 0 ? "text-primary" : "text-destructive"}`}>
                           {formatPct(t.return_pct)}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{t.exit_reason ?? "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground py-2 px-4">{t.exit_reason ?? "—"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Leaderboard (optimizer modes only) */}
           {isOptimizer && variants.length > 0 && (
-            <Card data-testid="leaderboard">
-              <CardHeader>
-                <CardTitle className="text-sm">Variant Leaderboard</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
+            <div className="bg-surface-low border border-border/10 rounded-sm" data-testid="leaderboard">
+              <div className="px-4 py-3 border-b border-border/10">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Variant Leaderboard</span>
+              </div>
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Variant</TableHead>
-                      <TableHead className="text-right">Val Score</TableHead>
-                      <TableHead className="text-right">Train %</TableHead>
-                      <TableHead className="text-right">Val %</TableHead>
-                      <TableHead className="text-right">Test %</TableHead>
-                      <TableHead className="text-right">Max DD</TableHead>
-                      <TableHead className="text-right">Trades</TableHead>
-                      <TableHead>Winner</TableHead>
+                    <TableRow className="bg-surface-lowest hover:bg-surface-lowest border-border/10">
+                      <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Variant</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Val Score</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Train %</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Val %</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Test %</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Max DD</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Trades</TableHead>
+                      <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Winner</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {variants.map((v) => (
-                      <TableRow key={v.id}>
-                        <TableCell className="text-xs font-mono">{v.variant_name}</TableCell>
-                        <TableCell className="text-right text-xs">{v.validation_score.toFixed(3)}</TableCell>
-                        <TableCell className="text-right text-xs">{formatPct(v.train_return)}</TableCell>
-                        <TableCell className="text-right text-xs">{formatPct(v.validation_return)}</TableCell>
-                        <TableCell className="text-right text-xs">{formatPct(v.test_return)}</TableCell>
-                        <TableCell className="text-right text-xs text-red-400">{formatPct(v.max_drawdown)}</TableCell>
-                        <TableCell className="text-right text-xs">{v.trade_count}</TableCell>
-                        <TableCell>
+                      <TableRow key={v.id} className="border-border/10 hover:bg-surface-high/30">
+                        <TableCell className="text-xs font-mono tabular-nums py-2 px-4">{v.variant_name}</TableCell>
+                        <TableCell className="text-right text-xs tabular-nums py-2 px-4">{v.validation_score.toFixed(3)}</TableCell>
+                        <TableCell className="text-right text-xs tabular-nums py-2 px-4">{formatPct(v.train_return)}</TableCell>
+                        <TableCell className="text-right text-xs tabular-nums py-2 px-4">{formatPct(v.validation_return)}</TableCell>
+                        <TableCell className="text-right text-xs tabular-nums py-2 px-4">{formatPct(v.test_return)}</TableCell>
+                        <TableCell className="text-right text-xs tabular-nums text-destructive py-2 px-4">{formatPct(v.max_drawdown)}</TableCell>
+                        <TableCell className="text-right text-xs tabular-nums py-2 px-4">{v.trade_count}</TableCell>
+                        <TableCell className="py-2 px-4">
                           {v.selected_winner && (
                             <Trophy className="h-3 w-3 text-yellow-400" />
                           )}
@@ -188,9 +183,8 @@ export default function BacktestDetailPage({ params }: PageProps) {
                     ))}
                   </TableBody>
                 </Table>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
       ) : (

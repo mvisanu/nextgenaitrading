@@ -16,11 +16,8 @@ import { getProfile, patchProfile, registerUser } from "../helpers/api.helper";
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("Profile API — GET & PATCH /profile", () => {
   test("PROF-01: GET /profile returns profile with expected shape", async ({ request }) => {
-    await registerUser(request, USER_A.email, USER_A.password);
-    const loginRes = await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
-    expect(loginRes.ok()).toBe(true);
+    const { ok: tokenOk } = await registerUser(request, USER_A.email, USER_A.password);
+    expect(tokenOk).toBe(true);
 
     const { ok, body } = await getProfile(request);
     expect(ok).toBe(true);
@@ -33,9 +30,6 @@ test.describe("Profile API — GET & PATCH /profile", () => {
 
   test("PROF-02: PATCH /profile updates display_name", async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
 
     const newName = `Test User ${Date.now()}`;
     const { ok, body } = await patchProfile(request, { display_name: newName });
@@ -45,9 +39,6 @@ test.describe("Profile API — GET & PATCH /profile", () => {
 
   test("PROF-03: PATCH /profile updates timezone", async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
 
     const { ok, body } = await patchProfile(request, { timezone: "America/Chicago" });
     expect(ok).toBe(true);
@@ -56,9 +47,6 @@ test.describe("Profile API — GET & PATCH /profile", () => {
 
   test("PROF-04: PATCH /profile updates default_symbol", async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
 
     const { ok, body } = await patchProfile(request, { default_symbol: "TSLA" });
     expect(ok).toBe(true);
@@ -67,9 +55,6 @@ test.describe("Profile API — GET & PATCH /profile", () => {
 
   test("PROF-05: PATCH /profile updates default_mode", async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
 
     const { ok, body } = await patchProfile(request, { default_mode: "aggressive" });
     expect(ok).toBe(true);
@@ -80,9 +65,6 @@ test.describe("Profile API — GET & PATCH /profile", () => {
     request,
   }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
 
     const newName = `Persist Test ${Date.now()}`;
     await patchProfile(request, { display_name: newName });
@@ -132,9 +114,7 @@ test.describe("Profile UI — /profile page", () => {
     request,
   }) => {
     // Set a known display name first
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
+    await registerUser(request, USER_A.email, USER_A.password);
     const knownName = `PrePop ${Date.now()}`;
     await patchProfile(request, { display_name: knownName });
 

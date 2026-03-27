@@ -47,27 +47,27 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <Card className="border-border/60">
+    <div className={cn("bg-surface-low border rounded-sm transition-all", open ? "border-primary/20" : "border-border/10")}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-3 w-full px-5 py-4 text-left hover:bg-secondary/30 transition-colors rounded-t-lg"
+        className="flex items-center gap-3 w-full px-5 py-4 text-left hover:bg-surface-high/30 transition-colors"
       >
-        <Icon className={cn("h-5 w-5 shrink-0", accentColor)} />
-        <span className="flex-1 font-semibold text-sm text-foreground">
+        <Icon className={cn("h-4 w-4 shrink-0", accentColor)} />
+        <span className="flex-1 font-bold text-sm text-foreground">
           {title}
         </span>
         {open ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
         )}
       </button>
       {open && (
-        <CardContent className="px-5 pb-5 pt-0 text-sm text-muted-foreground leading-relaxed space-y-4">
+        <div className="px-5 pb-5 pt-0 text-sm text-muted-foreground leading-relaxed space-y-4 border-t border-border/10">
           {children}
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -84,13 +84,13 @@ function Indicator({
 }) {
   return (
     <div className="flex items-start gap-3 py-1.5">
-      <code className="shrink-0 text-xs font-mono bg-secondary/60 px-2 py-0.5 rounded text-foreground min-w-[80px]">
+      <code className="shrink-0 text-xs font-mono bg-surface-lowest px-2 py-0.5 rounded-sm text-primary min-w-[80px]">
         {name}
       </code>
-      <span className="text-xs text-muted-foreground/70 shrink-0 w-[70px]">
+      <span className="text-xs text-muted-foreground/60 shrink-0 w-[70px] tabular-nums">
         {window}
       </span>
-      <span className="text-xs">{purpose}</span>
+      <span className="text-xs text-muted-foreground">{purpose}</span>
     </div>
   );
 }
@@ -106,17 +106,17 @@ function FAQ({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-border/40 last:border-0">
+    <div className="border-b border-border/10 last:border-0">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-start gap-2 w-full py-3 text-left"
+        className="flex items-start gap-2 w-full py-3 text-left hover:bg-surface-high/20 transition-colors rounded-sm px-1"
       >
-        <HelpCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-        <span className="flex-1 text-sm font-medium text-foreground">{q}</span>
+        <HelpCircle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+        <span className="flex-1 text-xs font-bold text-foreground">{q}</span>
         {open ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
         ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
         )}
       </button>
       {open && (
@@ -185,22 +185,22 @@ function ComparisonTable({ lang }: { lang: Lang }) {
     <div className="overflow-x-auto -mx-1">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="border-b border-border">
-            <th className="text-left py-2 px-2 font-semibold text-foreground w-[140px]">{tr("feature", lang)}</th>
-            <th className="text-center py-2 px-2 font-semibold text-blue-400">{tr("conservative", lang)}</th>
-            <th className="text-center py-2 px-2 font-semibold text-orange-400">{tr("aggressive", lang)}</th>
-            <th className="text-center py-2 px-2 font-semibold text-purple-400">{tr("aiPick", lang)}</th>
-            <th className="text-center py-2 px-2 font-semibold text-emerald-400">{tr("buyLowSellHigh", lang)}</th>
+          <tr className="border-b border-border/10 bg-surface-lowest">
+            <th className="text-left py-2 px-2 text-3xs font-bold uppercase tracking-widest text-muted-foreground w-[140px]">{tr("feature", lang)}</th>
+            <th className="text-center py-2 px-2 text-3xs font-bold uppercase tracking-widest text-blue-400">{tr("conservative", lang)}</th>
+            <th className="text-center py-2 px-2 text-3xs font-bold uppercase tracking-widest text-orange-400">{tr("aggressive", lang)}</th>
+            <th className="text-center py-2 px-2 text-3xs font-bold uppercase tracking-widest text-purple-400">{tr("aiPick", lang)}</th>
+            <th className="text-center py-2 px-2 text-3xs font-bold uppercase tracking-widest text-primary">{tr("buyLowSellHigh", lang)}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.label} className="border-b border-border/30 hover:bg-secondary/20">
-              <td className="py-2 px-2 font-medium text-foreground">{row.label}</td>
-              <td className="py-2 px-2 text-center text-muted-foreground">{row.conservative}</td>
-              <td className="py-2 px-2 text-center text-muted-foreground">{row.aggressive}</td>
-              <td className="py-2 px-2 text-center text-muted-foreground">{row.aiPick}</td>
-              <td className="py-2 px-2 text-center text-muted-foreground">{row.blsh}</td>
+            <tr key={row.label} className="border-b border-border/10 hover:bg-surface-high/20">
+              <td className="py-2 px-2 text-xs font-bold text-foreground">{row.label}</td>
+              <td className="py-2 px-2 text-center text-xs tabular-nums text-muted-foreground">{row.conservative}</td>
+              <td className="py-2 px-2 text-center text-xs tabular-nums text-muted-foreground">{row.aggressive}</td>
+              <td className="py-2 px-2 text-center text-xs tabular-nums text-muted-foreground">{row.aiPick}</td>
+              <td className="py-2 px-2 text-center text-xs tabular-nums text-muted-foreground">{row.blsh}</td>
             </tr>
           ))}
         </tbody>
@@ -211,22 +211,28 @@ function ComparisonTable({ lang }: { lang: Lang }) {
 
 // ─── Language Toggle ─────────────────────────────────────────────────────────
 
-function LanguageToggle({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
+function LanguageToggle({ lang, onChange, ...props }: { lang: Lang; onChange: (l: Lang) => void; [key: string]: unknown }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-lg border border-border bg-secondary/30 p-1" data-testid="lang-toggle">
+    <div className="flex items-center gap-1 rounded-sm border border-border/10 bg-surface-low p-1" data-testid="lang-toggle" {...props}>
       <Button
         variant={lang === "en" ? "default" : "ghost"}
         size="sm"
-        className="h-7 px-3 text-xs gap-1.5"
+        className={cn(
+          "h-7 px-3 text-xs gap-1.5",
+          lang === "en" ? "bg-primary text-primary-foreground font-bold" : "hover:bg-surface-high/50"
+        )}
         onClick={() => onChange("en")}
       >
-        <Globe className="h-3.5 w-3.5" />
+        <Globe className="h-3 w-3" />
         EN
       </Button>
       <Button
         variant={lang === "th" ? "default" : "ghost"}
         size="sm"
-        className="h-7 px-3 text-xs gap-1.5"
+        className={cn(
+          "h-7 px-3 text-xs gap-1.5",
+          lang === "th" ? "bg-primary text-primary-foreground font-bold" : "hover:bg-surface-high/50"
+        )}
         onClick={() => onChange("th")}
       >
         <span className="text-sm leading-none">🇹🇭</span>
@@ -247,7 +253,7 @@ export default function FAQPage() {
       <div className="max-w-4xl mx-auto space-y-4 pb-12">
 
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div className="space-y-1">
             <h1 className="text-xl font-bold text-foreground">
               {tr("heroTitle", lang)}
@@ -256,7 +262,7 @@ export default function FAQPage() {
               {tr("heroDesc", lang)}
             </p>
           </div>
-          <LanguageToggle lang={lang} onChange={handleLangChange} />
+          <LanguageToggle lang={lang} onChange={handleLangChange} data-testid="lang-toggle" />
         </div>
 
         {/* ── Strategy Comparison ───────────────────────────────────────── */}
@@ -285,15 +291,15 @@ export default function FAQPage() {
 
             <HtmlP html={tr("conservativeDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("hmmRegimeDetection", lang)}
             </h4>
             <HtmlP html={tr("hmmDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("eightConfirmations", lang)}
             </h4>
-            <div className="bg-secondary/30 rounded-lg p-3 space-y-0.5">
+            <div className="bg-surface-lowest rounded-sm p-3 space-y-0.5">
               <Indicator name="RSI" window="14-period" purpose={tr("rsiPurpose", lang)} />
               <Indicator name="MACD" window="12/26/9" purpose={tr("macdPurpose", lang)} />
               <Indicator name="EMA" window="20 & 50" purpose={tr("emaPurpose", lang)} />
@@ -304,7 +310,7 @@ export default function FAQPage() {
               <Indicator name="Volume" window="20-bar avg" purpose={tr("volumePurpose", lang)} />
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("entryExitRules", lang)}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -316,7 +322,7 @@ export default function FAQPage() {
                 <div className="text-[10px] uppercase font-bold text-[#ef5350] mb-1">{tr("sell", lang)}</div>
                 <p className="text-xs">{tr("sellConservativeRule", lang)}</p>
               </div>
-              <div className="bg-secondary/40 border border-border rounded-lg p-3">
+              <div className="bg-surface-mid border border-border/10 rounded-sm p-3">
                 <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">{tr("hold", lang)}</div>
                 <p className="text-xs">{tr("holdConservativeRule", lang)}</p>
               </div>
@@ -340,7 +346,7 @@ export default function FAQPage() {
 
             <HtmlP html={tr("aggressiveDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("whatsDifferent", lang)}
             </h4>
             <div className="space-y-2">
@@ -358,14 +364,14 @@ export default function FAQPage() {
               </div>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("trailingStopMechanics", lang)}
             </h4>
-            <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-sm p-3">
               <p className="text-xs"><Html html={tr("trailingStopDesc", lang)} /></p>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("exitConditions3", lang)}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -373,11 +379,11 @@ export default function FAQPage() {
                 <div className="text-[10px] uppercase font-bold text-[#ef5350] mb-1">{tr("signalExit", lang)}</div>
                 <p className="text-xs">{tr("signalExitDesc", lang)}</p>
               </div>
-              <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3">
+              <div className="bg-orange-500/10 border border-orange-500/20 rounded-sm p-3">
                 <div className="text-[10px] uppercase font-bold text-orange-400 mb-1">{tr("trailingStopLabel", lang)}</div>
                 <p className="text-xs">{tr("trailingStopExitDesc", lang)}</p>
               </div>
-              <div className="bg-secondary/40 border border-border rounded-lg p-3">
+              <div className="bg-surface-mid border border-border/10 rounded-sm p-3">
                 <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">{tr("endOfData", lang)}</div>
                 <p className="text-xs">{tr("endOfDataDesc", lang)}</p>
               </div>
@@ -402,31 +408,31 @@ export default function FAQPage() {
 
             <HtmlP html={tr("aiPickDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("parameterGrid12", lang)}
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-1.5 px-2 font-semibold text-foreground">{tr("parameter", lang)}</th>
-                    <th className="text-left py-1.5 px-2 font-semibold text-foreground">{tr("valuesTested", lang)}</th>
+                  <tr className="border-b border-border/10 bg-surface-lowest">
+                    <th className="text-left py-1.5 px-2 text-3xs font-bold uppercase tracking-widest text-muted-foreground">{tr("parameter", lang)}</th>
+                    <th className="text-left py-1.5 px-2 text-3xs font-bold uppercase tracking-widest text-muted-foreground">{tr("valuesTested", lang)}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/10">
                     <td className="py-1.5 px-2">MACD Fast / Slow</td>
                     <td className="py-1.5 px-2 font-mono">(8, 21) or (12, 26)</td>
                   </tr>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/10">
                     <td className="py-1.5 px-2">RSI Window</td>
                     <td className="py-1.5 px-2 font-mono">10 or 14</td>
                   </tr>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/10">
                     <td className="py-1.5 px-2">EMA Short / Long</td>
                     <td className="py-1.5 px-2 font-mono">(10, 50) or (20, 100)</td>
                   </tr>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/10">
                     <td className="py-1.5 px-2">RSI Oversold Threshold</td>
                     <td className="py-1.5 px-2 font-mono">30 or 35</td>
                   </tr>
@@ -434,7 +440,7 @@ export default function FAQPage() {
               </table>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("buySellLogic", lang)}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -456,7 +462,7 @@ export default function FAQPage() {
               </div>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("variantSelection", lang)}
             </h4>
             <div className="space-y-1.5">
@@ -493,27 +499,27 @@ export default function FAQPage() {
 
             <HtmlP html={tr("blshDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("parameterGrid8", lang)}
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-1.5 px-2 font-semibold text-foreground">{tr("parameter", lang)}</th>
-                    <th className="text-left py-1.5 px-2 font-semibold text-foreground">{tr("valuesTested", lang)}</th>
+                  <tr className="border-b border-border/10 bg-surface-lowest">
+                    <th className="text-left py-1.5 px-2 text-3xs font-bold uppercase tracking-widest text-muted-foreground">{tr("parameter", lang)}</th>
+                    <th className="text-left py-1.5 px-2 text-3xs font-bold uppercase tracking-widest text-muted-foreground">{tr("valuesTested", lang)}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/10">
                     <td className="py-1.5 px-2">RSI Oversold Threshold</td>
                     <td className="py-1.5 px-2 font-mono">25, 30, 35, or 40</td>
                   </tr>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/10">
                     <td className="py-1.5 px-2">Bollinger Band Window</td>
                     <td className="py-1.5 px-2 font-mono">14 or 20</td>
                   </tr>
-                  <tr className="border-b border-border/30">
+                  <tr className="border-b border-border/10">
                     <td className="py-1.5 px-2">Cycle Hold Bars</td>
                     <td className="py-1.5 px-2 font-mono">5 or 10</td>
                   </tr>
@@ -521,7 +527,7 @@ export default function FAQPage() {
               </table>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("regimeStates", lang)}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -533,13 +539,13 @@ export default function FAQPage() {
                 <div className="text-[10px] uppercase font-bold text-[#ef5350] mb-1">{tr("topSell", lang)}</div>
                 <p className="text-xs"><Html html={tr("topDesc", lang)} /></p>
               </div>
-              <div className="bg-secondary/40 border border-border rounded-lg p-3">
+              <div className="bg-surface-mid border border-border/10 rounded-sm p-3">
                 <div className="text-[10px] uppercase font-bold text-muted-foreground mb-1">{tr("neutral", lang)}</div>
                 <p className="text-xs">{tr("neutralDesc", lang)}</p>
               </div>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("fixedParams", lang)}
             </h4>
             <ul className="text-xs space-y-1 list-disc list-inside">
@@ -559,10 +565,10 @@ export default function FAQPage() {
           <div className="space-y-3">
             <p>{tr("backtestDesc", lang)}</p>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("dataSplitting", lang)}
             </h4>
-            <div className="flex gap-0 rounded-lg overflow-hidden h-6">
+            <div className="flex gap-0 rounded-sm overflow-hidden h-6">
               <div className="bg-blue-500/30 flex items-center justify-center flex-[6] text-[10px] font-mono text-blue-400">
                 {tr("train", lang)} 60%
               </div>
@@ -574,36 +580,36 @@ export default function FAQPage() {
               </div>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("performanceMetrics", lang)}
             </h4>
-            <div className="bg-secondary/30 rounded-lg p-3 space-y-1.5">
+            <div className="bg-surface-lowest rounded-sm p-3 space-y-1.5">
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">{tr("totalReturn", lang)}</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">{tr("totalReturn", lang)}</code>
                 <span className="text-xs">{tr("totalReturnDesc", lang)}</span>
               </div>
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">{tr("maxDrawdown", lang)}</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">{tr("maxDrawdown", lang)}</code>
                 <span className="text-xs">{tr("maxDrawdownDesc", lang)}</span>
               </div>
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">{tr("sharpeLike", lang)}</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">{tr("sharpeLike", lang)}</code>
                 <span className="text-xs">{tr("sharpeLikeDesc", lang)}</span>
               </div>
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">{tr("validationScore", lang)}</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">{tr("validationScore", lang)}</code>
                 <span className="text-xs"><Html html={tr("validationScoreDesc", lang)} /></span>
               </div>
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">{tr("winRate", lang)}</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">{tr("winRate", lang)}</code>
                 <span className="text-xs">{tr("winRateDesc", lang)}</span>
               </div>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("returnCalc", lang)}
             </h4>
-            <div className="bg-secondary/30 rounded-lg p-3 font-mono text-xs space-y-1">
+            <div className="bg-surface-lowest rounded-sm p-3 font-mono text-xs space-y-1">
               <p><span className="text-muted-foreground">return_pct</span> = (exit_price - entry_price) / entry_price × 100</p>
               <p><span className="text-muted-foreground">leveraged_return</span> = return_pct × leverage</p>
               <p><span className="text-muted-foreground">equity</span> *= (1 + leveraged_return / 100)</p>
@@ -619,11 +625,11 @@ export default function FAQPage() {
         >
           <HtmlP html={tr("cooldownDesc", lang)} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-            <div className="bg-secondary/30 rounded-lg p-3">
+            <div className="bg-surface-lowest rounded-sm p-3">
               <div className="text-[10px] uppercase font-bold text-foreground mb-1">{tr("consAggAiCooldown", lang)}</div>
               <p className="text-xs"><Html html={tr("consAggAiCooldownDesc", lang)} /></p>
             </div>
-            <div className="bg-secondary/30 rounded-lg p-3">
+            <div className="bg-surface-lowest rounded-sm p-3">
               <div className="text-[10px] uppercase font-bold text-foreground mb-1">{tr("blshCooldown", lang)}</div>
               <p className="text-xs"><Html html={tr("blshCooldownDesc", lang)} /></p>
             </div>
@@ -684,10 +690,10 @@ export default function FAQPage() {
           <div className="space-y-3">
             <HtmlP html={tr("opportunitiesDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("tenConditionsTitle", lang)}
             </h4>
-            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+            <div className="bg-primary/10 border border-primary/15 rounded-sm p-3">
               <ol className="text-xs space-y-1 list-decimal list-inside">
                 <li>{tr("condPriceInZone", lang)}</li>
                 <li>{tr("condAbove50dMa", lang)}</li>
@@ -702,12 +708,12 @@ export default function FAQPage() {
               </ol>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("watchlistSidebarTitle", lang)}
             </h4>
             <p className="text-xs">{tr("watchlistSidebarDesc", lang)}</p>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("scanNowTitle", lang)}
             </h4>
             <p className="text-xs">{tr("scanNowDesc", lang)}</p>
@@ -723,12 +729,12 @@ export default function FAQPage() {
           <div className="space-y-3">
             <HtmlP html={tr("ideasDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("marketPulseTitle", lang)}
             </h4>
             <p className="text-xs">{tr("marketPulseDesc", lang)}</p>
 
-            <div className="bg-secondary/30 rounded-lg p-3 space-y-2 mt-1">
+            <div className="bg-surface-lowest rounded-sm p-3 space-y-2 mt-1">
               <h5 className="text-xs font-semibold text-foreground">{tr("redditTrendingTitle", lang)}</h5>
               <HtmlP html={tr("redditTrendingDesc", lang)} />
 
@@ -736,30 +742,30 @@ export default function FAQPage() {
               <HtmlP html={tr("screenerSectionsDesc", lang)} />
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("suggestedIdeasTitle", lang)}
             </h4>
             <HtmlP html={tr("suggestedIdeasDesc", lang)} />
-            <code className="block bg-secondary/40 rounded px-3 py-2 text-xs font-mono mt-1">
+            <code className="block bg-surface-lowest rounded-sm px-3 py-2 text-xs font-mono mt-1 text-foreground/80">
               {tr("ideaScoreFormula", lang)}
             </code>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("entryPriorityTitle", lang)}
             </h4>
             <HtmlP html={tr("entryPriorityDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("ideaCardTitle", lang)}
             </h4>
             <p className="text-xs">{tr("ideaCardDesc", lang)}</p>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("filterTabsTitle", lang)}
             </h4>
             <p className="text-xs">{tr("filterTabsDesc", lang)}</p>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("myIdeasTitle", lang)}
             </h4>
             <p className="text-xs">{tr("myIdeasDesc", lang)}</p>
@@ -775,34 +781,34 @@ export default function FAQPage() {
           <div className="space-y-3">
             <HtmlP html={tr("alertsDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("alertTypesTitle", lang)}
             </h4>
-            <div className="bg-secondary/30 rounded-lg p-3 space-y-1.5">
+            <div className="bg-surface-lowest rounded-sm p-3 space-y-1.5">
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">price_above</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">price_above</code>
                 <span className="text-xs">{tr("alertTypeAbove", lang)}</span>
               </div>
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">price_below</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">price_below</code>
                 <span className="text-xs">{tr("alertTypeBelow", lang)}</span>
               </div>
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">entered_buy_zone</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">entered_buy_zone</code>
                 <span className="text-xs">{tr("alertTypeBuyZone", lang)}</span>
               </div>
               <div className="flex items-start gap-2">
-                <code className="text-xs font-mono bg-secondary/60 px-1.5 py-0.5 rounded shrink-0">theme_score_changed</code>
+                <code className="text-xs font-mono bg-surface-lowest px-1.5 py-0.5 rounded-sm shrink-0 text-primary">theme_score_changed</code>
                 <span className="text-xs">{tr("alertTypeTheme", lang)}</span>
               </div>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("alertCooldownTitle", lang)}
             </h4>
             <p className="text-xs">{tr("alertCooldownDesc", lang)}</p>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("alertMarketHoursTitle", lang)}
             </h4>
             <p className="text-xs">{tr("alertMarketHoursDesc", lang)}</p>
@@ -818,7 +824,7 @@ export default function FAQPage() {
           <div className="space-y-3">
             <HtmlP html={tr("autoBuyDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("autoBuySafetyTitle", lang)}
             </h4>
             <div className="space-y-2">
@@ -840,12 +846,12 @@ export default function FAQPage() {
               </div>
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("dryRunTitle", lang)}
             </h4>
             <HtmlP html={tr("dryRunDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("decisionLogTitle", lang)}
             </h4>
             <p className="text-xs">{tr("decisionLogDesc", lang)}</p>
@@ -861,7 +867,7 @@ export default function FAQPage() {
           <div className="space-y-3">
             <HtmlP html={tr("screenerTADesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("screenerWorkflowTitle", lang)}
             </h4>
             <div className="space-y-2">
@@ -873,17 +879,17 @@ export default function FAQPage() {
               ))}
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("screenerPresetsTitle", lang)}
             </h4>
             <HtmlP html={tr("screenerPresetsDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("screenerTimeframesTitle", lang)}
             </h4>
             <p className="text-xs">{tr("screenerTimeframesDesc", lang)}</p>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("screenerAnalystTitle", lang)}
             </h4>
             <p className="text-xs">{tr("screenerAnalystDesc", lang)}</p>
@@ -899,7 +905,7 @@ export default function FAQPage() {
           <div className="space-y-3">
             <HtmlP html={tr("brokerSetupDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("brokerStepTitle", lang)}
             </h4>
             <div className="space-y-2">
@@ -911,7 +917,7 @@ export default function FAQPage() {
               ))}
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("brokerAddTitle", lang)}
             </h4>
             <div className="space-y-2">
@@ -923,12 +929,12 @@ export default function FAQPage() {
               ))}
             </div>
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("brokerPaperVsLiveTitle", lang)}
             </h4>
             <HtmlP html={tr("brokerPaperVsLiveDesc", lang)} />
 
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mt-4">
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
               {tr("brokerSecurityTitle", lang)}
             </h4>
             <HtmlP html={tr("brokerSecurityDesc", lang)} />
@@ -963,7 +969,7 @@ export default function FAQPage() {
 
             <FAQ q={tr("faqLeverage", lang)}>
               <HtmlP html={tr("faqLeverageAnswer", lang)} />
-              <code className="block bg-secondary/40 rounded px-3 py-2 text-xs font-mono mt-1">
+              <code className="block bg-surface-lowest rounded-sm px-3 py-2 text-xs font-mono mt-1 text-foreground/80">
                 leveraged_return = (exit - entry) / entry × 100 × leverage
               </code>
               <p className="mt-1"><Html html={tr("faqLeverageNote", lang)} /></p>

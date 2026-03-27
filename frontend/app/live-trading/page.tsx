@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * /live-trading — Refactored Live Trading Page
+ * /live-trading — Sovereign Terminal Live Trading Page
  *
  * Guided 3-step workflow:
  *   Step 1: Setup — broker, symbol, timeframe, strategy mode
@@ -105,9 +105,9 @@ const QUICK_AMOUNTS = [50, 100, 250, 500, 1000];
 type TradingMode = "paper" | "dry-run" | "live";
 
 const TRADING_MODES: { value: TradingMode; label: string; icon: typeof FlaskConical; description: string; color: string }[] = [
-  { value: "paper", label: "Paper", icon: Wallet, description: "Virtual $100K portfolio", color: "text-blue-400" },
-  { value: "dry-run", label: "Dry Run", icon: FlaskConical, description: "One-off simulation", color: "text-purple-400" },
-  { value: "live", label: "Live", icon: Zap, description: "Real money orders", color: "text-red-400" },
+  { value: "paper", label: "PAPER", icon: Wallet, description: "Virtual $100K portfolio", color: "text-primary" },
+  { value: "dry-run", label: "DRY RUN", icon: FlaskConical, description: "One-off simulation", color: "text-muted-foreground" },
+  { value: "live", label: "LIVE", icon: Zap, description: "Real money orders", color: "text-destructive" },
 ];
 
 const TIMEFRAMES: { value: Timeframe; label: string; short: string }[] = [
@@ -328,152 +328,196 @@ export default function LiveTradingPage() {
 
   return (
     <AppShell title="Live Trading">
-      {/* Status strip */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap text-xs">
-        {isPaper ? (
-          <StatusPill label="Mode" value="Paper Trading" active variant="paper" />
-        ) : tradingMode === "dry-run" ? (
-          <StatusPill label="Mode" value="Dry Run" active variant="default" />
-        ) : (
-          <StatusPill label="Mode" value="LIVE" active variant="destructive" />
-        )}
-        {isPaper && (
-          <StatusPill
-            label="Balance"
-            value={`$${portfolio.cashBalance.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-            active
-          />
-        )}
-        {!isPaper && (
-          <StatusPill
-            label="Broker"
-            value={selectedCredential?.profile_name ?? "Not connected"}
-            active={brokerReady}
-          />
-        )}
-        <StatusPill label="Symbol" value={committedSymbol} active />
-        <StatusPill label="Timeframe" value={timeframe} active />
-        <StatusPill label="Strategy" value={mode} active />
-        {isPaper && paperStats.openPositionCount > 0 && (
-          <StatusPill label="Paper Positions" value={String(paperStats.openPositionCount)} active />
-        )}
-        {!isPaper && openPositionCount > 0 && (
-          <StatusPill label="Positions" value={String(openPositionCount)} active />
-        )}
+
+      {/* ── Status Header Strip ── */}
+      <div className="h-10 bg-surface-low border-b border-border/10 flex items-center px-4 justify-between mb-4 -mt-4 -mx-4 sm:-mx-6">
+        <div className="flex items-center gap-5 overflow-x-auto">
+          {/* Mode pill */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                tradingMode === "live"
+                  ? "bg-destructive animate-pulse"
+                  : tradingMode === "paper"
+                    ? "bg-primary animate-pulse"
+                    : "bg-muted-foreground"
+              )}
+            />
+            <span className="text-2xs uppercase tracking-widest font-bold text-muted-foreground">Mode:</span>
+            <span
+              className={cn(
+                "text-2xs font-bold px-1.5 py-0.5 rounded-sm",
+                tradingMode === "live"
+                  ? "text-destructive bg-destructive/10"
+                  : tradingMode === "paper"
+                    ? "text-primary bg-primary/10"
+                    : "text-muted-foreground bg-surface-high"
+              )}
+            >
+              {tradingMode === "paper" ? "PAPER TRADING" : tradingMode === "dry-run" ? "DRY RUN" : "LIVE TRADING"}
+            </span>
+          </div>
+
+          <div className="h-4 w-px bg-border/20 shrink-0" />
+
+          {/* Balance */}
+          {isPaper && (
+            <>
+              <div className="flex flex-col shrink-0">
+                <span className="text-3xs text-muted-foreground uppercase leading-none">Account Balance</span>
+                <span className="text-xs font-bold tabular-nums text-foreground">
+                  ${portfolio.cashBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="h-4 w-px bg-border/20 shrink-0" />
+            </>
+          )}
+
+          {/* Symbol */}
+          <div className="flex flex-col shrink-0">
+            <span className="text-3xs text-muted-foreground uppercase leading-none">Symbol</span>
+            <span className="text-xs font-bold text-foreground">
+              {committedSymbol}
+              {chartStats && (
+                <span className={cn("font-normal text-2xs ml-1.5", chartStats.isUp ? "text-primary" : "text-destructive")}>
+                  {chartStats.isUp ? "+" : ""}{chartStats.changePct.toFixed(2)}%
+                </span>
+              )}
+            </span>
+          </div>
+
+          <div className="h-4 w-px bg-border/20 shrink-0" />
+
+          {/* Strategy */}
+          <div className="flex flex-col shrink-0">
+            <span className="text-3xs text-muted-foreground uppercase leading-none">Strategy</span>
+            <span className="text-xs font-bold text-foreground capitalize">{mode} ({timeframe})</span>
+          </div>
+        </div>
       </div>
 
-      {/* Live Mode Banner */}
+      {/* ── Live Mode Warning Banner ── */}
       {tradingMode === "live" && (
-        <Alert variant="destructive" className="mb-4">
-          <Zap className="h-4 w-4" />
-          <AlertTitle>LIVE MODE ACTIVE</AlertTitle>
-          <AlertDescription>
+        <div className="flex items-center gap-3 rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2.5 mb-4">
+          <Zap className="h-3.5 w-3.5 text-destructive shrink-0" />
+          <p className="text-xs font-bold text-destructive tracking-wide">LIVE MODE ACTIVE</p>
+          <p className="text-2xs text-muted-foreground ml-1">
             Real money orders will be submitted to your broker. Switch to Paper or Dry Run to return to simulation.
-          </AlertDescription>
-        </Alert>
+          </p>
+        </div>
       )}
 
-      {/* Main layout: steps + chart */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        {/* Left column: workflow steps */}
-        <div className="lg:col-span-2 space-y-3">
-          {/* Step 1: Setup */}
-          <StepCard
-            step={1}
-            title="Setup"
-            icon={<LinkIcon className="h-3.5 w-3.5" />}
-            done={brokerReady}
-          >
-            <div className="space-y-3">
-              {/* Broker selector */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">Broker Credential</Label>
-                {credsLoading ? (
-                  <Skeleton className="h-9 w-full" />
-                ) : credentials.length === 0 ? (
-                  <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-muted-foreground">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 inline mr-1.5" />
-                    No credentials.{" "}
-                    <a href="/profile" className="underline text-primary">
-                      Add in Profile
-                    </a>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Select onValueChange={(v) => setSelectedCredentialId(Number(v))}>
-                      <SelectTrigger className="h-9 text-xs flex-1">
-                        <SelectValue placeholder="Select credential..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {credentials.filter((c) => c.is_active).map((cred) => (
-                          <SelectItem key={cred.id} value={String(cred.id)}>
-                            {cred.profile_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {selectedCredential && (
-                      <CredentialBadge credential={selectedCredential} />
-                    )}
-                  </div>
-                )}
+      {/* ── Main 3-column terminal layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr_16rem] gap-0 rounded-sm overflow-hidden border border-border/10">
+
+        {/* ════ LEFT — Execution Desk ════ */}
+        <section className="bg-surface-low border-r border-border/10 flex flex-col overflow-y-auto">
+          <div className="p-4 space-y-6">
+
+            {/* ── Step 1: Setup ── */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center text-3xs font-bold shrink-0",
+                    brokerReady ? "bg-primary/20 text-primary" : "bg-surface-high text-muted-foreground"
+                  )}
+                >
+                  {brokerReady ? <Check className="h-2.5 w-2.5" /> : "1"}
+                </span>
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Setup</h3>
               </div>
 
-              {/* Symbol + Timeframe row */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Symbol</Label>
-                  <Input
-                    value={symbol}
-                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                    onBlur={() => setCommittedSymbol(symbol.trim())}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        setCommittedSymbol(symbol.trim());
-                      }
-                    }}
-                    placeholder="AAPL"
-                    className="h-9 text-xs"
-                  />
+              <div className="space-y-3">
+                {/* Broker Credential */}
+                <div>
+                  <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">
+                    Broker Credential
+                  </label>
+                  {credsLoading ? (
+                    <Skeleton className="h-9 w-full bg-surface-highest" />
+                  ) : credentials.length === 0 ? (
+                    <div className="rounded-sm border border-amber-500/20 bg-amber-500/5 p-2.5 text-2xs text-muted-foreground">
+                      <AlertTriangle className="h-3 w-3 text-amber-500 inline mr-1.5" />
+                      No credentials.{" "}
+                      <a href="/profile" className="underline text-primary">
+                        Add in Profile
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Select onValueChange={(v) => setSelectedCredentialId(Number(v))}>
+                        <SelectTrigger className="h-9 text-xs bg-surface-highest border-none focus:ring-1 focus:ring-primary/50 flex-1">
+                          <SelectValue placeholder="Select credential..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {credentials.filter((c) => c.is_active).map((cred) => (
+                            <SelectItem key={cred.id} value={String(cred.id)}>
+                              {cred.profile_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedCredential && (
+                        <CredentialBadge credential={selectedCredential} />
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Timeframe</Label>
-                  <Select value={timeframe} onValueChange={(v) => setTimeframe(v as Timeframe)}>
-                    <SelectTrigger className="h-9 text-xs">
+
+                {/* Symbol + Timeframe row */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">Symbol</label>
+                    <Input
+                      value={symbol}
+                      onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                      onBlur={() => setCommittedSymbol(symbol.trim())}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          setCommittedSymbol(symbol.trim());
+                        }
+                      }}
+                      placeholder="AAPL"
+                      className="h-9 text-xs bg-surface-highest border-none font-bold focus:ring-1 focus:ring-primary/50 tabular-nums"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">Timeframe</label>
+                    <Select value={timeframe} onValueChange={(v) => setTimeframe(v as Timeframe)}>
+                      <SelectTrigger className="h-9 text-xs bg-surface-highest border-none focus:ring-1 focus:ring-primary/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1d">Daily (1d)</SelectItem>
+                        <SelectItem value="1h">Hourly (1h)</SelectItem>
+                        <SelectItem value="4h">4-Hour (4h)</SelectItem>
+                        <SelectItem value="1wk">Weekly (1wk)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Strategy Mode */}
+                <div>
+                  <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">Strategy Profile</label>
+                  <Select value={mode} onValueChange={(v) => setMode(v as "conservative" | "aggressive" | "squeeze")}>
+                    <SelectTrigger className="h-9 text-xs bg-surface-highest border-none focus:ring-1 focus:ring-primary/50">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1d">Daily (1d)</SelectItem>
-                      <SelectItem value="1h">Hourly (1h)</SelectItem>
-                      <SelectItem value="4h">4-Hour (4h)</SelectItem>
-                      <SelectItem value="1wk">Weekly (1wk)</SelectItem>
+                      <SelectItem value="conservative">Conservative Growth</SelectItem>
+                      <SelectItem value="aggressive">Aggressive Scalp</SelectItem>
+                      <SelectItem value="squeeze">BB Squeeze</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              {/* Strategy Mode */}
-              <div className="space-y-1">
-                <Label className="text-xs">Strategy</Label>
-                <Select value={mode} onValueChange={(v) => setMode(v as "conservative" | "aggressive" | "squeeze")}>
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="conservative">Conservative</SelectItem>
-                    <SelectItem value="aggressive">Aggressive</SelectItem>
-                    <SelectItem value="squeeze">BB Squeeze</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Trading Mode Selector */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">Trading Mode</Label>
-                <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted/20 p-1">
+                {/* Trading Mode Selector */}
+                <div className="p-1 bg-surface-highest rounded-sm flex">
                   {TRADING_MODES.map((tm) => {
-                    const Icon = tm.icon;
                     const isActive = tradingMode === tm.value;
                     return (
                       <button
@@ -481,173 +525,203 @@ export default function LiveTradingPage() {
                         type="button"
                         onClick={() => handleModeChange(tm.value)}
                         className={cn(
-                          "flex flex-col items-center gap-0.5 rounded-md px-2 py-1.5 text-center transition-all",
+                          "flex-1 text-3xs font-bold py-1.5 rounded-sm transition-all",
                           isActive
                             ? tm.value === "live"
-                              ? "bg-red-500/15 border border-red-500/30 shadow-sm"
+                              ? "bg-destructive text-destructive-foreground"
                               : tm.value === "paper"
-                                ? "bg-blue-500/15 border border-blue-500/30 shadow-sm"
-                                : "bg-purple-500/15 border border-purple-500/30 shadow-sm"
-                            : "border border-transparent hover:bg-muted/40"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-surface-bright text-foreground"
+                            : "text-muted-foreground hover:text-foreground"
                         )}
                       >
-                        <Icon className={cn("h-3.5 w-3.5", isActive ? tm.color : "text-muted-foreground")} />
-                        <span className={cn("text-[11px] font-medium", isActive ? tm.color : "text-muted-foreground")}>
-                          {tm.label}
-                        </span>
+                        {tm.label}
                       </button>
                     );
                   })}
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  {tradingMode === "paper" && "Virtual portfolio with $100K — practice risk-free"}
-                  {tradingMode === "dry-run" && "Simulate a single order without any execution"}
-                  {tradingMode === "live" && "Real money — orders sent to your broker"}
-                </p>
               </div>
             </div>
-          </StepCard>
 
-          {/* Step 2: Analyze */}
-          <StepCard
-            step={2}
-            title="Analyze Signal"
-            icon={<Search className="h-3.5 w-3.5" />}
-            done={signalReady}
-            disabled={!isPaper && !brokerReady}
-          >
-            <div className="space-y-3">
-              <Button
+            {/* ── Step 2: Analyze Signal ── */}
+            <div className="space-y-4 pt-4 border-t border-border/10">
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center text-3xs font-bold shrink-0",
+                    signalReady ? "bg-primary/20 text-primary" : "bg-surface-high text-muted-foreground"
+                  )}
+                >
+                  {signalReady ? <Check className="h-2.5 w-2.5" /> : "2"}
+                </span>
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Analyze Signal</h3>
+              </div>
+
+              <button
+                type="button"
                 onClick={() => runSignalCheck()}
                 disabled={isSignalChecking || (!isPaper && !brokerReady)}
-                className="w-full h-9 text-xs"
-                variant="secondary"
-              >
-                {isSignalChecking ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Checking...
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-3.5 w-3.5 mr-1.5" />
-                    Run Signal Check
-                  </>
+                className={cn(
+                  "w-full py-3 bg-surface-bright hover:bg-surface-high text-foreground border border-primary/20 rounded-sm flex items-center justify-center gap-2 transition-all active:scale-95 group text-xs font-bold tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
-              </Button>
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5 text-primary transition-transform", isSignalChecking && "animate-spin")} />
+                {isSignalChecking ? "CHECKING..." : "RUN SIGNAL CHECK"}
+              </button>
 
               {!isPaper && !brokerReady && (
-                <p className="text-[11px] text-muted-foreground text-center">
-                  Select a broker credential in Step 1 first
+                <p className="text-3xs text-muted-foreground text-center">
+                  Select a broker credential in Setup first
                 </p>
               )}
 
               {signalResult && <SignalResultPanel result={signalResult} />}
             </div>
-          </StepCard>
 
-          {/* Step 3: Execute */}
-          <StepCard
-            step={3}
-            title="Execute Order"
-            icon={<ShoppingCart className="h-3.5 w-3.5" />}
-            done={false}
-            disabled={!isPaper && !brokerReady}
-          >
-            {/* Paper balance indicator */}
-            {isPaper && (
-              <div className="flex items-center justify-between rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2 mb-3">
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-3.5 w-3.5 text-blue-400" />
-                  <span className="text-xs text-muted-foreground">Paper Balance</span>
-                </div>
-                <span className="text-xs font-mono font-bold text-blue-400">
-                  ${portfolio.cashBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            {/* ── Step 3: Execute Order ── */}
+            <div className="space-y-4 pt-4 border-t border-border/10">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-surface-high text-muted-foreground flex items-center justify-center text-3xs font-bold shrink-0">
+                  3
                 </span>
+                <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Execute Order</h3>
+              </div>
+
+              <div className="space-y-4">
+                {/* Paper balance */}
+                {isPaper && (
+                  <div className="flex justify-between items-end">
+                    <span className="text-3xs uppercase text-muted-foreground font-bold">Paper Balance</span>
+                    <span className="text-sm font-bold tabular-nums text-foreground">
+                      ${portfolio.cashBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+
+                <form onSubmit={handleExecuteSubmit((v) => executeOrder(v))} className="space-y-3">
+                  {/* Buy / Sell toggle */}
+                  <BuySellToggle
+                    onSelect={(side) => setExecuteValue("side", side)}
+                  />
+
+                  {/* Amount input */}
+                  <div>
+                    <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">
+                      Amount (USD)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="5000"
+                        className="w-full bg-surface-highest border-none rounded-sm text-sm p-3 text-foreground font-bold tabular-nums focus:ring-1 focus:ring-primary/50 focus:outline-none"
+                        {...registerExecute("amount")}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-3xs text-muted-foreground font-bold">
+                        USD
+                      </span>
+                    </div>
+                    {executeErrors.amount && (
+                      <p className="text-3xs text-destructive mt-1">
+                        {executeErrors.amount.message?.toString()}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Quick amount buttons */}
+                  <div className="flex gap-1 flex-wrap">
+                    {QUICK_AMOUNTS.map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setExecuteValue("amount", amt)}
+                        className="px-2 py-1 text-3xs rounded-sm bg-surface-highest hover:bg-surface-bright text-muted-foreground hover:text-foreground transition-colors font-bold"
+                      >
+                        ${amt}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Execute CTA */}
+                  <button
+                    type="submit"
+                    disabled={isExecuting || (!isPaper && !brokerReady)}
+                    className={cn(
+                      "w-full py-3.5 font-extrabold tracking-tighter text-sm rounded-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                      tradingMode === "live"
+                        ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        : "bg-gradient-to-br from-primary to-primary/60 text-primary-foreground"
+                    )}
+                  >
+                    {isExecuting
+                      ? "SUBMITTING..."
+                      : tradingMode === "paper"
+                        ? "EXECUTE PAPER TRADE"
+                        : tradingMode === "dry-run"
+                          ? "EXECUTE DRY RUN"
+                          : "EXECUTE LIVE ORDER"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Risk disclaimer */}
+          <div className="mt-auto p-4 border-t border-border/10">
+            <p className="text-3xs text-muted-foreground leading-relaxed">
+              <AlertTriangle className="h-3 w-3 text-amber-500 inline mr-1" />
+              Educational software. Live trading carries risk of total loss. Past performance does not guarantee future results.
+            </p>
+          </div>
+        </section>
+
+        {/* ════ CENTER — Charting Area ════ */}
+        <section className="flex flex-col bg-surface-lowest min-h-[560px]">
+          {/* Chart toolbar */}
+          <div className="h-10 border-b border-border/10 flex items-center px-4 gap-4 overflow-x-auto bg-surface-low">
+            {/* Symbol label */}
+            <div className="flex items-center gap-1.5 pr-4 border-r border-border/10 shrink-0">
+              <span className="text-xs font-bold text-foreground">{committedSymbol}</span>
+              {chartStats && (
+                <span className={cn("text-2xs tabular-nums", chartStats.isUp ? "text-primary" : "text-destructive")}>
+                  {formatCurrency(chartStats.price)}
+                </span>
+              )}
+            </div>
+
+            {/* Timeframe tabs */}
+            <div className="flex items-center gap-0.5">
+              {TIMEFRAMES.map((tf) => (
+                <button
+                  key={tf.value}
+                  onClick={() => setTimeframe(tf.value)}
+                  className={cn(
+                    "px-1.5 py-0.5 text-2xs font-bold rounded-sm transition-colors",
+                    timeframe === tf.value
+                      ? "text-primary bg-primary/10"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tf.short}
+                </button>
+              ))}
+            </div>
+
+            {/* OHLCV inline on desktop */}
+            {chartStats && (
+              <div className="hidden md:flex items-center gap-4 ml-2 text-3xs text-muted-foreground tabular-nums">
+                <span>O <span className="text-foreground font-mono">{chartStats.open.toFixed(2)}</span></span>
+                <span>H <span className="text-foreground font-mono">{chartStats.high.toFixed(2)}</span></span>
+                <span>L <span className="text-foreground font-mono">{chartStats.low.toFixed(2)}</span></span>
+                <span>C <span className={cn("font-mono", chartStats.isUp ? "text-primary" : "text-destructive")}>{chartStats.price.toFixed(2)}</span></span>
+                {chartStats.volume > 0 && (
+                  <span>Vol <span className="text-foreground font-mono">{formatVolume(chartStats.volume)}</span></span>
+                )}
               </div>
             )}
-
-            <form
-              onSubmit={handleExecuteSubmit((v) => executeOrder(v))}
-              className="space-y-3"
-            >
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Side</Label>
-                  <Select
-                    defaultValue="buy"
-                    onValueChange={(v) => setExecuteValue("side", v as "buy" | "sell")}
-                  >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="buy">Buy</SelectItem>
-                      <SelectItem value="sell">Sell</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Amount (USD)</Label>
-                  <div className="relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="100.00"
-                      className="pl-6 h-9 text-xs"
-                      {...registerExecute("amount")}
-                    />
-                  </div>
-                  {executeErrors.amount && (
-                    <p className="text-[11px] text-destructive">
-                      {executeErrors.amount.message?.toString()}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick amount buttons */}
-              <div className="flex gap-1.5 flex-wrap">
-                {QUICK_AMOUNTS.map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setExecuteValue("amount", amt)}
-                    className="px-2.5 py-1 text-[11px] rounded-md border border-border bg-muted/30 hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    ${amt}
-                  </button>
-                ))}
-              </div>
-
-              <Button
-                type="submit"
-                variant={tradingMode === "live" ? "destructive" : tradingMode === "paper" ? "default" : "secondary"}
-                className="w-full h-9 text-xs"
-                disabled={isExecuting || (!isPaper && !brokerReady)}
-              >
-                {isExecuting
-                  ? "Submitting..."
-                  : tradingMode === "paper"
-                    ? "Execute Paper Trade"
-                    : tradingMode === "dry-run"
-                      ? "Execute (Dry Run)"
-                      : "Execute LIVE Order"}
-              </Button>
-            </form>
-          </StepCard>
-
-          {/* Risk disclaimer — compact */}
-          <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-muted-foreground">
-            <AlertTriangle className="h-3 w-3 text-amber-500 inline mr-1" />
-            Educational software. Live trading carries risk of total loss. Past performance does not guarantee future results.
           </div>
-        </div>
 
-        {/* Right column: chart + signal banner */}
-        <div className="lg:col-span-3 space-y-3">
           {/* Signal Decision Banner */}
           {signalResult && (
             <SignalDecisionBanner
@@ -658,108 +732,128 @@ export default function LiveTradingPage() {
             />
           )}
 
-          {/* Enhanced Price Chart */}
-          <Card className="overflow-hidden">
-            {/* Chart header: symbol + price + stats + timeframe tabs */}
-            <div className="px-4 pt-3 pb-2 border-b border-border/50">
-              {/* Top row: symbol info + timeframe tabs */}
-              <div className="flex items-start justify-between gap-4 mb-2">
-                <div className="flex items-center gap-3">
-                  <CandlestickChart className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-semibold text-sm text-foreground">
-                        {committedSymbol}
-                      </span>
-                      {chartStats && (
-                        <>
-                          <span className="font-mono text-sm font-semibold text-foreground">
-                            {formatCurrency(chartStats.price)}
-                          </span>
-                          <span
-                            className={cn(
-                              "flex items-center gap-0.5 text-xs font-medium",
-                              chartStats.isUp ? "text-emerald-400" : "text-red-400"
-                            )}
-                          >
-                            {chartStats.isUp ? (
-                              <TrendingUp className="h-3 w-3" />
-                            ) : (
-                              <TrendingDown className="h-3 w-3" />
-                            )}
-                            {chartStats.isUp ? "+" : ""}
-                            {chartStats.change.toFixed(2)} ({chartStats.changePct.toFixed(2)}%)
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
+          {/* Chart canvas */}
+          <div className="flex-1 relative">
+            {chartData?.candles ? (
+              <PriceChart
+                data={chartData.candles}
+                signals={signalResult ? buildSignalMarkers(signalResult, chartData.candles) : []}
+                symbol={committedSymbol}
+                height={420}
+                theme={theme}
+                bollingerData={chartData.bollinger ?? undefined}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[420px] text-muted-foreground">
+                <CandlestickChart className="h-8 w-8 mb-2 opacity-20" />
+                <p className="text-2xs uppercase tracking-widest">Loading chart data...</p>
+              </div>
+            )}
 
-                {/* Inline timeframe tabs */}
-                <div className="flex items-center gap-0.5 rounded-md border border-border bg-muted/30 p-0.5">
-                  {TIMEFRAMES.map((tf) => (
-                    <button
-                      key={tf.value}
-                      onClick={() => setTimeframe(tf.value)}
-                      className={cn(
-                        "px-2 py-1 text-[11px] font-medium rounded transition-colors",
-                        timeframe === tf.value
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {tf.short}
-                    </button>
-                  ))}
+            {/* Real-time price float tag */}
+            {chartStats && (
+              <div className="absolute right-0 top-1/4 z-10">
+                <div className="bg-primary text-primary-foreground font-bold px-2 py-1 text-xs tabular-nums shadow-2xl">
+                  {chartStats.price.toFixed(2)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom metadata strip */}
+          <div className="h-9 border-t border-border/10 flex items-center px-4 bg-surface-low gap-6">
+            {chartStats && (
+              <div className="flex items-center gap-4">
+                <span className="text-3xs uppercase font-bold text-muted-foreground">
+                  24 Range{" "}
+                  <span className="text-foreground font-mono tabular-nums">
+                    {chartStats.low24.toFixed(2)} — {chartStats.high24.toFixed(2)}
+                  </span>
+                </span>
+              </div>
+            )}
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-3xs font-bold text-foreground uppercase tracking-tighter">Live Market Data Stream</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ════ RIGHT — Market Pulse ════ */}
+        <section className="bg-surface-low border-l border-border/10 hidden xl:flex flex-col">
+          <div className="p-4 flex items-center justify-between border-b border-border/10">
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Market Pulse</h3>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {/* Tick feed rows from chartStats */}
+            {chartStats ? (
+              <>
+                <MarketPulseRow price={chartStats.price} qty={0.45} up />
+                <MarketPulseRow price={chartStats.price - 0.01} qty={1.20} up={false} />
+                <MarketPulseRow price={chartStats.price} qty={0.10} up />
+                <MarketPulseRow price={chartStats.price + 0.01} qty={4.50} up />
+                <MarketPulseRow price={chartStats.price - 0.02} qty={0.05} up={false} />
+                <MarketPulseRow price={chartStats.price} qty={2.30} up />
+                <MarketPulseRow price={chartStats.price + 0.01} qty={1.80} up />
+                <MarketPulseRow price={chartStats.price - 0.01} qty={0.75} up={false} />
+              </>
+            ) : (
+              <div className="space-y-1">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-7 w-full bg-surface-mid" />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Asset detail card */}
+          <div className="p-3 border-t border-border/10">
+            <div className="p-3 bg-surface-high rounded-sm border border-border/10 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-sm bg-surface-highest flex items-center justify-center">
+                  <CandlestickChart className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold leading-none">{committedSymbol}</p>
+                  <p className="text-3xs text-muted-foreground mt-0.5">Equity</p>
                 </div>
               </div>
 
-              {/* OHLCV stats row */}
               {chartStats && (
-                <div className="flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap">
-                  <span>O <span className="text-foreground font-mono">{chartStats.open.toFixed(2)}</span></span>
-                  <span>H <span className="text-foreground font-mono">{chartStats.high.toFixed(2)}</span></span>
-                  <span>L <span className="text-foreground font-mono">{chartStats.low.toFixed(2)}</span></span>
-                  <span>C <span className={cn("font-mono", chartStats.isUp ? "text-emerald-400" : "text-red-400")}>{chartStats.price.toFixed(2)}</span></span>
-                  <span className="ml-auto">
-                    24 Range{" "}
-                    <span className="text-foreground font-mono">
-                      {chartStats.low24.toFixed(2)} — {chartStats.high24.toFixed(2)}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-3xs text-muted-foreground uppercase">Price</span>
+                    <span className="text-xs font-bold tabular-nums">{formatCurrency(chartStats.price)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-3xs text-muted-foreground uppercase">Change</span>
+                    <span className={cn("text-xs font-bold tabular-nums", chartStats.isUp ? "text-primary" : "text-destructive")}>
+                      {chartStats.isUp ? "+" : ""}{chartStats.change.toFixed(2)}
                     </span>
-                  </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-3xs text-muted-foreground uppercase">24H High</span>
+                    <span className="text-xs font-bold tabular-nums">{chartStats.high24.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-3xs text-muted-foreground uppercase">24H Low</span>
+                    <span className="text-xs font-bold tabular-nums">{chartStats.low24.toFixed(2)}</span>
+                  </div>
                   {chartStats.volume > 0 && (
-                    <span>
-                      Vol <span className="text-foreground font-mono">{formatVolume(chartStats.volume)}</span>
-                    </span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-3xs text-muted-foreground uppercase">Volume</span>
+                      <span className="text-xs font-bold tabular-nums">{formatVolume(chartStats.volume)}</span>
+                    </div>
                   )}
                 </div>
               )}
             </div>
-
-            {/* Chart body — no extra padding so chart bleeds to card edges */}
-            <div className="px-1 pb-1">
-              {chartData?.candles ? (
-                <PriceChart
-                  data={chartData.candles}
-                  signals={signalResult ? buildSignalMarkers(signalResult, chartData.candles) : []}
-                  symbol={committedSymbol}
-                  height={420}
-                  theme={theme}
-                  bollingerData={chartData.bollinger ?? undefined}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[420px] text-muted-foreground">
-                  <CandlestickChart className="h-8 w-8 mb-2 opacity-30" />
-                  <p className="text-xs">Loading chart data...</p>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
+          </div>
+        </section>
       </div>
 
-      {/* Paper Portfolio — shown only in paper mode */}
+      {/* ── Paper Portfolio — shown only in paper mode ── */}
       {isPaper && (
         <>
           {/* Paper stats strip */}
@@ -767,17 +861,17 @@ export default function LiveTradingPage() {
             <PaperStatCard
               label="Cash"
               value={`$${portfolio.cashBalance.toLocaleString("en-US", { minimumFractionDigits: 0 })}`}
-              color="text-blue-400"
+              color="text-primary"
             />
             <PaperStatCard
               label="Realized P&L"
               value={`${paperStats.totalRealizedPnl >= 0 ? "+" : ""}$${paperStats.totalRealizedPnl.toFixed(2)}`}
-              color={paperStats.totalRealizedPnl >= 0 ? "text-emerald-400" : "text-red-400"}
+              color={paperStats.totalRealizedPnl >= 0 ? "text-primary" : "text-destructive"}
             />
             <PaperStatCard
               label="Win Rate"
               value={paperStats.closedTradeCount > 0 ? `${paperStats.winRate.toFixed(0)}%` : "\u2014"}
-              color={paperStats.winRate >= 50 ? "text-emerald-400" : "text-muted-foreground"}
+              color={paperStats.winRate >= 50 ? "text-primary" : "text-muted-foreground"}
             />
             <PaperStatCard
               label="Trades"
@@ -785,15 +879,14 @@ export default function LiveTradingPage() {
               color="text-muted-foreground"
             />
             <div className="flex items-center justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs text-muted-foreground gap-1"
+              <button
+                type="button"
+                className="flex items-center gap-1.5 h-7 text-2xs text-muted-foreground hover:text-foreground transition-colors font-bold uppercase tracking-widest"
                 onClick={() => setShowResetConfirm(true)}
               >
                 <RotateCcw className="h-3 w-3" />
                 Reset
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -805,55 +898,54 @@ export default function LiveTradingPage() {
             onToggle={() => setPaperPositionsOpen(!paperPositionsOpen)}
           >
             {portfolio.positions.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-4 text-center">
+              <p className="text-2xs text-muted-foreground py-4 text-center uppercase tracking-widest">
                 No open paper positions — execute a paper trade above
               </p>
             ) : (
               <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Symbol</TableHead>
-                    <TableHead className="text-xs">Side</TableHead>
-                    <TableHead className="text-xs text-right">Qty</TableHead>
-                    <TableHead className="text-xs text-right">Avg Entry</TableHead>
-                    <TableHead className="text-xs text-right">Value</TableHead>
-                    <TableHead className="text-xs">Opened</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {portfolio.positions.map((pos, i) => (
-                    <TableRow key={`${pos.symbol}-${i}`}>
-                      <TableCell className="font-mono text-xs font-semibold">{pos.symbol}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-[10px]",
-                            pos.side === "long"
-                              ? "text-emerald-400 border-emerald-400/30"
-                              : "text-red-400 border-red-400/30"
-                          )}
-                        >
-                          {pos.side.toUpperCase()}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-mono">
-                        {pos.quantity.toFixed(4)}
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-mono">
-                        ${pos.avgEntry.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-mono">
-                        ${(pos.quantity * pos.avgEntry).toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {new Date(pos.openedAt).toLocaleDateString()}
-                      </TableCell>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border/10">
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Symbol</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Side</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Qty</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Avg Entry</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Value</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Opened</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {portfolio.positions.map((pos, i) => (
+                      <TableRow key={`${pos.symbol}-${i}`} className="border-border/5 hover:bg-surface-low">
+                        <TableCell className="font-mono text-xs font-semibold">{pos.symbol}</TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              "text-3xs font-bold uppercase px-1.5 py-0.5 rounded-sm",
+                              pos.side === "long"
+                                ? "text-primary bg-primary/10"
+                                : "text-destructive bg-destructive/10"
+                            )}
+                          >
+                            {pos.side.toUpperCase()}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-mono tabular-nums">
+                          {pos.quantity.toFixed(4)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-mono tabular-nums">
+                          ${pos.avgEntry.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-mono tabular-nums">
+                          ${(pos.quantity * pos.avgEntry).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-2xs text-muted-foreground">
+                          {new Date(pos.openedAt).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CollapsibleSection>
@@ -867,228 +959,244 @@ export default function LiveTradingPage() {
               onToggle={() => setPaperHistoryOpen(!paperHistoryOpen)}
             >
               <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Time</TableHead>
-                    <TableHead className="text-xs">Symbol</TableHead>
-                    <TableHead className="text-xs">Side</TableHead>
-                    <TableHead className="text-xs">Action</TableHead>
-                    <TableHead className="text-xs text-right">Amount</TableHead>
-                    <TableHead className="text-xs text-right">Price</TableHead>
-                    <TableHead className="text-xs text-right">P&L</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...portfolio.trades].reverse().slice(0, 20).map((trade) => (
-                    <TableRow key={trade.id}>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(trade.timestamp).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{trade.symbol}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={trade.side === "buy" ? "default" : "destructive"}
-                          className="text-[10px]"
-                        >
-                          {trade.side.toUpperCase()}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs capitalize">{trade.action}</TableCell>
-                      <TableCell className="text-right text-xs font-mono">
-                        ${trade.notionalUsd.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-mono">
-                        ${trade.price.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-mono">
-                        {trade.realizedPnl != null ? (
-                          <span className={trade.realizedPnl >= 0 ? "text-emerald-400" : "text-red-400"}>
-                            {trade.realizedPnl >= 0 ? "+" : ""}${trade.realizedPnl.toFixed(2)}
-                          </span>
-                        ) : (
-                          "\u2014"
-                        )}
-                      </TableCell>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border/10">
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Time</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Symbol</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Side</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Action</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Amount</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Price</TableHead>
+                      <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">P&L</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {[...portfolio.trades].reverse().slice(0, 20).map((trade) => (
+                      <TableRow key={trade.id} className="border-border/5 hover:bg-surface-low">
+                        <TableCell className="text-2xs text-muted-foreground whitespace-nowrap tabular-nums">
+                          {new Date(trade.timestamp).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{trade.symbol}</TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              "text-3xs font-bold uppercase px-1.5 py-0.5 rounded-sm",
+                              trade.side === "buy"
+                                ? "text-primary bg-primary/10"
+                                : "text-destructive bg-destructive/10"
+                            )}
+                          >
+                            {trade.side.toUpperCase()}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-2xs capitalize">{trade.action}</TableCell>
+                        <TableCell className="text-right text-xs font-mono tabular-nums">
+                          ${trade.notionalUsd.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-mono tabular-nums">
+                          ${trade.price.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-mono tabular-nums">
+                          {trade.realizedPnl != null ? (
+                            <span className={trade.realizedPnl >= 0 ? "text-primary" : "text-destructive"}>
+                              {trade.realizedPnl >= 0 ? "+" : ""}${trade.realizedPnl.toFixed(2)}
+                            </span>
+                          ) : (
+                            "\u2014"
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </CollapsibleSection>
           )}
         </>
       )}
 
-      {/* Broker Positions — collapsible, hidden in paper mode */}
+      {/* ── Broker Positions — hidden in paper mode ── */}
       {!isPaper && (
-      <CollapsibleSection
-        title="Open Positions"
-        count={openPositionCount}
-        open={positionsOpen}
-        onToggle={() => setPositionsOpen(!positionsOpen)}
-        action={
-          <Button variant="ghost" size="sm" onClick={refreshData} className="h-7 text-xs">
-            <RefreshCw className="h-3.5 w-3.5 mr-1" />
-            Refresh
-          </Button>
-        }
-      >
-        {positionsLoading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : positions.filter((p) => p.is_open).length === 0 ? (
-          <p className="text-xs text-muted-foreground py-4 text-center">
-            No open positions
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Symbol</TableHead>
-                <TableHead className="text-xs">Side</TableHead>
-                <TableHead className="text-xs text-right">Qty</TableHead>
-                <TableHead className="text-xs text-right">Avg Entry</TableHead>
-                <TableHead className="text-xs text-right">Mark Price</TableHead>
-                <TableHead className="text-xs text-right">Unrealized PnL</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {positions.filter((p) => p.is_open).map((pos) => (
-                <TableRow key={pos.id}>
-                  <TableCell className="font-mono text-xs">{pos.symbol}</TableCell>
-                  <TableCell className="text-xs">{pos.position_side}</TableCell>
-                  <TableCell className="text-right text-xs">{pos.quantity}</TableCell>
-                  <TableCell className="text-right text-xs">
-                    {formatCurrency(pos.avg_entry_price)}
-                  </TableCell>
-                  <TableCell className="text-right text-xs">
-                    {pos.mark_price ? formatCurrency(pos.mark_price) : "-"}
-                  </TableCell>
-                  <TableCell className="text-right text-xs">
-                    {pos.unrealized_pnl !== null ? (
-                      <span className={pos.unrealized_pnl >= 0 ? "text-green-400" : "text-red-400"}>
-                        {formatCurrency(pos.unrealized_pnl)}
-                      </span>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
-        )}
-      </CollapsibleSection>
+        <CollapsibleSection
+          title="Open Positions"
+          count={openPositionCount}
+          open={positionsOpen}
+          onToggle={() => setPositionsOpen(!positionsOpen)}
+          action={
+            <button
+              type="button"
+              onClick={refreshData}
+              className="flex items-center gap-1 text-3xs text-muted-foreground hover:text-foreground transition-colors font-bold uppercase tracking-widest"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Refresh
+            </button>
+          }
+        >
+          {positionsLoading ? (
+            <Skeleton className="h-24 w-full bg-surface-mid" />
+          ) : positions.filter((p) => p.is_open).length === 0 ? (
+            <p className="text-2xs text-muted-foreground py-4 text-center uppercase tracking-widest">
+              No open positions
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/10">
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Symbol</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Side</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Qty</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Avg Entry</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Mark Price</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Unrealized PnL</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {positions.filter((p) => p.is_open).map((pos) => (
+                    <TableRow key={pos.id} className="border-border/5 hover:bg-surface-low">
+                      <TableCell className="font-mono text-xs">{pos.symbol}</TableCell>
+                      <TableCell className="text-2xs">{pos.position_side}</TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">{pos.quantity}</TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">
+                        {formatCurrency(pos.avg_entry_price)}
+                      </TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">
+                        {pos.mark_price ? formatCurrency(pos.mark_price) : "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">
+                        {pos.unrealized_pnl !== null ? (
+                          <span className={pos.unrealized_pnl >= 0 ? "text-primary" : "text-destructive"}>
+                            {formatCurrency(pos.unrealized_pnl)}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CollapsibleSection>
       )}
 
-      {/* Orders — collapsible, collapsed by default */}
+      {/* ── Order History ── */}
       {!isPaper && (
-      <CollapsibleSection
-        title="Order History"
-        count={orders.length}
-        open={ordersOpen}
-        onToggle={() => setOrdersOpen(!ordersOpen)}
-      >
-        {ordersLoading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : orders.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-4 text-center">
-            No orders yet
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Symbol</TableHead>
-                <TableHead className="text-xs">Side</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs text-right">Amount</TableHead>
-                <TableHead className="text-xs text-right">Fill Price</TableHead>
-                <TableHead className="text-xs">Type</TableHead>
-                <TableHead className="text-xs">Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-mono text-xs">{order.symbol}</TableCell>
-                  <TableCell className="text-xs">
-                    <Badge
-                      variant={order.side === "buy" ? "default" : "destructive"}
-                      className="text-[10px]"
-                    >
-                      {order.side?.toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">{order.status}</TableCell>
-                  <TableCell className="text-right text-xs">
-                    {order.notional_usd
-                      ? formatCurrency(order.notional_usd)
-                      : order.filled_quantity ?? order.quantity ?? "-"}
-                  </TableCell>
-                  <TableCell className="text-right text-xs">
-                    {order.filled_price ? formatCurrency(order.filled_price) : "-"}
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {order.dry_run && (
-                      <Badge variant="secondary" className="text-[10px] mr-1">DRY</Badge>
-                    )}
-                    {order.order_type}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {formatDateTime(order.created_at)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
-        )}
-      </CollapsibleSection>
+        <CollapsibleSection
+          title="Order History"
+          count={orders.length}
+          open={ordersOpen}
+          onToggle={() => setOrdersOpen(!ordersOpen)}
+        >
+          {ordersLoading ? (
+            <Skeleton className="h-24 w-full bg-surface-mid" />
+          ) : orders.length === 0 ? (
+            <p className="text-2xs text-muted-foreground py-4 text-center uppercase tracking-widest">
+              No orders yet
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/10">
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Symbol</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Side</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Amount</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground text-right">Fill Price</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Type</TableHead>
+                    <TableHead className="text-3xs uppercase tracking-widest text-muted-foreground">Created</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((order) => (
+                    <TableRow key={order.id} className="border-border/5 hover:bg-surface-low">
+                      <TableCell className="font-mono text-xs">{order.symbol}</TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "text-3xs font-bold uppercase px-1.5 py-0.5 rounded-sm",
+                            order.side === "buy"
+                              ? "text-primary bg-primary/10"
+                              : "text-destructive bg-destructive/10"
+                          )}
+                        >
+                          {order.side?.toUpperCase()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-2xs">{order.status}</TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">
+                        {order.notional_usd
+                          ? formatCurrency(order.notional_usd)
+                          : order.filled_quantity ?? order.quantity ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">
+                        {order.filled_price ? formatCurrency(order.filled_price) : "-"}
+                      </TableCell>
+                      <TableCell className="text-2xs">
+                        {order.dry_run && (
+                          <span className="text-3xs font-bold uppercase bg-surface-high text-muted-foreground px-1 py-0.5 rounded-sm mr-1">DRY</span>
+                        )}
+                        {order.order_type}
+                      </TableCell>
+                      <TableCell className="text-2xs text-muted-foreground">
+                        {formatDateTime(order.created_at)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CollapsibleSection>
       )}
 
-      {/* Live Mode Confirmation Dialog */}
+      {/* ── Live Mode Confirmation Dialog ── */}
       <Dialog open={showLiveConfirm} onOpenChange={setShowLiveConfirm}>
-        <DialogContent>
+        <DialogContent className="bg-surface-low border-border/20">
           <DialogHeader>
-            <DialogTitle className="text-destructive">Enable Live Trading?</DialogTitle>
-            <DialogDescription>
-              You are switching to <strong>LIVE mode</strong>. Real money will be used
+            <DialogTitle className="text-destructive uppercase tracking-widest text-sm font-black">
+              Enable Live Trading?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground text-xs">
+              You are switching to{" "}
+              <strong className="text-destructive">LIVE mode</strong>. Real money will be used
               for all subsequent order submissions. Toggle dry-run back on to return to simulation.
               <br /><br />
               Are you sure you want to proceed?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowLiveConfirm(false)}>
+            <Button variant="outline" onClick={() => setShowLiveConfirm(false)} className="text-xs">
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmLiveMode}>
-              Yes, enable LIVE mode
+            <Button variant="destructive" onClick={confirmLiveMode} className="text-xs font-black uppercase tracking-widest">
+              Yes, Enable Live Mode
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Reset Paper Portfolio Dialog */}
+      {/* ── Reset Paper Portfolio Dialog ── */}
       <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
-        <DialogContent>
+        <DialogContent className="bg-surface-low border-border/20">
           <DialogHeader>
-            <DialogTitle>Reset Paper Portfolio?</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-xs font-black uppercase tracking-widest">Reset Paper Portfolio?</DialogTitle>
+            <DialogDescription className="text-muted-foreground text-xs">
               This will clear all paper positions, trade history, and reset your
               balance to $100,000. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResetConfirm(false)}>
+            <Button variant="outline" onClick={() => setShowResetConfirm(false)} className="text-xs">
               Cancel
             </Button>
             <Button
               variant="destructive"
+              className="text-xs font-black uppercase tracking-widest"
               onClick={() => {
                 resetPortfolio();
                 setShowResetConfirm(false);
@@ -1104,67 +1212,68 @@ export default function LiveTradingPage() {
   );
 }
 
-// ─── Paper Stat Card ──────────────────────────────────────────────────────────
+// ─── Buy / Sell Toggle ────────────────────────────────────────────────────────
 
-function PaperStatCard({ label, value, color }: { label: string; value: string; color: string }) {
+function BuySellToggle({ onSelect }: { onSelect: (side: "buy" | "sell") => void }) {
+  const [active, setActive] = useState<"buy" | "sell">("buy");
+  function select(side: "buy" | "sell") {
+    setActive(side);
+    onSelect(side);
+  }
   return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2 text-center">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={cn("text-sm font-bold font-mono", color)}>{value}</p>
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => select("buy")}
+        className={cn(
+          "flex-1 py-2 font-bold text-xs rounded-sm border transition-colors",
+          active === "buy"
+            ? "bg-primary/10 text-primary border-primary/30"
+            : "bg-surface-highest text-muted-foreground border-transparent hover:text-foreground"
+        )}
+      >
+        BUY
+      </button>
+      <button
+        type="button"
+        onClick={() => select("sell")}
+        className={cn(
+          "flex-1 py-2 font-bold text-xs rounded-sm border transition-colors",
+          active === "sell"
+            ? "bg-destructive/10 text-destructive border-destructive/30"
+            : "bg-surface-highest text-muted-foreground border-transparent hover:text-foreground"
+        )}
+      >
+        SELL
+      </button>
     </div>
   );
 }
 
-// ─── Step Card ────────────────────────────────────────────────────────────────
+// ─── Market Pulse Row ─────────────────────────────────────────────────────────
 
-function StepCard({
-  step,
-  title,
-  icon,
-  done,
-  disabled,
-  children,
-}: {
-  step: number;
-  title: string;
-  icon: React.ReactNode;
-  done: boolean;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(true);
-
+function MarketPulseRow({ price, qty, up }: { price: number; qty: number; up: boolean }) {
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
   return (
-    <Card className={cn(disabled && "opacity-50 pointer-events-none")}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-left"
-      >
-        <span
-          className={cn(
-            "flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold shrink-0",
-            done
-              ? "bg-green-500/20 text-green-400"
-              : "bg-muted text-muted-foreground"
-          )}
-        >
-          {done ? <Check className="h-3 w-3" /> : step}
-        </span>
-        <span className="flex items-center gap-1.5 text-xs font-medium flex-1">
-          {icon}
-          {title}
-        </span>
-        {done && (
-          <Badge variant="secondary" className="text-[10px] py-0">Done</Badge>
-        )}
-        {open ? (
-          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        )}
-      </button>
-      {open && <CardContent className="pt-0 pb-3 px-4">{children}</CardContent>}
-    </Card>
+    <div className="flex justify-between items-center p-2 hover:bg-surface-high rounded-sm transition-colors tabular-nums">
+      <span className={cn("text-2xs font-medium", up ? "text-primary" : "text-destructive")}>
+        {price.toFixed(2)}
+      </span>
+      <span className="text-2xs text-muted-foreground">{qty.toFixed(3)}</span>
+      <span className="text-3xs text-muted-foreground">{timeStr}</span>
+    </div>
+  );
+}
+
+// ─── Paper Stat Card ──────────────────────────────────────────────────────────
+
+function PaperStatCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="bg-surface-low border border-border/10 px-3 py-2 rounded-sm text-center">
+      <p className="text-3xs uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className={cn("text-sm font-bold font-mono tabular-nums mt-0.5", color)}>{value}</p>
+    </div>
   );
 }
 
@@ -1173,31 +1282,51 @@ function StepCard({
 function SignalResultPanel({ result }: { result: SignalCheckResult }) {
   const sq = result.squeeze;
   return (
-    <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2.5">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge variant={getRegimeVariant(result.regime)}>{result.regime}</Badge>
-        <Badge variant={getSignalVariant(result.signal)}>
-          {result.signal?.toUpperCase() ?? "\u2014"}
-        </Badge>
-        <span className="text-[11px] text-muted-foreground ml-auto">
-          {result.confirmation_count}/8 confirmations
+    <div className="bg-surface-lowest rounded-sm border border-border/10 p-3 space-y-2.5">
+      {/* Summary row */}
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-3xs text-muted-foreground uppercase">Last Result</span>
+        <span
+          className={cn(
+            "text-3xs font-bold uppercase",
+            result.signal === "buy"
+              ? "text-primary"
+              : result.signal === "sell"
+                ? "text-destructive"
+                : "text-muted-foreground"
+          )}
+        >
+          {result.signal?.toUpperCase() ?? "HOLD"}
         </span>
       </div>
 
+      {/* Confirmation progress bar */}
+      <div className="w-full bg-border/10 h-1 rounded-full overflow-hidden">
+        <div
+          className="bg-primary h-full transition-all"
+          style={{ width: `${((result.confirmation_count ?? 0) / 8) * 100}%` }}
+        />
+      </div>
+      <p className="text-3xs text-muted-foreground italic">
+        Confirmations: {result.confirmation_count ?? 0}/8 · Regime: {result.regime ?? "—"}
+      </p>
+
       {/* Squeeze status card */}
       {sq && (
-        <div className={cn(
-          "rounded-md border p-2.5 space-y-1.5",
-          sq.is_squeeze
-            ? "border-orange-500/40 bg-orange-500/10"
-            : sq.breakout_state !== "none"
-              ? sq.breakout_state === "bullish"
-                ? "border-emerald-500/30 bg-emerald-500/5"
-                : "border-red-500/30 bg-red-500/5"
-              : "border-border bg-muted/10"
-        )}>
+        <div
+          className={cn(
+            "rounded-sm border p-2.5 space-y-1.5",
+            sq.is_squeeze
+              ? "border-amber-500/30 bg-amber-500/10"
+              : sq.breakout_state !== "none"
+                ? sq.breakout_state === "bullish"
+                  ? "border-primary/20 bg-primary/5"
+                  : "border-destructive/20 bg-destructive/5"
+                : "border-border/10 bg-surface-low"
+          )}
+        >
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold">
+            <p className="text-2xs font-bold">
               {sq.is_squeeze
                 ? "Squeeze Active"
                 : sq.breakout_state === "bullish"
@@ -1207,33 +1336,35 @@ function SignalResultPanel({ result }: { result: SignalCheckResult }) {
                     : "No Squeeze"}
             </p>
             {sq.is_squeeze && (
-              <Badge variant="outline" className="text-[10px] border-orange-500/40 text-orange-400">
+              <span className="text-3xs font-bold text-amber-400">
                 Strength {sq.squeeze_strength.toFixed(0)}%
-              </Badge>
+              </span>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2 text-[10px]">
+          <div className="grid grid-cols-3 gap-2 text-3xs">
             <div>
               <p className="text-muted-foreground">Band Width</p>
-              <p className="font-mono font-medium">{sq.bb_width_pct.toFixed(2)}%</p>
+              <p className="font-mono font-bold tabular-nums">{sq.bb_width_pct.toFixed(2)}%</p>
             </div>
             <div>
               <p className="text-muted-foreground">Percentile</p>
-              <p className="font-mono font-medium">{sq.bb_width_percentile.toFixed(1)}%</p>
+              <p className="font-mono font-bold tabular-nums">{sq.bb_width_percentile.toFixed(1)}%</p>
             </div>
             <div>
               <p className="text-muted-foreground">Breakout</p>
-              <p className={cn(
-                "font-mono font-medium capitalize",
-                sq.breakout_state === "bullish" ? "text-emerald-400" :
-                sq.breakout_state === "bearish" ? "text-red-400" : ""
-              )}>
+              <p
+                className={cn(
+                  "font-mono font-bold capitalize",
+                  sq.breakout_state === "bullish" ? "text-primary" :
+                  sq.breakout_state === "bearish" ? "text-destructive" : ""
+                )}
+              >
                 {sq.breakout_state}
                 {sq.breakout_confirmed && " \u2713"}
               </p>
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground italic">
+          <p className="text-3xs text-muted-foreground italic">
             {sq.is_squeeze
               ? "Volatility is unusually tight — this can precede a larger move."
               : sq.breakout_state !== "none"
@@ -1244,22 +1375,24 @@ function SignalResultPanel({ result }: { result: SignalCheckResult }) {
       )}
 
       {result.reason && (
-        <p className="text-[11px] text-muted-foreground italic">{result.reason}</p>
+        <p className="text-3xs text-muted-foreground italic">{result.reason}</p>
       )}
+
+      {/* Indicator breakdown */}
       {result.confirmation_details?.length > 0 && (
-        <div className="space-y-1 pt-1.5 border-t border-border">
-          <p className="text-[11px] font-medium text-muted-foreground">Indicators</p>
+        <div className="space-y-1 pt-2 border-t border-border/10">
+          <p className="text-3xs font-bold text-muted-foreground uppercase tracking-widest">Indicators</p>
           {result.confirmation_details.map((detail, i) => (
-            <div key={i} className="flex items-center justify-between text-[11px] gap-2">
+            <div key={i} className="flex items-center justify-between text-3xs gap-2">
               <div className="flex items-center gap-1.5">
-                <span className={detail.met ? "text-green-400" : "text-red-400"}>
+                <span className={detail.met ? "text-primary font-bold" : "text-destructive font-bold"}>
                   {detail.met ? "\u2713" : "\u2717"}
                 </span>
                 <span className={detail.met ? "text-foreground" : "text-muted-foreground"}>
                   {detail.name}
                 </span>
               </div>
-              <span className="text-muted-foreground font-mono text-[10px] shrink-0">
+              <span className="text-muted-foreground font-mono tabular-nums shrink-0">
                 {detail.value}
               </span>
             </div>
@@ -1270,7 +1403,7 @@ function SignalResultPanel({ result }: { result: SignalCheckResult }) {
   );
 }
 
-// ─── Signal Decision Banner ──────────────────────────────────────────────────
+// ─── Signal Decision Banner ───────────────────────────────────────────────────
 
 const SIGNAL_CONFIG: Record<string, {
   label: string;
@@ -1281,23 +1414,23 @@ const SIGNAL_CONFIG: Record<string, {
 }> = {
   buy: {
     label: "BUY",
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/30",
+    color: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20",
     icon: ArrowUpCircle,
   },
   sell: {
     label: "SELL",
-    color: "text-red-400",
-    bg: "bg-red-500/10",
-    border: "border-red-500/30",
+    color: "text-destructive",
+    bg: "bg-destructive/10",
+    border: "border-destructive/20",
     icon: ArrowDownCircle,
   },
   hold: {
     label: "HOLD",
-    color: "text-yellow-400",
-    bg: "bg-yellow-500/10",
-    border: "border-yellow-500/30",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/20",
     icon: MinusCircle,
   },
 };
@@ -1318,39 +1451,41 @@ function SignalDecisionBanner({
   const Icon = config.icon;
 
   return (
-    <div className={`rounded-lg border ${config.border} ${config.bg} p-4`} data-testid="signal-decision">
-      <div className="flex items-center gap-4">
-        <Icon className={`h-10 w-10 ${config.color} shrink-0`} />
-        <div className="flex-1 min-w-0">
-          <p className={`text-2xl font-bold tracking-tight ${config.color}`}>
-            {config.label}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-mono font-medium text-foreground">{symbol}</span>
-            {" · "}<span className="capitalize">{mode}</span>
-            {" · "}{dryRun ? "Dry Run" : "LIVE"}
+    <div
+      className={`flex items-center gap-4 border-b ${config.border} ${config.bg} px-4 py-2.5`}
+      data-testid="signal-decision"
+    >
+      <Icon className={`h-6 w-6 ${config.color} shrink-0`} />
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-black tracking-tighter uppercase ${config.color}`}>
+          {config.label}
+        </p>
+        <p className="text-3xs text-muted-foreground">
+          <span className="font-mono font-bold text-foreground">{symbol}</span>
+          {" · "}<span className="capitalize">{mode}</span>
+          {" · "}{dryRun ? "Dry Run" : "LIVE"}
+        </p>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-center">
+          <p className="text-3xs text-muted-foreground uppercase">Regime</p>
+          <p className={cn("text-2xs font-bold", config.color)}>
+            {result.regime ?? "\u2014"}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="rounded-md border border-border bg-background/50 px-2.5 py-1 text-center">
-            <p className="text-[10px] text-muted-foreground">Regime</p>
-            <Badge variant={getRegimeVariant(result.regime)} className="mt-0.5 text-[10px]">
-              {result.regime ?? "\u2014"}
-            </Badge>
-          </div>
-          <div className="rounded-md border border-border bg-background/50 px-2.5 py-1 text-center">
-            <p className="text-[10px] text-muted-foreground">Confirms</p>
-            <p className="font-mono font-bold text-sm text-foreground">
-              {result.confirmation_count ?? 0}
-            </p>
-          </div>
+        <div className="h-6 w-px bg-border/20" />
+        <div className="text-center">
+          <p className="text-3xs text-muted-foreground uppercase">Confirms</p>
+          <p className="font-mono font-bold text-sm text-foreground tabular-nums">
+            {result.confirmation_count ?? 0}/8
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Collapsible Section ─────────────────────────────────────────────────────
+// ─── Collapsible Section ──────────────────────────────────────────────────────
 
 function CollapsibleSection({
   title,
@@ -1368,80 +1503,32 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="mt-4" data-testid={title === "Order History" ? "orders" : undefined}>
-      <CardHeader className="flex flex-row items-center justify-between py-2.5 px-4">
+    <div
+      className="mt-4 bg-surface-low border border-border/10 rounded-sm overflow-hidden"
+      data-testid={title === "Order History" ? "orders" : undefined}
+    >
+      <div className="flex items-center justify-between h-9 px-4 border-b border-border/10">
         <button onClick={onToggle} className="flex items-center gap-2 text-left">
           {open ? (
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           ) : (
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           )}
-          <CardTitle className="text-xs">{title}</CardTitle>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">{title}</span>
           {count > 0 && (
-            <Badge variant="secondary" className="text-[10px] py-0">{count}</Badge>
+            <span className="text-3xs font-bold bg-surface-high text-muted-foreground px-1.5 py-0.5 rounded-sm">
+              {count}
+            </span>
           )}
         </button>
         {open && action}
-      </CardHeader>
-      {open && <CardContent className="pt-0 pb-3 px-4">{children}</CardContent>}
-    </Card>
-  );
-}
-
-// ─── Status Pill ─────────────────────────────────────────────────────────────
-
-function StatusPill({
-  label,
-  value,
-  active,
-  variant = "default",
-}: {
-  label: string;
-  value: string;
-  active: boolean;
-  variant?: "default" | "destructive" | "paper";
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-1.5 rounded-full border px-2.5 py-1",
-        variant === "destructive" && active
-          ? "border-red-500/30 bg-red-500/10"
-          : variant === "paper" && active
-            ? "border-blue-500/30 bg-blue-500/10"
-            : active
-              ? "border-border bg-muted/30"
-              : "border-border/50 bg-transparent"
-      )}
-    >
-      <span
-        className={cn(
-          "h-1.5 w-1.5 rounded-full",
-          variant === "destructive" && active
-            ? "bg-red-400 animate-pulse"
-            : variant === "paper" && active
-              ? "bg-blue-400"
-              : active
-                ? "bg-green-400"
-                : "bg-muted-foreground/30"
-        )}
-      />
-      <span className="text-muted-foreground">{label}:</span>
-      <span className={cn(
-        "font-medium",
-        variant === "destructive" && active
-          ? "text-red-400"
-          : variant === "paper" && active
-            ? "text-blue-400"
-            : "text-foreground"
-      )}>
-        {value}
-      </span>
+      </div>
+      {open && <div className="px-4 pb-3 pt-2">{children}</div>}
     </div>
   );
 }
 
-// ─── Signal Marker Builder ───────────────────────────────────────────────────
+// ─── Signal Marker Builder ────────────────────────────────────────────────────
 
 function buildSignalMarkers(
   result: SignalCheckResult,
@@ -1456,14 +1543,14 @@ function buildSignalMarkers(
     {
       time: lastCandle.time,
       position: sig === "buy" ? "belowBar" : "aboveBar",
-      color: sig === "buy" ? "#22c55e" : "#ef4444",
+      color: sig === "buy" ? "#44dfa3" : "#ff716a",
       shape: sig === "buy" ? "arrowUp" : "arrowDown",
       text: sig.toUpperCase(),
     },
   ];
 }
 
-// ─── Volume Formatter ────────────────────────────────────────────────────────
+// ─── Volume Formatter ─────────────────────────────────────────────────────────
 
 function formatVolume(vol: number): string {
   if (vol >= 1_000_000_000) return (vol / 1_000_000_000).toFixed(1) + "B";
@@ -1472,18 +1559,18 @@ function formatVolume(vol: number): string {
   return String(Math.round(vol));
 }
 
-// ─── Credential Badge ────────────────────────────────────────────────────────
+// ─── Credential Badge ─────────────────────────────────────────────────────────
 
 function CredentialBadge({ credential }: { credential: BrokerCredential }) {
   if (credential.provider === "alpaca") {
     return (
-      <Badge variant="alpaca" className="shrink-0 text-[10px]">
+      <Badge variant="alpaca" className="shrink-0 text-3xs">
         Alpaca
       </Badge>
     );
   }
   return (
-    <Badge variant="robinhood" className="shrink-0 text-[10px]">
+    <Badge variant="robinhood" className="shrink-0 text-3xs">
       Robinhood
     </Badge>
   );

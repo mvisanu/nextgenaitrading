@@ -5,9 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { artifactApi } from "@/lib/api";
@@ -61,7 +59,7 @@ export default function ArtifactDetailPage({ params }: PageProps) {
   return (
     <AppShell title="Artifact Detail">
       <div className="mb-4">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" asChild className="hover:bg-surface-high/50">
           <Link href="/artifacts">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Artifacts
@@ -77,17 +75,17 @@ export default function ArtifactDetailPage({ params }: PageProps) {
       ) : artifact ? (
         <div className="space-y-4">
           {/* Metadata */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center justify-between">
-                <span>
-                  {getModeLabel(artifact.mode_name)} — {artifact.variant_name}
-                </span>
-                <Badge variant="secondary">{artifact.pine_script_version}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex gap-4 text-muted-foreground text-xs">
+          <div className="bg-surface-low border border-border/10 rounded-sm">
+            <div className="px-4 py-3 border-b border-border/10 flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                {getModeLabel(artifact.mode_name)} — {artifact.variant_name}
+              </span>
+              <span className="bg-primary/15 text-primary text-3xs font-bold px-2 py-0.5 rounded-sm">
+                {artifact.pine_script_version}
+              </span>
+            </div>
+            <div className="px-4 py-3 space-y-2">
+              <div className="flex gap-4 text-muted-foreground text-2xs flex-wrap">
                 <span>Symbol: <span className="font-mono text-foreground">{artifact.symbol}</span></span>
                 <span>Created: {formatDateTime(artifact.created_at)}</span>
                 <span>
@@ -101,20 +99,20 @@ export default function ArtifactDetailPage({ params }: PageProps) {
                 </span>
               </div>
               {artifact.notes && (
-                <p className="text-xs text-muted-foreground italic">{artifact.notes}</p>
+                <p className="text-2xs text-muted-foreground italic">{artifact.notes}</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Pine Script code */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Pine Script v5</CardTitle>
+          <div className="bg-surface-low border border-border/10 rounded-sm">
+            <div className="px-4 py-3 border-b border-border/10 flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Pine Script v5</span>
               <div className="flex gap-2">
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
-                  className="h-7 text-xs gap-1.5"
+                  className="h-7 text-xs gap-1.5 bg-surface-high hover:bg-surface-highest"
                   onClick={handleCopy}
                   disabled={!pineScript?.code}
                   data-testid="copy-button"
@@ -124,9 +122,9 @@ export default function ArtifactDetailPage({ params }: PageProps) {
                   Copy
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
-                  className="h-7 text-xs gap-1.5"
+                  className="h-7 text-xs gap-1.5 bg-surface-high hover:bg-surface-highest"
                   onClick={handleDownload}
                   disabled={!pineScript?.code}
                 >
@@ -134,14 +132,14 @@ export default function ArtifactDetailPage({ params }: PageProps) {
                   .pine
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="p-4">
               {codeLoading ? (
                 <Skeleton className="h-64 w-full" />
               ) : pineScript?.code ? (
-                <ScrollArea className="max-h-[600px] rounded-md border border-border bg-background">
+                <ScrollArea className="max-h-[600px] rounded-sm border border-border/10 bg-surface-lowest">
                   <pre
-                    className="p-4 text-xs font-mono leading-relaxed whitespace-pre overflow-x-auto"
+                    className="p-4 text-xs font-mono leading-relaxed whitespace-pre overflow-x-auto text-foreground/80"
                     data-testid="pine-script"
                   >
                     {pineScript.code}
@@ -150,8 +148,8 @@ export default function ArtifactDetailPage({ params }: PageProps) {
               ) : (
                 <p className="text-sm text-muted-foreground">No Pine Script code available.</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Artifact not found.</p>

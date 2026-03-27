@@ -132,10 +132,14 @@ test.describe("Opportunities API — GET /api/opportunities", () => {
     }
   });
 
-  test("OPP-08: returns 401 without authentication", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/opportunities`);
-    expect(res.status()).toBe(401);
+  test("OPP-08: returns 401 without authentication", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/opportunities`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("OPP-09: no banned language in any response field", async ({ request }) => {

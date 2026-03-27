@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sovereign Terminal - Auto-Buy Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        /* Custom scrollbar for high-density feel */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3c4a42; border-radius: 0px; }
+        ::-webkit-scrollbar-thumb:hover { background: #67fcbe; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary-fixed-variant": "#683d00",
+                        "primary-fixed-dim": "#44dfa3",
+                        "surface-container-high": "#252a31",
+                        "background": "#0f141a",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#005237",
+                        "surface-container-low": "#171c22",
+                        "surface-container": "#1b2026",
+                        "primary-fixed": "#67fcbe",
+                        "surface": "#0f141a",
+                        "outline": "#85948b",
+                        "on-secondary-fixed-variant": "#930015",
+                        "on-primary-fixed": "#002114",
+                        "surface-container-highest": "#30353c",
+                        "secondary-container": "#a00118",
+                        "on-background": "#dee3eb",
+                        "on-tertiary-container": "#784700",
+                        "surface-variant": "#30353c",
+                        "secondary-fixed-dim": "#ffb3ae",
+                        "error": "#ffb4ab",
+                        "inverse-surface": "#dee3eb",
+                        "on-surface": "#dee3eb",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#2c1700",
+                        "tertiary-fixed-dim": "#ffb86a",
+                        "on-secondary": "#68000c",
+                        "surface-dim": "#0f141a",
+                        "surface-bright": "#353a40",
+                        "tertiary-fixed": "#ffdcbc",
+                        "surface-container-lowest": "#0a0f14",
+                        "on-surface-variant": "#bbcac0",
+                        "on-secondary-container": "#ffa8a3",
+                        "primary": "#67fcbe",
+                        "outline-variant": "#3c4a42",
+                        "secondary": "#ffb3ae",
+                        "primary-container": "#44dfa3",
+                        "inverse-primary": "#006c4a",
+                        "inverse-on-surface": "#2c3137",
+                        "on-error": "#690005",
+                        "on-secondary-fixed": "#410004",
+                        "secondary-fixed": "#ffdad7",
+                        "on-primary": "#003825",
+                        "tertiary-container": "#ffb869",
+                        "on-primary-container": "#005f40",
+                        "tertiary": "#ffdcbb",
+                        "surface-tint": "#44dfa3",
+                        "on-tertiary": "#492900"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary selection:text-on-primary">
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar (from JSON) -->
+<aside class="hidden md:flex flex-col h-full py-4 bg-slate-100 dark:bg-[#0D0F14] h-screen w-64 border-r border-slate-200/50 dark:border-white/5">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-xl" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<div>
+<h1 class="text-slate-900 dark:text-white font-black uppercase tracking-tighter text-lg">Sovereign</h1>
+<p class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold text-primary">Institutional Tier</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Terminal Active -->
+<a class="flex items-center gap-3 px-6 py-3 bg-white dark:bg-[#161920] text-[#44DFA3] border-l-4 border-[#44DFA3] ml-0 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl">terminal</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Terminal</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl">list_alt</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Order Book</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl">account_balance_wallet</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Positions</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl">query_stats</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl">history_edu</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Ledger</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined text-xl">lock</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Vault</span>
+</a>
+</nav>
+<div class="px-6 py-4 space-y-4">
+<button class="w-full bg-primary text-on-primary font-bold text-[11px] uppercase tracking-widest py-3 shadow-lg shadow-primary/20 active:opacity-70 transition-colors">
+                    Execute Order
+                </button>
+<div class="pt-4 border-t border-slate-200/50 dark:border-white/5 space-y-2">
+<div class="flex items-center gap-2 text-slate-500 hover:text-white transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-sm">contact_support</span>
+<span class="font-['Inter'] text-[10px] uppercase tracking-widest font-semibold">Support</span>
+</div>
+<div class="flex items-center gap-2 text-slate-500 hover:text-white transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-sm">cloud_done</span>
+<span class="font-['Inter'] text-[10px] uppercase tracking-widest font-semibold">API Status</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-hidden bg-surface">
+<!-- TopNavBar (from JSON) -->
+<header class="flex items-center justify-between px-4 w-full sticky top-0 z-50 w-full h-12 border-b border-slate-200/50 dark:border-white/5 bg-slate-50 dark:bg-[#0A0C10] shadow-sm dark:shadow-none font-['Inter'] tabular-nums text-sm font-medium tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold tracking-tighter text-slate-900 dark:text-[#44DFA3]">Sovereign Terminal</span>
+<nav class="hidden lg:flex items-center h-full">
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 hover:bg-slate-200/50 dark:hover:bg-white/5 transition-colors" href="#">Markets</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 hover:bg-slate-200/50 dark:hover:bg-white/5 transition-colors" href="#">Liquidity</a>
+<a class="text-slate-900 dark:text-[#44DFA3] border-b-2 border-[#44DFA3] h-full flex items-center px-3" href="#">Risk</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 hover:bg-slate-200/50 dark:hover:bg-white/5 transition-colors" href="#">Compliance</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 cursor-pointer p-1 hover:bg-white/5">search</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 cursor-pointer p-1 hover:bg-white/5">dark_mode</span>
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 cursor-pointer p-1 hover:bg-white/5">notifications</span>
+<span class="material-symbols-outlined text-slate-500 dark:text-slate-400 cursor-pointer p-1 hover:bg-white/5">settings</span>
+</div>
+<div class="w-7 h-7 bg-slate-200 dark:bg-white/10 overflow-hidden">
+<img alt="Institutional User Avatar" class="w-full h-full object-cover" data-alt="Close-up portrait of a professional trader in a dark suit with soft studio lighting and digital display reflection on glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjmd2YEkBs_ZufXDnr0nVrUP8OIHA9nQup_4kayONYG8HrH8dYRddkdFHCrUjr4KyKNhf4o7cvxzXQXDy4oFz8D5A60id13I-LLyEFX4R0gT9_4h4F0LOWUyPnajhjcJ4Xs71-xRJgbBZIzKxoL_lsLWQz56VsiKtBjlQT6g8mPfhvJsRfdTS0JVGQXa7nZEfVR3pqlPMkCxB64xOp0GHK1p-I_wqpBSCSYJSdO6xOJvgayYp1Wd3qUw1Q4NaZ0TQaXQuP-1pPw_U6"/>
+</div>
+</div>
+</header>
+<!-- Workspace -->
+<div class="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
+<!-- Page Title -->
+<div class="flex items-center justify-between mb-2">
+<div>
+<h2 class="text-xl font-bold tracking-tight text-on-surface">Auto-Buy Configuration</h2>
+<p class="text-[11px] uppercase tracking-[0.2em] text-on-surface-variant font-semibold">Engine Instance: ALGO_UNIT_04</p>
+</div>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-surface-container-highest text-primary text-[10px] font-bold border border-primary/20">STATUS: CONFIGURED</span>
+<span class="px-2 py-1 bg-error-container text-error text-[10px] font-bold border border-error/20">MODE: TESTNET</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-4">
+<!-- Section 1: Safety & Operational Mode -->
+<section class="col-span-12 lg:col-span-4 bg-surface-container-low p-4 flex flex-col gap-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-sm">security</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Safety &amp; Operational Mode</h3>
+</div>
+<div class="bg-error-container/10 border-l-4 border-error p-3">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-error text-lg">warning</span>
+<div>
+<p class="text-[11px] font-bold text-error uppercase leading-tight">Live Execution Warning</p>
+<p class="text-[10px] text-on-surface-variant leading-relaxed mt-1">Activating the engine will bypass manual approvals for orders up to $250k. Ensure risk parameters are validated.</p>
+</div>
+</div>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex items-center justify-between p-3 bg-surface-container-lowest">
+<span class="text-[11px] font-bold text-on-surface uppercase tracking-wider">Toggle Engine</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface-container-lowest">
+<span class="text-[11px] font-bold text-on-surface uppercase tracking-wider">Dry Run Mode</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Section 2: Strategy Selection -->
+<section class="col-span-12 lg:col-span-8 bg-surface-container-low p-4">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-sm">psychology</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Strategy Selection</h3>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+<!-- Conservative -->
+<button class="flex flex-col text-left p-3 bg-surface-container-lowest border-l-2 border-transparent hover:border-primary transition-all group">
+<span class="text-[10px] font-black text-on-surface-variant group-hover:text-primary transition-colors">01</span>
+<span class="text-[11px] font-bold text-on-surface uppercase mt-2">Conservative</span>
+<p class="text-[9px] text-on-surface-variant mt-1 leading-tight uppercase">Low volatility filter, 5% max draw</p>
+</button>
+<!-- Aggressive -->
+<button class="flex flex-col text-left p-3 bg-surface-container-lowest border-l-2 border-transparent hover:border-primary transition-all group">
+<span class="text-[10px] font-black text-on-surface-variant group-hover:text-primary transition-colors">02</span>
+<span class="text-[11px] font-bold text-on-surface uppercase mt-2">Aggressive</span>
+<p class="text-[9px] text-on-surface-variant mt-1 leading-tight uppercase">High slippage tolerance, momentum play</p>
+</button>
+<!-- AI Pick -->
+<button class="flex flex-col text-left p-3 bg-primary/10 border-l-2 border-primary transition-all group">
+<span class="text-[10px] font-black text-primary">03</span>
+<span class="text-[11px] font-bold text-primary uppercase mt-2 flex items-center gap-1">AI Pick <span class="material-symbols-outlined text-[10px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span></span>
+<p class="text-[9px] text-primary/70 mt-1 leading-tight uppercase">Neural net optimization for current market</p>
+</button>
+<!-- Buy Low Sell High -->
+<button class="flex flex-col text-left p-3 bg-surface-container-lowest border-l-2 border-transparent hover:border-primary transition-all group">
+<span class="text-[10px] font-black text-on-surface-variant group-hover:text-primary transition-colors">04</span>
+<span class="text-[11px] font-bold text-on-surface uppercase mt-2">Mean Reversion</span>
+<p class="text-[9px] text-on-surface-variant mt-1 leading-tight uppercase">Standard buy low, sell high logic</p>
+</button>
+</div>
+</section>
+<!-- Section 3: Define Targets -->
+<section class="col-span-12 lg:col-span-7 bg-surface-container-low p-4">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-sm">target</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Define Targets</h3>
+</div>
+<div class="grid grid-cols-2 gap-x-6 gap-y-4">
+<div class="col-span-2 sm:col-span-1">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase mb-1 block">Symbol search</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border-none text-xs text-on-surface placeholder:text-outline p-2 tabular-nums" placeholder="BTC/USDT" type="text"/>
+<span class="absolute right-2 top-2 material-symbols-outlined text-xs text-outline">search</span>
+</div>
+</div>
+<div class="col-span-2 sm:col-span-1">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase mb-1 block">Max Order Size</label>
+<input class="w-full bg-surface-container-lowest border-none text-xs text-on-surface placeholder:text-outline p-2 tabular-nums" placeholder="10.00 BTC" type="text"/>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase mb-1 block">Target Buy Price</label>
+<input class="w-full bg-surface-container-lowest border-none text-xs text-primary placeholder:text-outline p-2 tabular-nums" placeholder="28,450.00" type="text"/>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase mb-1 block">Target Sell Price</label>
+<input class="w-full bg-surface-container-lowest border-none text-xs text-secondary placeholder:text-outline p-2 tabular-nums" placeholder="29,120.00" type="text"/>
+</div>
+</div>
+</section>
+<!-- Section 4: Execution Timeframe -->
+<section class="col-span-12 lg:col-span-5 bg-surface-container-low p-4">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary text-sm">schedule</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Execution Timeframe</h3>
+</div>
+<div class="space-y-3">
+<div class="flex items-center gap-2">
+<div class="flex-1">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase mb-1 block">Start Date</label>
+<input class="w-full bg-surface-container-lowest border-none text-xs text-on-surface p-2" type="date"/>
+</div>
+<div class="flex-1">
+<label class="text-[10px] font-bold text-on-surface-variant uppercase mb-1 block">End Date</label>
+<input class="w-full bg-surface-container-lowest border-none text-xs text-on-surface p-2" type="date"/>
+</div>
+</div>
+<div>
+<label class="text-[10px] font-bold text-on-surface-variant uppercase mb-1 block">Check Interval</label>
+<div class="flex items-center gap-2">
+<input class="flex-1 accent-primary h-1" type="range"/>
+<span class="text-[11px] font-bold text-on-surface tabular-nums min-w-[3rem] text-right">350ms</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 5: Real-time Decision Log -->
+<section class="col-span-12 bg-surface-container-low p-4">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">reorder</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Real-time Decision Log</h3>
+</div>
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1 text-[9px] font-bold text-primary animate-pulse">
+<span class="w-1.5 h-1.5 bg-primary rounded-full"></span> LIVE STREAMING
+                                </span>
+<button class="text-[9px] font-bold uppercase text-outline hover:text-on-surface">Clear Buffer</button>
+</div>
+</div>
+<div class="bg-surface-container-lowest h-48 overflow-y-auto font-mono text-[10px] p-3 space-y-1">
+<div class="flex gap-4 text-on-surface-variant/60">
+<span class="tabular-nums">[12:45:01.034]</span>
+<span class="text-primary uppercase font-bold">[SYSTEM]</span>
+<span>Engine status: Operational. Handshake with API-3 successful.</span>
+</div>
+<div class="flex gap-4 text-on-surface-variant/60">
+<span class="tabular-nums">[12:45:01.089]</span>
+<span class="text-primary uppercase font-bold">[ANALYTICS]</span>
+<span>Volatility spike detected in BTC/USDT pair (+0.45% in 15s).</span>
+</div>
+<div class="flex gap-4 text-on-surface-variant/60">
+<span class="tabular-nums">[12:45:01.350]</span>
+<span class="text-[#ffb86a] uppercase font-bold">[DECISION]</span>
+<span class="text-on-surface">Condition "Mean Reversion" triggered. Evaluating entry at 28,452.12.</span>
+</div>
+<div class="flex gap-4 text-on-surface-variant/60">
+<span class="tabular-nums">[12:45:01.700]</span>
+<span class="text-error uppercase font-bold">[REJECTED]</span>
+<span>Entry aborted. Order size 10.00 BTC exceeds liquidity depth at tier-1 price.</span>
+</div>
+<div class="flex gap-4 text-on-surface-variant/60">
+<span class="tabular-nums">[12:45:02.050]</span>
+<span class="text-primary uppercase font-bold">[SYSTEM]</span>
+<span>Listening for next trigger... Heartbeat interval: 350ms.</span>
+</div>
+<div class="flex gap-4 text-on-surface-variant/60">
+<span class="tabular-nums">[12:45:02.400]</span>
+<span class="text-on-surface-variant uppercase font-bold">[IDLE]</span>
+<span>Polling Exchange: BINANCE, OKX, COINBASE_PRO.</span>
+</div>
+<div class="flex gap-4 text-on-surface-variant/60">
+<span class="tabular-nums">[12:45:02.750]</span>
+<span class="text-primary uppercase font-bold">[ANALYTICS]</span>
+<span>Order Book Imbalance: +0.12 (Bias: Neutral).</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Actions -->
+<div class="flex items-center justify-end gap-3 pt-4">
+<button class="px-6 py-2 border border-outline-variant text-[11px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container-high transition-colors">
+                        Reset Engine
+                    </button>
+<button class="px-8 py-2 bg-primary text-on-primary text-[11px] font-bold uppercase tracking-widest shadow-lg shadow-primary/10 active:opacity-80">
+                        Commit Configuration
+                    </button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

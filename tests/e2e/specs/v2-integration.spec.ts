@@ -347,14 +347,8 @@ test.describe("V2 Integration — auto-buy safety defaults", () => {
     request,
   }) => {
     const uniqueEmail = `v2-safety-${Date.now()}@nextgenstock.io`;
-    const password = "TestPass1234!";
 
-    await request.post(`${API_URL}/auth/register`, {
-      data: { email: uniqueEmail, password },
-    });
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: uniqueEmail, password },
-    });
+    await request.post(`${API_URL}/test/token`, { data: { email: uniqueEmail } });
 
     const { ok, body } = await getAutoBuySettings(request);
     expect(ok).toBe(true);

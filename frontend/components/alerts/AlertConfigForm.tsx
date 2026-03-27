@@ -3,15 +3,7 @@
 /**
  * AlertConfigForm — form to create a new price alert rule.
  *
- * Fields:
- *   - ticker (text)
- *   - alert_type (Select, 6 options)
- *   - proximity_pct (number, shown only when alert_type == "near_buy_zone")
- *   - cooldown_minutes (number)
- *   - market_hours_only (Switch)
- *   - enabled (Switch)
- *
- * Submits POST /api/alerts via the alertsApi.create function.
+ * Sovereign Terminal design system applied.
  */
 
 import { useForm, Controller } from "react-hook-form";
@@ -145,32 +137,36 @@ export function AlertConfigForm({ onSuccess }: AlertConfigFormProps) {
     >
       {/* Ticker */}
       <div className="space-y-1.5">
-        <Label htmlFor="alert-ticker">Ticker</Label>
+        <Label htmlFor="alert-ticker" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Ticker
+        </Label>
         <Input
           id="alert-ticker"
           placeholder="AAPL"
           {...register("ticker")}
-          className="uppercase"
+          className="uppercase bg-surface-lowest border-none text-xs p-2.5 focus:ring-1 focus:ring-primary font-mono"
         />
         {errors.ticker && (
-          <p className="text-xs text-destructive">{errors.ticker.message}</p>
+          <p className="text-2xs text-destructive">{errors.ticker.message}</p>
         )}
       </div>
 
       {/* Alert type */}
       <div className="space-y-1.5">
-        <Label htmlFor="alert-type">Alert type</Label>
+        <Label htmlFor="alert-type" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Alert type
+        </Label>
         <Controller
           name="alert_type"
           control={control}
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger id="alert-type">
+              <SelectTrigger id="alert-type" className="bg-surface-lowest border-none text-xs focus:ring-1 focus:ring-primary">
                 <SelectValue placeholder="Select alert type..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-surface-low border border-border/10">
                 {(Object.keys(ALERT_TYPE_LABELS) as AlertType[]).map((type) => (
-                  <SelectItem key={type} value={type}>
+                  <SelectItem key={type} value={type} className="text-xs">
                     {ALERT_TYPE_LABELS[type]}
                   </SelectItem>
                 ))}
@@ -179,7 +175,7 @@ export function AlertConfigForm({ onSuccess }: AlertConfigFormProps) {
           )}
         />
         {errors.alert_type && (
-          <p className="text-xs text-destructive">
+          <p className="text-2xs text-destructive">
             {errors.alert_type.message}
           </p>
         )}
@@ -188,7 +184,7 @@ export function AlertConfigForm({ onSuccess }: AlertConfigFormProps) {
       {/* Proximity threshold — only shown for near_buy_zone type */}
       {alertType === "near_buy_zone" && (
         <div className="space-y-1.5">
-          <Label htmlFor="proximity-pct">
+          <Label htmlFor="proximity-pct" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
             Proximity threshold (% from zone low)
           </Label>
           <Input
@@ -199,9 +195,10 @@ export function AlertConfigForm({ onSuccess }: AlertConfigFormProps) {
             max="20"
             placeholder="2.0"
             {...register("proximity_pct")}
+            className="bg-surface-lowest border-none text-xs p-2.5 focus:ring-1 focus:ring-primary"
           />
           {errors.proximity_pct && (
-            <p className="text-xs text-destructive">
+            <p className="text-2xs text-destructive">
               {errors.proximity_pct.message}
             </p>
           )}
@@ -210,23 +207,26 @@ export function AlertConfigForm({ onSuccess }: AlertConfigFormProps) {
 
       {/* Cooldown */}
       <div className="space-y-1.5">
-        <Label htmlFor="cooldown">Cooldown (minutes)</Label>
+        <Label htmlFor="cooldown" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Cooldown (minutes)
+        </Label>
         <Input
           id="cooldown"
           type="number"
           min="1"
           max="10080"
           {...register("cooldown_minutes")}
+          className="bg-surface-lowest border-none text-xs p-2.5 focus:ring-1 focus:ring-primary tabular-nums"
         />
         {errors.cooldown_minutes && (
-          <p className="text-xs text-destructive">
+          <p className="text-2xs text-destructive">
             {errors.cooldown_minutes.message}
           </p>
         )}
       </div>
 
       {/* Market hours only */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 py-1">
         <Controller
           name="market_hours_only"
           control={control}
@@ -238,11 +238,16 @@ export function AlertConfigForm({ onSuccess }: AlertConfigFormProps) {
             />
           )}
         />
-        <Label htmlFor="market-hours">Market hours only (9:30am–4pm ET)</Label>
+        <div>
+          <Label htmlFor="market-hours" className="text-xs font-bold text-foreground cursor-pointer">
+            Market hours only
+          </Label>
+          <p className="text-2xs text-muted-foreground mt-0.5">9:30am–4pm ET, weekdays</p>
+        </div>
       </div>
 
       {/* Enabled */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 py-1">
         <Controller
           name="enabled"
           control={control}
@@ -254,10 +259,16 @@ export function AlertConfigForm({ onSuccess }: AlertConfigFormProps) {
             />
           )}
         />
-        <Label htmlFor="alert-enabled">Enable alert immediately</Label>
+        <Label htmlFor="alert-enabled" className="text-xs font-bold text-foreground cursor-pointer">
+          Enable alert immediately
+        </Label>
       </div>
 
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button
+        type="submit"
+        className="w-full bg-primary text-primary-foreground font-bold uppercase tracking-widest text-xs"
+        disabled={isPending}
+      >
         {isPending ? "Creating..." : "Create alert"}
       </Button>
     </form>

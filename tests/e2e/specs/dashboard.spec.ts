@@ -57,9 +57,6 @@ test.describe("Dashboard — /dashboard", () => {
   }) => {
     // Create a backtest run so the table has data
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
 
     // Run a fast conservative backtest
     await runBacktest(request, { symbol: "AAPL", timeframe: "1d", mode: "conservative" });

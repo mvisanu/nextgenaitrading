@@ -112,12 +112,14 @@ test.describe("Buy Zone API — GET /api/stocks/{ticker}/buy-zone", () => {
     }
   });
 
-  test("BZ-06: returns 401 when unauthenticated", async ({ request }) => {
-    // Log out first
-    await request.post(`${API_URL}/auth/logout`);
-
-    const res = await request.get(`${API_URL}/stocks/${STOCK_SYMBOL}/buy-zone`);
-    expect(res.status()).toBe(401);
+  test("BZ-06: returns 401 when unauthenticated", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/stocks/${STOCK_SYMBOL}/buy-zone`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("BZ-07: positive_outcome_rate_30d is within 0.0–1.0", async ({ request }) => {
@@ -183,13 +185,16 @@ test.describe("Buy Zone API — POST /api/stocks/{ticker}/recalculate-buy-zone",
     }
   });
 
-  test("BZ-13: recalculate returns 401 when unauthenticated", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-
-    const res = await request.post(
-      `${API_URL}/stocks/${STOCK_SYMBOL}/recalculate-buy-zone`
-    );
-    expect(res.status()).toBe(401);
+  test("BZ-13: recalculate returns 401 when unauthenticated", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(
+        `${API_URL}/stocks/${STOCK_SYMBOL}/recalculate-buy-zone`
+      );
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("BZ-14: recalculate returns a fresh snapshot with a recent timestamp", async ({

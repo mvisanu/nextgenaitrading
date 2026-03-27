@@ -3,60 +3,103 @@
 @tailwind utilities;
 
 @layer base {
+  /* ═══ Sovereign Terminal — Dark Theme ("Deep Titanium") ═══ */
   :root {
-    --background: 222 31% 10%;      /* #131722 */
-    --foreground: 223 8% 82%;       /* #d1d4dc */
+    --background: 216 33% 8%;         /* #0b0e13 - deepest base */
+    --foreground: 216 20% 88%;        /* #dee3eb - on-surface */
 
-    --card: 222 22% 15%;            /* #1e222d */
-    --card-foreground: 223 8% 82%;  /* #d1d4dc */
+    --card: 216 18% 10%;              /* #0f141a - surface */
+    --card-foreground: 216 20% 88%;
 
-    --popover: 222 22% 15%;         /* #1e222d */
-    --popover-foreground: 223 8% 82%;
+    --popover: 216 15% 13%;           /* #171c22 - surface-container-low */
+    --popover-foreground: 216 20% 88%;
 
-    --primary: 224 100% 58%;        /* #2962ff - TradingView blue */
-    --primary-foreground: 0 0% 100%;
+    --primary: 156 95% 63%;           /* #44DFA3 - terminal green */
+    --primary-foreground: 156 100% 10%; /* #003825 - on-primary */
 
-    --secondary: 222 16% 19%;       /* #2a2e39 */
-    --secondary-foreground: 223 8% 82%;
+    --secondary: 216 12% 15%;         /* #1b2026 - surface-container */
+    --secondary-foreground: 216 20% 88%;
 
-    --muted: 222 16% 19%;           /* #2a2e39 */
-    --muted-foreground: 223 6% 47%; /* #787b86 */
+    --muted: 216 12% 15%;             /* #1b2026 */
+    --muted-foreground: 160 7% 55%;   /* #85948b - outline */
 
-    --accent: 222 16% 19%;
-    --accent-foreground: 223 8% 82%;
+    --accent: 216 10% 17%;            /* #252a31 - surface-container-high */
+    --accent-foreground: 216 20% 88%;
 
-    --destructive: 1 83% 63%;       /* #ef5350 */
+    --destructive: 5 100% 70%;        /* #ff716a - ruby/sell */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 11% 24%;          /* #363a45 */
-    --input: 222 16% 19%;           /* #2a2e39 */
-    --ring: 224 100% 58%;           /* #2962ff */
+    --border: 160 10% 25%;            /* #3c4a42 - outline-variant, very subtle */
+    --input: 216 15% 8%;              /* #0a0f14 - surface-container-lowest */
+    --ring: 156 95% 63%;              /* #44DFA3 */
 
-    --radius: 0.25rem;              /* Tight radius like TradingView */
+    --radius: 0.125rem;               /* Sharp corners — 2px default */
+
+    /* Extended Sovereign tokens */
+    --surface-lowest: 216 33% 5%;     /* #0a0f14 */
+    --surface-low: 216 18% 10%;       /* #0f141a */
+    --surface-mid: 216 12% 13%;       /* #171c22 */
+    --surface-container: 216 12% 15%; /* #1b2026 */
+    --surface-high: 216 10% 17%;      /* #252a31 */
+    --surface-highest: 216 8% 21%;    /* #30353c */
+    --surface-bright: 216 6% 23%;     /* #353a40 */
+
+    --emerald: 156 95% 63%;           /* #44DFA3 - buy/gain */
+    --emerald-bright: 156 97% 69%;    /* #67FCBE - primary-fixed */
+    --ruby: 5 100% 70%;               /* #ff716a - sell/loss */
+    --ruby-dim: 0 100% 85%;           /* #ffb3ae - secondary */
+
+    --chart-bull: 156 95% 63%;        /* #44DFA3 */
+    --chart-bear: 5 100% 70%;         /* #ff716a */
   }
 
-  /* Light mode overrides — applied via .light class on <html> */
+  /* ═══ Sovereign Terminal — Light Theme ("Clean Slate") ═══ */
   .light {
-    --background: 0 0% 97%;           /* #f8f8f8 - light gray */
-    --foreground: 222 31% 10%;        /* dark text */
-    --card: 0 0% 100%;                /* white */
-    --card-foreground: 222 31% 10%;
+    --background: 220 14% 96%;        /* #f0f2f5 */
+    --foreground: 216 33% 12%;        /* #141a22 */
+
+    --card: 0 0% 100%;                /* #ffffff */
+    --card-foreground: 216 33% 12%;
+
     --popover: 0 0% 100%;
-    --popover-foreground: 222 31% 10%;
-    --primary: 224 100% 58%;          /* keep TradingView blue */
+    --popover-foreground: 216 33% 12%;
+
+    --primary: 156 70% 38%;           /* #1d9e6f - darker green for light bg */
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 13% 91%;         /* light toolbar */
-    --secondary-foreground: 222 31% 10%;
-    --muted: 220 13% 91%;
-    --muted-foreground: 222 6% 47%;
-    --accent: 220 13% 91%;
-    --accent-foreground: 222 31% 10%;
-    --destructive: 1 83% 63%;
+
+    --secondary: 220 14% 93%;         /* #e8eaee */
+    --secondary-foreground: 216 33% 12%;
+
+    --muted: 220 14% 93%;
+    --muted-foreground: 216 8% 45%;   /* #697076 */
+
+    --accent: 220 14% 90%;
+    --accent-foreground: 216 33% 12%;
+
+    --destructive: 5 85% 55%;         /* #e6453d */
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 87%;            /* light borders */
-    --input: 220 13% 91%;
-    --ring: 224 100% 58%;
-    --radius: 0.25rem;
+
+    --border: 220 13% 87%;            /* #d8dbe0 */
+    --input: 220 14% 93%;
+    --ring: 156 70% 38%;
+
+    --radius: 0.125rem;
+
+    --surface-lowest: 0 0% 100%;
+    --surface-low: 220 14% 98%;
+    --surface-mid: 220 14% 96%;
+    --surface-container: 220 14% 93%;
+    --surface-high: 220 14% 90%;
+    --surface-highest: 220 14% 87%;
+    --surface-bright: 220 14% 84%;
+
+    --emerald: 156 70% 38%;
+    --emerald-bright: 156 70% 45%;
+    --ruby: 5 85% 55%;
+    --ruby-dim: 5 85% 70%;
+
+    --chart-bull: 156 70% 38%;
+    --chart-bear: 5 85% 55%;
   }
 }
 
@@ -66,14 +109,16 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
-    font-size: 14px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
     font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   @media (min-width: 640px) {
     body {
-      font-size: 15px;
+      font-size: 14px;
     }
   }
 
@@ -85,12 +130,58 @@
   }
 }
 
+/* ═══ Sovereign Utility Classes ═══ */
+
+/* Tabular figures for financial data alignment */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Section label style — uppercase tracking */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Surface tonal layers */
+.surface-lowest { background: hsl(var(--surface-lowest)); }
+.surface-low { background: hsl(var(--surface-low)); }
+.surface-mid { background: hsl(var(--surface-mid)); }
+.surface-container { background: hsl(var(--surface-container)); }
+.surface-high { background: hsl(var(--surface-high)); }
+.surface-highest { background: hsl(var(--surface-highest)); }
+
+/* Glassmorphism for floating elements */
+.glass {
+  background: hsl(var(--surface-highest) / 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Ghost border — subtle separator */
+.ghost-border {
+  border-color: hsl(var(--border) / 0.15);
+}
+
+/* Primary gradient CTA */
+.cta-gradient {
+  background: linear-gradient(135deg, hsl(var(--emerald)), hsl(var(--primary)));
+}
+
+/* Market status indicators */
+.status-pulse {
+  box-shadow: 0 0 8px hsl(var(--emerald));
+}
+
 /* Safe area padding for mobile bottom nav (notch/gesture bar) */
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Scrollbar styling — thin TradingView style */
+/* Scrollbar styling — thin sovereign style */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -104,4 +195,13 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+
+/* Marquee animation for ticker strip */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 60s linear infinite;
 }

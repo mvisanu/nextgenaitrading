@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -50,6 +50,12 @@ class AutoBuySettings(Base):
     allow_near_earnings: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # List of broker credential IDs allowed for auto-buy execution
     allowed_account_ids_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # Execution scheduling fields
+    execution_timeframe: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, default=None)
+    start_date: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True, default=None)
+    end_date: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True, default=None)
+    target_buy_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    target_sell_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

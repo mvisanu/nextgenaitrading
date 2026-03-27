@@ -39,9 +39,6 @@ import { ROBINHOOD_CRED } from "../fixtures/test-data";
 test.describe("Strategy API — Conservative & Aggressive (via backtests/run)", () => {
   test.beforeEach(async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
   });
 
   test("STRAT-01: conservative backtest returns StrategyRunOut with correct fields", async ({
@@ -124,12 +121,16 @@ test.describe("Strategy API — Conservative & Aggressive (via backtests/run)", 
     expect(body.length).toBeGreaterThan(0);
   });
 
-  test("STRAT-07: returns 401 without authentication", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.post(`${API_URL}/backtests/run`, {
-      data: { symbol: STOCK_SYMBOL, timeframe: "1d", mode: "conservative" },
-    });
-    expect(res.status()).toBe(401);
+  test("STRAT-07: returns 401 without authentication", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(`${API_URL}/backtests/run`, {
+        data: { symbol: STOCK_SYMBOL, timeframe: "1d", mode: "conservative" },
+      });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("STRAT-08: invalid timeframe returns 422", async ({ request }) => {
@@ -174,9 +175,6 @@ test.describe("Strategy API — Conservative & Aggressive (via backtests/run)", 
 test.describe("Strategy API — AI Pick", () => {
   test.beforeEach(async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
   });
 
   test("STRAT-10: AI Pick run returns StrategyRunOut with selected_variant_name", async ({
@@ -215,13 +213,17 @@ test.describe("Strategy API — AI Pick", () => {
   }, 180_000);
 
   test("STRAT-12: AI Pick run returns 401 without authentication", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.post(`${API_URL}/strategies/ai-pick/run`, {
-      data: { symbol: CRYPTO_SYMBOL, timeframe: "1d", mode: "ai-pick" },
-    });
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(`${API_URL}/strategies/ai-pick/run`, {
+        data: { symbol: CRYPTO_SYMBOL, timeframe: "1d", mode: "ai-pick" },
+      });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 });
 
@@ -231,9 +233,6 @@ test.describe("Strategy API — AI Pick", () => {
 test.describe("Strategy API — Buy Low / Sell High", () => {
   test.beforeEach(async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
   });
 
   test("STRAT-13: BLSH run returns StrategyRunOut with selected_variant_name", async ({

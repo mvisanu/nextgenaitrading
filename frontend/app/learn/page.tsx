@@ -366,26 +366,30 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <Card className={cn("transition-all", open && "border-primary/30")}>
+    <div className={cn("bg-surface-low border rounded-sm transition-all", open ? "border-primary/20" : "border-border/10")}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-3 w-full p-4 sm:px-6 text-left hover:bg-secondary/50 transition-colors"
+        className="flex items-center gap-3 w-full p-4 sm:px-5 text-left hover:bg-surface-high/30 transition-colors"
       >
-        <Icon className={cn("h-5 w-5 shrink-0", open ? "text-primary" : "text-muted-foreground")} />
-        <span className="flex-1 text-sm sm:text-base font-semibold">{title}</span>
-        {badge && <Badge variant="secondary" className="text-xs">{badge}</Badge>}
+        <Icon className={cn("h-4 w-4 shrink-0", open ? "text-primary" : "text-muted-foreground")} />
+        <span className="flex-1 text-sm font-bold text-foreground">{title}</span>
+        {badge && (
+          <span className="bg-primary/15 text-primary text-3xs font-bold px-2 py-0.5 rounded-sm">
+            {badge}
+          </span>
+        )}
         {open ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
         )}
       </button>
       {open && (
-        <CardContent className="pt-0 px-4 sm:px-6 pb-5 space-y-4 border-t border-border">
+        <div className="pt-0 px-4 sm:px-5 pb-5 space-y-4 border-t border-border/10">
           {children}
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -401,14 +405,14 @@ function ConceptCard({
   variant?: "default" | "tip" | "warning" | "rule";
 }) {
   const styles = {
-    default: "border-border bg-card",
-    tip: "border-green-500/30 bg-green-500/5",
-    warning: "border-red-500/30 bg-red-500/5",
-    rule: "border-amber-500/30 bg-amber-500/5",
+    default: "border-border/10 bg-surface-mid",
+    tip: "border-primary/20 bg-primary/5",
+    warning: "border-destructive/20 bg-destructive/5",
+    rule: "border-border/20 bg-surface-highest",
   };
   return (
-    <div className={cn("rounded-lg border p-4 space-y-2", styles[variant])}>
-      <h4 className="text-sm font-semibold">{title}</h4>
+    <div className={cn("rounded-sm border p-4 space-y-2", styles[variant])}>
+      <h4 className={cn("text-xs font-bold", variant === "tip" ? "text-primary" : variant === "warning" ? "text-destructive" : "text-foreground")}>{title}</h4>
       <div className="text-sm text-muted-foreground space-y-1.5">{children}</div>
     </div>
   );
@@ -436,18 +440,18 @@ export default function LearnPage() {
       <div className="max-w-4xl mx-auto space-y-4 pb-12">
         {/* Header + Language Toggle */}
         <div className="space-y-2 mb-6">
-          <div className="flex items-center justify-between gap-4">
-            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-              <BookOpen className="h-6 w-6 text-primary" />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
               {t("pageTitle", lang)}
             </h1>
             <Button
               variant="outline"
               size="sm"
               onClick={toggleLang}
-              className="shrink-0 gap-2 text-xs sm:text-sm"
+              className="shrink-0 gap-2 text-xs border-border/20 hover:bg-surface-high/50"
             >
-              <Languages className="h-4 w-4" />
+              <Languages className="h-3.5 w-3.5" />
               {lang === "en" ? "🇹🇭 ไทย" : "🇺🇸 English"}
             </Button>
           </div>
@@ -482,15 +486,15 @@ export default function LearnPage() {
             <p>{t("dt_probability", lang)}</p>
           </ConceptCard>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="rounded-lg border border-border p-4 text-center">
+            <div className="rounded-sm border border-border/10 bg-surface-mid p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t("yourJob", lang)}</p>
               <p className="text-sm font-semibold">{t("identifyOutcomes", lang)}</p>
             </div>
-            <div className="rounded-lg border border-border p-4 text-center">
+            <div className="rounded-sm border border-border/10 bg-surface-mid p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t("yourEdge", lang)}</p>
               <p className="text-sm font-semibold">{t("useProbability", lang)}</p>
             </div>
-            <div className="rounded-lg border border-border p-4 text-center">
+            <div className="rounded-sm border border-border/10 bg-surface-mid p-4 text-center">
               <p className="text-xs text-muted-foreground mb-1">{t("yourMeasure", lang)}</p>
               <p className="text-sm font-semibold">{t("evaluateExpectancy", lang)}</p>
             </div>
@@ -713,7 +717,7 @@ export default function LearnPage() {
               <h4 className="text-sm font-semibold">{t("bosCHoCH", lang)}</h4>
 
               {/* BOS Diagram */}
-              <Card className="border-border">
+              <Card className="border-border/10 bg-surface-mid">
                 <CardContent className="p-4">
                   <svg viewBox="0 0 420 200" className="w-full">
                     {/* Uptrend with BOS */}
@@ -781,7 +785,7 @@ export default function LearnPage() {
               <h4 className="text-sm font-semibold">{t("fvgTitle", lang)}</h4>
 
               {/* FVG Diagram */}
-              <Card className="border-border">
+              <Card className="border-border/10 bg-surface-mid">
                 <CardContent className="p-4">
                   <svg viewBox="0 0 400 200" className="w-full">
                     {[
@@ -847,7 +851,7 @@ export default function LearnPage() {
               <h4 className="text-sm font-semibold">{t("imbalanceTitle", lang)}</h4>
 
               {/* Imbalance Diagram */}
-              <Card className="border-border">
+              <Card className="border-border/10 bg-surface-mid">
                 <CardContent className="p-4">
                   <svg viewBox="0 0 400 200" className="w-full">
                     {/* Balanced price action */}
@@ -959,7 +963,7 @@ export default function LearnPage() {
               <h4 className="text-sm font-semibold">{t("reactionTitle", lang)}</h4>
 
               {/* Order Block Diagram */}
-              <Card className="border-border">
+              <Card className="border-border/10 bg-surface-mid">
                 <CardContent className="p-4">
                   <svg viewBox="0 0 420 200" className="w-full">
                     {/* Downtrend candles before the order block */}
@@ -1216,7 +1220,7 @@ export default function LearnPage() {
           </Card>
 
           {/* Sample Size — True Performance */}
-          <Card className="border-border">
+          <Card className="border-border/10 bg-surface-mid">
             <CardContent className="p-4 sm:p-6 space-y-4">
               <h4 className="text-sm font-semibold">{t("sampleSizeTitle", lang)}</h4>
               <p className="text-sm text-muted-foreground">{t("sampleSize_intro", lang)}</p>
@@ -1451,7 +1455,7 @@ export default function LearnPage() {
           </div>
 
           {/* Visual: 3-screen method */}
-          <Card className="border-border">
+          <Card className="border-border/10 bg-surface-mid">
             <CardContent className="p-4 sm:p-6">
               <h4 className="text-sm font-semibold mb-4">{t("threeScreenMethod", lang)}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

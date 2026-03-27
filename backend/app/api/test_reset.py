@@ -100,17 +100,21 @@ async def reset_test_data(
 async def create_test_token(
     db: Annotated[AsyncSession, Depends(get_db)],
     body: dict,
-) -> dict:
+) -> "fastapi.Response":
     """
     Create a valid JWT for E2E testing. Auto-provisions the user if needed.
     Only available when DEBUG=true. Accepts { "email": "..." }.
 
-    Returns { "access_token": "...", "user_id": ... }
+    Returns { "access_token": "...", "user_id": ... } AND sets a dev_token
+    cookie so that Playwright request contexts automatically include it in
+    subsequent requests (enabling cookie-based auth for E2E tests).
     """
     _require_debug()
 
     import jwt as pyjwt
+    import json
     from datetime import datetime, timedelta, timezone
+    from fastapi.responses import Response
     from app.models.user import User
 
     email = body.get("email")
@@ -137,4 +141,16 @@ async def create_test_token(
     }
     token = pyjwt.encode(payload, secret, algorithm=settings.jwt_algorithm)
 
-    return {"access_token": token, "user_id": user.id, "email": user.email}
+    body_json = json.dumps({"access_token": token, "user_id": user.id, "email": user.email})
+    response = Response(content=body_json, media_type="application/json", status_code=200)
+    # Set dev_token cookie so Playwright APIRequestContext automatically sends it
+    # in subsequent requests, enabling cookie-based auth in E2E tests.
+    response.set_cookie(
+        key="dev_token",
+        value=token,
+        httponly=False,   # Must be accessible to JS (frontend reads it)
+        samesite="lax",
+        max_age=3600,
+        path="/",
+    )
+    return response

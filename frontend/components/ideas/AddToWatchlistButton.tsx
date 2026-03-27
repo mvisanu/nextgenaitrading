@@ -3,15 +3,7 @@
 /**
  * AddToWatchlistButton — one-click "Add to Watchlist" from an idea card.
  *
- * States:
- *   default  — "+ Add to Watchlist" (enabled)
- *   loading  — spinner + disabled
- *   added    — "Added ✓" (green, permanently disabled for this session)
- *
- * On success: fires toast "TICKER added to watchlist. Alert created for buy zone entry."
- * On error:   reverts to default + toast.error
- *
- * The `added_to_watchlist` prop initialises the button in "added" state when true.
+ * Sovereign Terminal design system applied.
  */
 
 import { useState } from "react";
@@ -56,30 +48,30 @@ export function AddToWatchlistButton({
 
   if (isAdded) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        disabled
+      <span
         className={cn(
-          "h-7 text-xs gap-1 border-green-500/40 text-green-400 bg-green-500/10",
-          "disabled:opacity-100 cursor-default",
+          "inline-flex items-center gap-1 text-3xs font-bold px-2 py-1 rounded-sm",
+          "bg-primary/15 text-primary",
           className
         )}
         aria-label={`${ticker} is already in watchlist`}
       >
         <Check className="h-3 w-3" />
         Added
-      </Button>
+      </span>
     );
   }
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       size="sm"
       disabled={isPending}
       onClick={() => mutate()}
-      className={cn("h-7 text-xs gap-1", className)}
+      className={cn(
+        "h-7 text-xs gap-1 font-bold uppercase tracking-widest hover:bg-surface-high/50",
+        className
+      )}
       aria-label={`Add ${ticker} to watchlist`}
     >
       {isPending ? (

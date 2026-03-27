@@ -192,8 +192,10 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 | Bollinger Band Squeeze strategy | Complete — backend service + strategy + API + frontend chart overlay + dashboard toggle |
 | Cross-origin auth (Vercel ↔ Render) | Replaced by Supabase Auth (see below) |
 | Mobile responsiveness | Complete — all pages phone-friendly (hamburger menus, scrollable tables, responsive grids) |
-| Supabase Auth migration | Complete — magic link login, Bearer token API auth, backend JWT verification, auto-provisioning |
-| Supabase Auth E2E tests (48 cases) | Written in `tests/e2e/specs/supabase-auth.spec.ts`; covers magic link forms, route protection, Bearer token 401s, legacy endpoint removal, callback error handling |
+| Supabase Auth migration | Complete — magic link login, Bearer token API auth, backend JWT verification, auto-provisioning, dev login bypass |
+| Supabase Auth E2E tests (90 cases) | `supabase-auth.spec.ts` 61/61 (100%), `security.spec.ts` 29/29 (100%); legacy `auth.spec.ts` deleted |
+| Dev Login (local + demo) | Complete — `/test/token` bypass, `dev_token` cookie, Supabase graceful degradation |
+| Mobile dashboard v2 | Complete — decluttered OHLCV bar, prominent price, news toggle on mobile, smart symbol search |
 
 ### Running E2E Tests
 ```bash
@@ -366,7 +368,7 @@ Replaced password-based JWT auth with Supabase Auth magic links (passwordless):
 - **`frontend/app/auth/callback/route.ts`** (NEW): Exchanges magic link code for Supabase session
 - **`frontend/app/(auth)/login/page.tsx`**: Replaced password form with email-only `signInWithOtp()`
 - **`frontend/app/(auth)/register/page.tsx`**: Replaced password registration with magic link
-- **`frontend/proxy.ts`**: Uses Supabase SSR server client for session check (replaces cookie check)
+- **`frontend/proxy.ts`**: Uses Supabase SSR server client for session check; gracefully skips Supabase when env vars are missing (no `!` crash)
 - **`frontend/lib/auth.ts`**: Uses `supabase.auth.getUser()` instead of backend `/auth/me`
 - **`frontend/lib/api.ts`**: Sends `Authorization: Bearer <token>` instead of cookie-based auth
 - **`frontend/components/layout/AppShell.tsx`**: Logout uses `supabase.auth.signOut()`
@@ -378,14 +380,47 @@ Replaced password-based JWT auth with Supabase Auth magic links (passwordless):
 - **Packages added**: `@supabase/ssr`, `@supabase/supabase-js` (frontend)
 - **`tests/e2e/specs/supabase-auth.spec.ts`** (NEW): 48 E2E tests covering AUTH.md — magic link forms (no password fields), route protection (10 protected routes), Bearer token 401s, auth callback error handling, legacy endpoint removal (register/login/refresh/logout → 404), navigation links, validation errors, callbackUrl param, educational disclaimers
 
-### Git Status
-All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25. Webull-style dashboard timeline (bottom period bar + intraday time axis fix) added 2026-03-26. Supabase Auth migration added 2026-03-26 — uncommitted.
+### Dev Login (Local & Demo)
+For local development and demo deployments, a **Dev Login** flow bypasses Supabase magic link emails:
+- **Login page**: Shows "Dev Login (skip magic link)" button in development mode or when `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true`
+- **Flow**: Calls `POST /test/token` (debug-only) → gets JWT → stores as `dev_token` cookie → redirects to dashboard
+- **Middleware**: Accepts `dev_token` cookie as valid session (alongside Supabase sessions)
+- **API client**: `getAuthHeaders()` falls back to `dev_token` cookie when no Supabase session exists
+- **`authApi.me()`**: Falls back to backend `/auth/me` with dev token when Supabase returns no user
+- **Supabase graceful degradation**: All Supabase client calls handle `null` (unconfigured) gracefully — app works with dev token only
+- **Vercel env vars**: Set `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true` + `NEXT_PUBLIC_API_BASE_URL=<render-url>` to enable on production demo
 
-### Known E2E Test Failures (as of 2026-03-25, see `TEST_REPORT.md`)
-Most issues from the 2026-03-25 test run have been fixed. Remaining open items:
+### Mobile Dashboard Improvements (2026-03-26)
+- **OHLCV bar**: Hidden O/H/L/C values on mobile (`hidden sm:contents`), showing only ticker + price + % change
+- **Current price**: Bumped to `text-base` (16px) on mobile for visibility
+- **KPI strip**: Hidden Strategies/Screener/Opportunities quick links on mobile (available via bottom nav)
+- **News toggle**: Now visible on all screen sizes (was `hidden sm:flex`)
+- **Alert button**: Icon-only on mobile, full label on desktop
+- **Period bar**: Tighter padding and smaller font on mobile
+- **Symbol search**: Prioritizes exact matches and starts-with over contains; always injects typed symbol at top of results
+- **Single-letter tickers**: Backend regex fixed to allow 1-char symbols (O, V, F, X, etc.) — was requiring min 2 chars
+
+### Auto-Buy Build Fix (2026-03-26)
+- `auto-buy/page.tsx`: Added missing `const [livePassword, setLivePassword] = useState("")` — was causing TypeScript build failure on Vercel
+
+### Sovereign Terminal Design Redesign (2026-03-27)
+Complete frontend redesign to match "Sovereign Terminal" / "Titanium Terminal" design system:
+- **Design tokens**: `globals.css` + `tailwind.config.ts` — "Deep Titanium" dark theme, emerald `#44DFA3` primary, ruby `#ff716a` for losses, 7-tier tonal surface hierarchy (`surface-lowest` → `surface-bright`), sharp 4px corners, no opaque borders
+- **All existing pages** redesigned: dashboard, live-trading, strategies, screener, opportunities, ideas, alerts, auto-buy, profile, backtests, artifacts, trade-log, strategy-samples, learn, faq + all components
+- **3 new pages added**: `/portfolio` (holdings ledger, equity curve, asset allocation donut), `/multi-chart` (2×3 chart grid + watchlist sidebar), `/stock/[symbol]` (financial KPIs, analyst consensus gauge, earnings history)
+- **Brand**: "NextGenAi Trading" + "Institutional Tier" throughout; "Dashboard" nav label (was "Terminal"); Execute Order button removed from sidebar
+- **Mobile**: All pages responsive — `flex-col sm:flex-row`, fluid type, Sheet overlays for sidebars on mobile
+
+### Sidebar Layout Fix (2026-03-27)
+- **`components/layout/AppShell.tsx`**: Sidebar changed from `lg:fixed lg:inset-y-0` to `lg:flex lg:shrink-0` — now a normal flex sibling so hover-expansion pushes content instead of overlaying it. Removed `lg:pl-[220px]`/`lg:pl-12` padding compensation (no longer needed). Removed unused `useSidebarPinned` import from AppShell.
+
+### Git Status
+All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25. Webull-style dashboard timeline (bottom period bar + intraday time axis fix) added 2026-03-26. Supabase Auth migration + Dev Login + mobile improvements added 2026-03-26. Sovereign Terminal redesign + sidebar layout fix added 2026-03-27 — uncommitted.
+
+### Known E2E Test Failures (as of 2026-03-26, see `test_result.md`)
+Auth E2E tests: **supabase-auth.spec.ts 61/61 (100%)**, **security.spec.ts 29/29 (100%)**. Legacy `auth.spec.ts` deleted (superseded). Remaining open items:
 - Multi-tenancy tests: some assertions may still need investigation (test isolation vs real scoping bugs)
 - Auto-buy UI: some expected elements may still be missing (risk disclaimer, decision log table)
-- No DB reset between test runs causing stale data accumulation
 
 ### Scan Universe Themes
 Theme chips on Ideas page: AI, Energy, Defense, Space, Semiconductors, Longevity, Robotics, Bitcoin, Healthcare, Medicine. Scan universe: ~50 tickers including mega-cap tech, financials, energy, defense, semiconductors, space, longevity/biotech, healthcare, and bitcoin/crypto-adjacent stocks.

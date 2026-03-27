@@ -126,11 +126,14 @@ test.describe("Theme Score API — GET /api/stocks/{ticker}/theme-score", () => 
     }
   });
 
-  test("TS-07: returns 401 when unauthenticated", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-
-    const res = await request.get(`${API_URL}/stocks/${STOCK_SYMBOL}/theme-score`);
-    expect(res.status()).toBe(401);
+  test("TS-07: returns 401 when unauthenticated", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/stocks/${STOCK_SYMBOL}/theme-score`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("TS-08: ticker in response matches the requested ticker", async ({ request }) => {
@@ -167,13 +170,16 @@ test.describe("Theme Score API — POST /api/stocks/{ticker}/theme-score/recompu
     expect(body).toHaveProperty("macro_alignment_score");
   });
 
-  test("TS-11: recompute returns 401 when unauthenticated", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-
-    const res = await request.post(
-      `${API_URL}/stocks/${STOCK_SYMBOL}/theme-score/recompute`
-    );
-    expect(res.status()).toBe(401);
+  test("TS-11: recompute returns 401 when unauthenticated", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(
+        `${API_URL}/stocks/${STOCK_SYMBOL}/theme-score/recompute`
+      );
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("TS-12: recomputed score has ticker matching the request", async ({ request }) => {

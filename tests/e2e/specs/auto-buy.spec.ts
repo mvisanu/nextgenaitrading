@@ -320,35 +320,51 @@ test.describe("Auto-Buy API — dry-run POST /api/auto-buy/dry-run/{ticker}", ()
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("Auto-Buy API — 401 without authentication", () => {
-  test("AB-21: GET /api/auto-buy/settings returns 401 without auth", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/auto-buy/settings`);
-    expect(res.status()).toBe(401);
+  test("AB-21: GET /api/auto-buy/settings returns 401 without auth", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/auto-buy/settings`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("AB-22: PATCH /api/auto-buy/settings returns 401 without auth", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.patch(`${API_URL}/auto-buy/settings`, {
-      data: { confidence_threshold: 0.9 },
-    });
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.patch(`${API_URL}/auto-buy/settings`, {
+        data: { confidence_threshold: 0.9 },
+      });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("AB-23: GET /api/auto-buy/decision-log returns 401 without auth", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/auto-buy/decision-log`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/auto-buy/decision-log`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("AB-24: POST /api/auto-buy/dry-run/{ticker} returns 401 without auth", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.post(`${API_URL}/auto-buy/dry-run/${STOCK_SYMBOL}`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(`${API_URL}/auto-buy/dry-run/${STOCK_SYMBOL}`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 });

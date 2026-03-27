@@ -5,9 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -87,77 +85,82 @@ export default function ArtifactsPage() {
 
   return (
     <AppShell title="Artifacts">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileCode className="h-4 w-4" />
-            Pine Script Artifacts ({artifacts.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : artifacts.length === 0 ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              No Pine Script artifacts yet.{" "}
+      <div className="bg-surface-low border border-border/10 rounded-sm">
+        {/* Panel header */}
+        <div className="px-4 py-3 border-b border-border/10 flex items-center gap-2">
+          <FileCode className="h-3.5 w-3.5 text-primary" />
+          <span className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground">
+            Pine Script Artifacts
+          </span>
+          <span className="text-[11px] font-bold text-muted-foreground/50 tabular-nums">({artifacts.length})</span>
+        </div>
+
+        {isLoading ? (
+          <div className="p-4 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-full" />
+            ))}
+          </div>
+        ) : artifacts.length === 0 ? (
+          <div className="py-16 text-center space-y-2">
+            <FileCode className="h-8 w-8 mx-auto text-primary/30" />
+            <p className="text-sm text-muted-foreground">No Pine Script artifacts yet.</p>
+            <p className="text-xs text-muted-foreground/60">
               <Link href="/strategies" className="text-primary hover:underline">
                 Run an AI Pick or Buy Low / Sell High strategy
               </Link>{" "}
               to generate one.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Mode</TableHead>
-                  <TableHead>Variant</TableHead>
-                  <TableHead>Symbol</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                  <TableHead />
+                <TableRow className="bg-surface-lowest hover:bg-surface-lowest border-border/10">
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Mode</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Variant</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Symbol</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Version</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Created</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Actions</TableHead>
+                  <TableHead className="py-2 px-2 w-6" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {artifacts.map((artifact) => (
                   <React.Fragment key={artifact.id}>
                     <TableRow
-                      className="cursor-pointer"
+                      className="cursor-pointer border-border/10 hover:bg-surface-high/30 transition-colors"
                       onClick={() => handleRowClick(artifact)}
                     >
-                      <TableCell className="text-xs">
+                      <TableCell className="text-xs text-muted-foreground py-2.5 px-4">
                         {getModeLabel(artifact.mode_name)}
                       </TableCell>
-                      <TableCell className="text-xs font-mono">
-                        <div className="flex items-center gap-1">
+                      <TableCell className="text-xs font-mono py-2.5 px-4">
+                        <div className="flex items-center gap-1.5">
                           {artifact.selected_winner && (
                             <Trophy className="h-3 w-3 text-yellow-400 shrink-0" />
                           )}
-                          {artifact.variant_name}
+                          <span className="text-foreground">{artifact.variant_name}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono text-xs tabular-nums text-foreground py-2.5 px-4">
                         {artifact.symbol}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        <Badge variant="secondary" className="text-xs">
+                      <TableCell className="py-2.5 px-4">
+                        <span className="bg-primary/15 text-primary text-3xs font-bold px-2 py-0.5 rounded-sm">
                           {artifact.pine_script_version}
-                        </Badge>
+                        </span>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-xs tabular-nums text-muted-foreground py-2.5 px-4">
                         {formatDateTime(artifact.created_at)}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="py-2.5 px-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-6 w-6 hover:bg-surface-high/50"
                             title="Copy to clipboard"
                             onClick={() => handleCopy(artifact.id)}
                             disabled={!codeCache[artifact.id]}
@@ -167,7 +170,7 @@ export default function ArtifactsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-6 w-6 hover:bg-surface-high/50"
                             title="Download .pine file"
                             onClick={() => handleDownload(artifact)}
                             disabled={!codeCache[artifact.id]}
@@ -177,36 +180,34 @@ export default function ArtifactsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7"
+                            className="h-6 w-6 hover:bg-surface-high/50"
                             title="Go to strategy run"
                             asChild
                           >
-                            <Link
-                              href={`/backtests?run=${artifact.strategy_run_id}`}
-                            >
+                            <Link href={`/backtests?run=${artifact.strategy_run_id}`}>
                               <ExternalLink className="h-3 w-3" />
                             </Link>
                           </Button>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2.5 px-2">
                         {selectedId === artifact.id ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                          <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
                         ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
                       </TableCell>
                     </TableRow>
 
                     {/* Expanded code viewer */}
                     {selectedId === artifact.id && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="bg-card/50 p-4">
+                      <TableRow className="border-border/10">
+                        <TableCell colSpan={7} className="bg-surface-lowest p-4">
                           <div className="space-y-3">
                             {/* Metadata */}
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                               <span>
-                                Strategy run:{" "}
+                                Run:{" "}
                                 <Link
                                   href={`/backtests?run=${artifact.strategy_run_id}`}
                                   className="text-primary hover:underline"
@@ -214,7 +215,7 @@ export default function ArtifactsPage() {
                                   #{artifact.strategy_run_id}
                                 </Link>
                               </span>
-                              <span>Symbol: {artifact.symbol}</span>
+                              <span>Symbol: <span className="font-mono text-foreground">{artifact.symbol}</span></span>
                               <span>Mode: {getModeLabel(artifact.mode_name)}</span>
                             </div>
 
@@ -233,7 +234,7 @@ export default function ArtifactsPage() {
                                   <Button
                                     variant="secondary"
                                     size="sm"
-                                    className="h-7 text-xs gap-1.5"
+                                    className="h-7 text-xs gap-1.5 bg-surface-high hover:bg-surface-highest"
                                     onClick={() => handleCopy(artifact.id)}
                                   >
                                     <Clipboard className="h-3 w-3" />
@@ -242,15 +243,15 @@ export default function ArtifactsPage() {
                                   <Button
                                     variant="secondary"
                                     size="sm"
-                                    className="h-7 text-xs gap-1.5"
+                                    className="h-7 text-xs gap-1.5 bg-surface-high hover:bg-surface-highest"
                                     onClick={() => handleDownload(artifact)}
                                   >
                                     <Download className="h-3 w-3" />
                                     .pine
                                   </Button>
                                 </div>
-                                <ScrollArea className="max-h-96 rounded-md border border-border bg-background">
-                                  <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre overflow-x-auto">
+                                <ScrollArea className="max-h-96 rounded-sm border border-border/10 bg-surface-lowest">
+                                  <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre overflow-x-auto text-foreground/80">
                                     {codeCache[artifact.id]}
                                   </pre>
                                 </ScrollArea>
@@ -264,10 +265,9 @@ export default function ArtifactsPage() {
                 ))}
               </TableBody>
             </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
     </AppShell>
   );
 }

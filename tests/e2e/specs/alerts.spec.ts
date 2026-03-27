@@ -214,35 +214,50 @@ test.describe("Alerts API — alert_type validation", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("Alerts API — 401 without authentication", () => {
-  test("ALERT-11: GET /api/alerts returns 401 without auth", async ({ request }) => {
-    // Ensure no session
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/alerts`);
-    expect(res.status()).toBe(401);
+  test("ALERT-11: GET /api/alerts returns 401 without auth", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/alerts`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
-  test("ALERT-12: POST /api/alerts returns 401 without auth", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.post(`${API_URL}/alerts`, {
-      data: { ticker: STOCK_SYMBOL, alert_type: "entered_buy_zone" },
-    });
-    expect(res.status()).toBe(401);
+  test("ALERT-12: POST /api/alerts returns 401 without auth", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(`${API_URL}/alerts`, {
+        data: { ticker: STOCK_SYMBOL, alert_type: "entered_buy_zone" },
+      });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
-  test("ALERT-13: PATCH /api/alerts/{id} returns 401 without auth", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.patch(`${API_URL}/alerts/1`, {
-      data: { enabled: false },
-    });
-    expect(res.status()).toBe(401);
+  test("ALERT-13: PATCH /api/alerts/{id} returns 401 without auth", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.patch(`${API_URL}/alerts/1`, {
+        data: { enabled: false },
+      });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("ALERT-14: DELETE /api/alerts/{id} returns 401 without auth", async ({
-    request,
+    request, playwright,
   }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.delete(`${API_URL}/alerts/1`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.delete(`${API_URL}/alerts/1`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 });
 

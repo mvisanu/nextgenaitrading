@@ -18,6 +18,10 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -52,17 +56,39 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Trading signal colors — TradingView palette
-        bull: "#26a69a",
-        bear: "#ef5350",
-        "signal-buy": "#26a69a",
-        "signal-sell": "#ef5350",
-        "signal-hold": "#787b86",
+        // Sovereign Terminal — tonal surface layers
+        surface: {
+          lowest: "hsl(var(--surface-lowest))",
+          low: "hsl(var(--surface-low))",
+          mid: "hsl(var(--surface-mid))",
+          DEFAULT: "hsl(var(--surface-container))",
+          high: "hsl(var(--surface-high))",
+          highest: "hsl(var(--surface-highest))",
+          bright: "hsl(var(--surface-bright))",
+        },
+        // Trading signal colors — Sovereign palette
+        emerald: {
+          DEFAULT: "hsl(var(--emerald))",
+          bright: "hsl(var(--emerald-bright))",
+        },
+        ruby: {
+          DEFAULT: "hsl(var(--ruby))",
+          dim: "hsl(var(--ruby-dim))",
+        },
+        bull: "hsl(var(--chart-bull))",
+        bear: "hsl(var(--chart-bear))",
+        "signal-buy": "hsl(var(--chart-bull))",
+        "signal-sell": "hsl(var(--chart-bear))",
+        "signal-hold": "hsl(var(--muted-foreground))",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "0.25rem",
+        md: "0.125rem",
+        sm: "0.0625rem",
+      },
+      fontSize: {
+        "2xs": ["0.625rem", { lineHeight: "0.875rem" }],   // 10px — micro labels
+        "3xs": ["0.5625rem", { lineHeight: "0.75rem" }],    // 9px — metadata
       },
       keyframes: {
         "accordion-down": {
@@ -73,10 +99,20 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { boxShadow: "0 0 4px hsl(var(--emerald))" },
+          "50%": { boxShadow: "0 0 12px hsl(var(--emerald))" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        marquee: "marquee 60s linear infinite",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
       },
     },
   },

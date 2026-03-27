@@ -3,16 +3,7 @@
 /**
  * EstimatedEntryPanel — expanded-row detail panel for a watchlist ticker.
  *
- * Shows:
- *   - Estimated entry zone (historically favorable)
- *   - Ideal entry based on backtest
- *   - Disclaimer (required wording)
- *   - 90-day positive outcome rate + worst drawdown
- *   - Invalidation level
- *   - Setup count (when available from the signal)
- *
- * All dollar values use Intl.NumberFormat USD.
- * No prohibited language: never "guaranteed", "safe", "certain to go up".
+ * Sovereign Terminal design system applied.
  */
 
 import { cn } from "@/lib/utils";
@@ -25,9 +16,6 @@ const usd = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-const pct = (v: number) =>
-  `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
-
 interface EstimatedEntryPanelProps {
   row: OpportunityRow;
   className?: string;
@@ -39,18 +27,20 @@ export function EstimatedEntryPanel({ row, className }: EstimatedEntryPanelProps
   return (
     <div
       className={cn(
-        "rounded-md border border-border bg-muted/30 p-4 text-xs space-y-3",
+        "rounded-md border border-border/10 bg-surface-low p-4 text-xs space-y-3",
         className
       )}
     >
       {/* Entry zone */}
-      <div className="space-y-1">
+      <div className="space-y-2">
+        <p className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground">Entry Details</p>
+
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-muted-foreground whitespace-nowrap">
             Estimated entry zone (historically favorable):
           </span>
           {row.buy_zone_low != null && row.buy_zone_high != null ? (
-            <span className="font-mono font-semibold text-foreground">
+            <span className="font-mono font-bold text-foreground tabular-nums">
               {usd.format(row.buy_zone_low)} – {usd.format(row.buy_zone_high)}
             </span>
           ) : (
@@ -65,29 +55,29 @@ export function EstimatedEntryPanel({ row, className }: EstimatedEntryPanelProps
           {isPending ? (
             <span className="text-muted-foreground italic">Calculating…</span>
           ) : (
-            <span className="font-mono font-semibold text-primary">
+            <span className="font-mono font-bold text-primary tabular-nums">
               {usd.format(row.ideal_entry_price!)}
             </span>
           )}
         </div>
 
         {/* Required disclaimer */}
-        <p className="text-[10px] text-muted-foreground/70 italic">
+        <p className="text-2xs text-muted-foreground/60 italic">
           This is not a guaranteed price. Based on historical backtest data.
         </p>
       </div>
 
       {/* Outcome stats */}
       {(row.backtest_win_rate_90d != null || row.expected_drawdown != null) && (
-        <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border/60 pt-3">
+        <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-border/10 pt-3">
           {row.backtest_win_rate_90d != null && (
             <div>
-              <span className="text-muted-foreground">90-day positive outcome rate: </span>
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground mb-0.5">90d Outcome Rate</p>
               <span
                 className={cn(
-                  "font-mono font-semibold",
+                  "font-mono font-bold tabular-nums",
                   row.backtest_win_rate_90d >= 0.65
-                    ? "text-green-400"
+                    ? "text-primary"
                     : row.backtest_win_rate_90d >= 0.50
                     ? "text-amber-400"
                     : "text-muted-foreground"
@@ -100,8 +90,8 @@ export function EstimatedEntryPanel({ row, className }: EstimatedEntryPanelProps
 
           {row.expected_drawdown != null && (
             <div>
-              <span className="text-muted-foreground">Worst drawdown: </span>
-              <span className="font-mono font-semibold text-red-400">
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Worst Drawdown</p>
+              <span className="font-mono font-bold text-destructive tabular-nums">
                 -{(row.expected_drawdown * 100).toFixed(1)}%
               </span>
             </div>
@@ -111,12 +101,12 @@ export function EstimatedEntryPanel({ row, className }: EstimatedEntryPanelProps
 
       {/* Invalidation level */}
       {row.invalidation_price != null && (
-        <div className="flex items-baseline gap-2 border-t border-border/60 pt-3">
-          <span className="text-muted-foreground">Invalidation level:</span>
-          <span className="font-mono font-semibold text-red-400">
+        <div className="flex items-baseline gap-2 border-t border-border/10 pt-3 flex-wrap">
+          <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Invalidation Level</p>
+          <span className="font-mono font-bold text-destructive tabular-nums">
             {usd.format(row.invalidation_price)}
           </span>
-          <span className="text-[10px] text-muted-foreground/70 italic">
+          <span className="text-2xs text-muted-foreground/60 italic">
             — consider reassessing if price falls below this level
           </span>
         </div>
@@ -124,15 +114,15 @@ export function EstimatedEntryPanel({ row, className }: EstimatedEntryPanelProps
 
       {/* Confidence + signal status summary */}
       {(row.backtest_confidence != null || row.suppressed_reason) && (
-        <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border/60 pt-3">
+        <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-border/10 pt-3">
           {row.backtest_confidence != null && (
             <div>
-              <span className="text-muted-foreground">Confidence score: </span>
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Confidence Score</p>
               <span
                 className={cn(
-                  "font-mono font-semibold",
+                  "font-mono font-bold tabular-nums",
                   row.backtest_confidence >= 0.70
-                    ? "text-green-400"
+                    ? "text-primary"
                     : row.backtest_confidence >= 0.55
                     ? "text-amber-400"
                     : "text-muted-foreground"
@@ -145,8 +135,8 @@ export function EstimatedEntryPanel({ row, className }: EstimatedEntryPanelProps
 
           {row.suppressed_reason && (
             <div>
-              <span className="text-muted-foreground">Signal suppressed: </span>
-              <span className="font-mono text-muted-foreground/80">
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground mb-0.5">Signal Suppressed</p>
+              <span className="font-mono text-muted-foreground/80 text-xs">
                 {row.suppressed_reason.replace(/_/g, " ")}
               </span>
             </div>

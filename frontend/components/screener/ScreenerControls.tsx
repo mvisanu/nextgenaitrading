@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -11,8 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, RotateCcw, Zap } from "lucide-react";
+import { Search, RotateCcw, Zap } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { AssetUniverse, ScreenerPreset } from "@/types";
 
 interface ScreenerControlsProps {
@@ -83,71 +81,70 @@ export function ScreenerControls({
   };
 
   return (
-    <Card className="border-border bg-card">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-primary" />
-            Screener Controls
-          </CardTitle>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReset}
-            className="h-7 text-xs"
-          >
-            <RotateCcw className="h-3 w-3 mr-1" />
-            Reset
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Universe selector */}
-        <div>
-          <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
+    <div className="bg-surface-low border border-white/5 rounded-lg overflow-hidden">
+      {/* Panel header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-surface-lowest/60">
+        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
+          Filter Controls
+        </span>
+        <button
+          onClick={handleReset}
+          className="flex items-center gap-1 text-3xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
+        >
+          <RotateCcw className="h-3 w-3" />
+          Reset
+        </button>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Universe tabs */}
+        <div className="space-y-1.5">
+          <label className="text-3xs font-bold uppercase tracking-widest text-muted-foreground block">
             Market
           </label>
           <div className="flex gap-1">
             {UNIVERSES.map((u) => (
-              <Button
+              <button
                 key={u.value}
-                variant={universe === u.value ? "default" : "outline"}
-                size="sm"
-                className="flex-1 h-8 text-xs"
                 onClick={() => onUniverseChange(u.value)}
+                className={cn(
+                  "flex-1 py-1.5 text-2xs font-bold uppercase tracking-wider rounded transition-all",
+                  universe === u.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface-high text-muted-foreground hover:text-foreground hover:bg-surface-highest"
+                )}
               >
                 {u.label}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
 
         {/* Presets */}
         {universe === "stocks" && presets.length > 0 && (
-          <div>
-            <label className="text-xs text-muted-foreground uppercase tracking-wider mb-1.5 block">
+          <div className="space-y-1.5">
+            <label className="text-3xs font-bold uppercase tracking-widest text-muted-foreground block">
               Quick Presets
             </label>
             <div className="flex flex-wrap gap-1">
               {presets.map((p) => (
-                <Badge
+                <button
                   key={p.key}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 hover:border-primary transition-colors text-xs"
                   onClick={() => onPresetSelect(p.key)}
+                  className="flex items-center gap-1 px-2 py-1 text-3xs font-bold uppercase tracking-wider bg-surface-high text-muted-foreground hover:bg-primary/20 hover:text-primary border border-white/5 hover:border-primary/30 rounded transition-all"
                 >
-                  <Zap className="h-3 w-3 mr-1" />
+                  <Zap className="h-2.5 w-2.5" />
                   {p.name}
-                </Badge>
+                </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Filters */}
+        {/* Price + Volume filters */}
         <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+          <div className="space-y-1">
+            <label className="text-3xs font-bold uppercase tracking-widest text-muted-foreground block">
               Min Price
             </label>
             <Input
@@ -155,11 +152,11 @@ export function ScreenerControls({
               placeholder="0"
               value={minPrice}
               onChange={(e) => setMinPrice(e.target.value)}
-              className="h-8 text-sm"
+              className="h-8 text-xs bg-surface-high border-white/10 focus:border-primary/50 focus:ring-0"
             />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+          <div className="space-y-1">
+            <label className="text-3xs font-bold uppercase tracking-widest text-muted-foreground block">
               Max Price
             </label>
             <Input
@@ -167,11 +164,11 @@ export function ScreenerControls({
               placeholder="Any"
               value={maxPrice}
               onChange={(e) => setMaxPrice(e.target.value)}
-              className="h-8 text-sm"
+              className="h-8 text-xs bg-surface-high border-white/10 focus:border-primary/50 focus:ring-0"
             />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+          <div className="space-y-1">
+            <label className="text-3xs font-bold uppercase tracking-widest text-muted-foreground block">
               Min Volume
             </label>
             <Input
@@ -179,20 +176,20 @@ export function ScreenerControls({
               placeholder="0"
               value={minVolume}
               onChange={(e) => setMinVolume(e.target.value)}
-              className="h-8 text-sm"
+              className="h-8 text-xs bg-surface-high border-white/10 focus:border-primary/50 focus:ring-0"
             />
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+          <div className="space-y-1">
+            <label className="text-3xs font-bold uppercase tracking-widest text-muted-foreground block">
               Results
             </label>
             <Select value={limit} onValueChange={setLimit}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className="h-8 text-xs bg-surface-high border-white/10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {["10", "20", "50"].map((n) => (
-                  <SelectItem key={n} value={n}>
+                  <SelectItem key={n} value={n} className="text-xs">
                     {n}
                   </SelectItem>
                 ))}
@@ -201,50 +198,58 @@ export function ScreenerControls({
           </div>
         </div>
 
-        {/* Sort */}
+        {/* Sort controls */}
         <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+          <div className="space-y-1">
+            <label className="text-3xs font-bold uppercase tracking-widest text-muted-foreground block">
               Sort By
             </label>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className="h-8 text-xs bg-surface-high border-white/10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(SORT_OPTIONS).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>
+                  <SelectItem key={k} value={k} className="text-xs">
                     {v}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
+          <div className="space-y-1">
+            <label className="text-3xs font-bold uppercase tracking-widest text-muted-foreground block">
               Order
             </label>
             <Select
               value={sortOrder}
               onValueChange={(v) => setSortOrder(v as "asc" | "desc")}
             >
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className="h-8 text-xs bg-surface-high border-white/10">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="desc">Highest First</SelectItem>
-                <SelectItem value="asc">Lowest First</SelectItem>
+                <SelectItem value="desc" className="text-xs">
+                  Highest First
+                </SelectItem>
+                <SelectItem value="asc" className="text-xs">
+                  Lowest First
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        {/* Search button */}
-        <Button onClick={handleSubmit} disabled={isLoading} className="w-full h-9">
-          <Search className="h-4 w-4 mr-2" />
-          {isLoading ? "Scanning..." : "Scan Market"}
-        </Button>
-      </CardContent>
-    </Card>
+        {/* Run scanner button */}
+        <button
+          onClick={handleSubmit}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground font-bold text-2xs uppercase tracking-widest rounded hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60"
+        >
+          <Search className="h-3.5 w-3.5" />
+          {isLoading ? "Scanning..." : "Run Scanner"}
+        </button>
+      </div>
+    </div>
   );
 }

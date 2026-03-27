@@ -53,6 +53,42 @@
       },
       "createdAt": "2026-03-26T16:46:23.822Z",
       "updatedAt": "2026-03-26T16:46:23.822Z"
+    },
+    "swarm-1774601461386-fmhbij": {
+      "swarmId": "swarm-1774601461386-fmhbij",
+      "topology": "adaptive",
+      "maxAgents": 10,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "adaptive",
+        "maxAgents": 10,
+        "strategy": "balanced",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-03-27T08:51:01.388Z",
+      "updatedAt": "2026-03-27T08:51:01.388Z"
+    },
+    "swarm-1774602043439-o5t7pm": {
+      "swarmId": "swarm-1774602043439-o5t7pm",
+      "topology": "hierarchical",
+      "maxAgents": 15,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical",
+        "maxAgents": 15,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-03-27T09:00:43.439Z",
+      "updatedAt": "2026-03-27T09:00:43.439Z"
     }
   },
   "version": "3.0.0"

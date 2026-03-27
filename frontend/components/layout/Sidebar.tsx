@@ -23,6 +23,9 @@ import {
   Pin,
   PinOff,
   ChevronRight,
+  Wallet,
+  LayoutGrid,
+  Activity,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -46,36 +49,38 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    title: "Trading",
+    title: "Terminal",
     links: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/strategies", label: "Strategies", icon: TrendingUp },
-      { href: "/backtests", label: "Backtests", icon: BarChart3 },
       { href: "/live-trading", label: "Live Trading", icon: Radio },
+      { href: "/portfolio", label: "Portfolio", icon: Wallet },
       { href: "/auto-buy", label: "Auto-Buy", icon: Zap },
     ],
   },
   {
-    title: "Research",
+    title: "Analysis",
     links: [
-      { href: "/screener", label: "Screener & TA", icon: BarChart4 },
-      { href: "/opportunities", label: "Opportunities", icon: Crosshair, badge: "scanner" },
+      { href: "/screener", label: "Markets", icon: BarChart4 },
+      { href: "/opportunities", label: "Watchlist", icon: Crosshair, badge: "scanner" },
+      { href: "/multi-chart", label: "Multi-Chart", icon: LayoutGrid },
       { href: "/ideas", label: "Ideas", icon: Lightbulb },
       { href: "/alerts", label: "Alerts", icon: Bell },
     ],
   },
   {
-    title: "Tools",
+    title: "Strategy",
     links: [
-      { href: "/artifacts", label: "Artifacts", icon: FileCode },
+      { href: "/strategies", label: "Strategies", icon: TrendingUp },
+      { href: "/backtests", label: "Backtests", icon: BarChart3 },
       { href: "/strategy-samples", label: "Samples", icon: BookOpen },
-      { href: "/trade-log", label: "Trade Log", icon: ClipboardList },
     ],
   },
   {
-    title: "Learn",
+    title: "System",
     links: [
-      { href: "/learn", label: "Learn to Trade", icon: GraduationCap },
+      { href: "/artifacts", label: "Artifacts", icon: FileCode },
+      { href: "/trade-log", label: "Ledger", icon: ClipboardList },
+      { href: "/learn", label: "Academy", icon: GraduationCap },
       { href: "/faq", label: "FAQ", icon: HelpCircle },
     ],
   },
@@ -109,7 +114,7 @@ function ScannerStatusDot() {
       title={`Scanner active — ${data.tickers_in_queue} ticker${data.tickers_in_queue !== 1 ? "s" : ""} in queue`}
       className={cn(
         "ml-1 inline-block h-1.5 w-1.5 rounded-full shrink-0",
-        hasQueue ? "bg-green-400 animate-pulse" : "bg-green-400/50"
+        hasQueue ? "bg-primary animate-pulse" : "bg-primary/50"
       )}
     />
   );
@@ -125,44 +130,41 @@ export function Sidebar() {
 
   const initials = user?.email
     ? user.email.slice(0, 2).toUpperCase()
-    : "NG";
+    : "SV";
 
-  // The expanded class: always expanded when pinned, otherwise on hover
-  const expandedWidth = pinned ? "w-[200px]" : "w-12 hover:w-[200px]";
+  const expandedWidth = pinned ? "w-[220px]" : "w-12 hover:w-[220px]";
 
   return (
     <aside
       data-pinned={pinned || undefined}
       className={cn(
-        "group flex h-full flex-col border-r border-border bg-card",
+        "group flex h-full flex-col bg-surface-lowest",
         expandedWidth,
         "transition-[width] duration-200 ease-in-out overflow-hidden"
       )}
     >
-      {/* ── Logo + pin toggle ──────────────────────────────────────────── */}
-      <div className="flex h-[38px] shrink-0 items-center border-b border-border px-3 overflow-hidden">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32" fill="none" className="shrink-0">
-          <rect width="32" height="32" rx="6" fill="#131722"/>
-          <line x1="8" y1="8" x2="8" y2="22" stroke="#ef5350" strokeWidth="1.2"/>
-          <rect x="6" y="11" width="4" height="7" rx="0.5" fill="#ef5350"/>
-          <line x1="14" y1="10" x2="14" y2="24" stroke="#26a69a" strokeWidth="1.2"/>
-          <rect x="12" y="13" width="4" height="7" rx="0.5" fill="#26a69a"/>
-          <line x1="20" y1="6" x2="20" y2="20" stroke="#26a69a" strokeWidth="1.2"/>
-          <rect x="18" y="8" width="4" height="8" rx="0.5" fill="#26a69a"/>
-          <line x1="5" y1="24" x2="26" y2="8" stroke="#2962ff" strokeWidth="1.8" strokeLinecap="round"/>
-          <polygon points="26,8 23,10.5 24.5,12" fill="#2962ff"/>
-        </svg>
-        <span className={cn(
-          "ml-2 text-xs font-semibold tracking-tight text-foreground whitespace-nowrap flex-1 transition-opacity duration-200",
+      {/* ── Brand + pin toggle ──────────────────────────────────────── */}
+      <div className="flex h-12 shrink-0 items-center px-3 overflow-hidden">
+        {/* Sovereign logo mark */}
+        <div className="h-7 w-7 shrink-0 rounded bg-primary/10 flex items-center justify-center">
+          <Activity className="h-4 w-4 text-primary" />
+        </div>
+        <div className={cn(
+          "ml-2.5 flex flex-col whitespace-nowrap transition-opacity duration-200",
           pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}>
-          NextGenStock
-        </span>
+          <span className="text-sm font-black tracking-tighter text-foreground">
+            NextGenAi Trading
+          </span>
+          <span className="text-3xs text-primary tracking-widest uppercase opacity-80">
+            Institutional Tier
+          </span>
+        </div>
         <button
           onClick={togglePin}
           title={pinned ? "Unpin sidebar" : "Pin sidebar open"}
           className={cn(
-            "shrink-0 h-5 w-5 flex items-center justify-center rounded transition-all duration-200",
+            "shrink-0 h-5 w-5 ml-auto flex items-center justify-center rounded transition-all duration-200",
             pinned
               ? "text-primary opacity-100"
               : "text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100"
@@ -172,21 +174,21 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* ── Grouped nav sections ───────────────────────────────────────── */}
-      <nav className="flex-1 overflow-y-auto py-1">
+      {/* ── Grouped nav sections ───────────────────────────────────── */}
+      <nav className="flex-1 overflow-y-auto py-2">
         {NAV_GROUPS.map((group, gi) => (
           <div key={group.title}>
-            {/* Group separator (skip first group) */}
+            {/* Group separator */}
             {gi > 0 && (
-              <div className="mx-3 my-1 border-t border-border/50" />
+              <div className="mx-3 my-2 border-t border-border/10" />
             )}
 
-            {/* Group title — visible when expanded */}
+            {/* Group title */}
             <div className={cn(
-              "px-3 pt-1.5 pb-0.5 transition-opacity duration-200",
+              "px-3 pt-2 pb-1 transition-opacity duration-200",
               pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}>
-              <span className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              <span className="text-3xs font-semibold uppercase tracking-widest text-muted-foreground/50">
                 {group.title}
               </span>
             </div>
@@ -200,14 +202,13 @@ export function Sidebar() {
                 <Link key={link.href} href={link.href} title={link.label}>
                   <span
                     className={cn(
-                      "relative flex items-center h-9 px-3 text-xs font-medium transition-colors overflow-hidden",
-                      "hover:bg-secondary",
+                      "relative flex items-center h-9 px-3 text-[11px] font-semibold uppercase tracking-widest transition-all duration-150 overflow-hidden",
                       isActive
-                        ? "text-primary before:absolute before:left-0 before:top-0 before:h-full before:w-0.5 before:bg-primary"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "text-primary bg-surface-mid border-l-[3px] border-primary"
+                        : "text-muted-foreground hover:bg-surface-mid/50 hover:text-foreground hover:translate-x-0.5 border-l-[3px] border-transparent"
                     )}
                   >
-                    <link.icon className="h-4.5 w-4.5 shrink-0" />
+                    <link.icon className="h-[18px] w-[18px] shrink-0" />
                     <span className={cn(
                       "ml-3 whitespace-nowrap transition-opacity duration-200 flex items-center gap-1",
                       pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
@@ -216,7 +217,6 @@ export function Sidebar() {
                       {link.badge === "scanner" && <ScannerStatusDot />}
                     </span>
 
-                    {/* Active indicator arrow (collapsed mode) */}
                     {isActive && (
                       <ChevronRight className={cn(
                         "h-3 w-3 ml-auto shrink-0 text-primary transition-opacity duration-200",
@@ -231,45 +231,65 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* ── Bottom: profile + sign out ─────────────────────────────────── */}
-      <div className="shrink-0 border-t border-border">
+      {/* ── Bottom: profile + sign out ─────────────────────────────── */}
+      <div className="shrink-0 border-t border-border/10">
         {/* Profile link */}
         <Link href="/profile" title="Profile">
           <span
             className={cn(
               "relative flex items-center h-10 px-3 overflow-hidden transition-colors",
-              "hover:bg-secondary",
+              "hover:bg-surface-mid/50",
               pathname === "/profile"
-                ? "text-primary before:absolute before:left-0 before:top-0 before:h-full before:w-0.5 before:bg-primary"
+                ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <div className="h-6 w-6 shrink-0 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-[9px] font-semibold text-primary leading-none">
+            <div className="h-7 w-7 shrink-0 rounded-sm bg-surface-high flex items-center justify-center border border-border/10">
+              <span className="text-3xs font-bold text-primary leading-none">
                 {initials}
               </span>
             </div>
-            <span className={cn(
-              "ml-3 text-xs truncate whitespace-nowrap transition-opacity duration-200",
+            <div className={cn(
+              "ml-2.5 flex flex-col whitespace-nowrap transition-opacity duration-200",
               pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}>
-              {user?.email ?? "Profile"}
-            </span>
+              <span className="text-[11px] font-semibold text-foreground truncate max-w-[140px]">
+                {user?.email ?? "Profile"}
+              </span>
+              <span className="text-3xs text-muted-foreground/60 uppercase tracking-widest">
+                AI Trader
+              </span>
+            </div>
           </span>
         </Link>
+
+        {/* Support + API Status */}
+        <div className={cn(
+          "px-3 py-2 space-y-1.5 transition-opacity duration-200",
+          pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}>
+          <div className="flex items-center gap-2 text-muted-foreground/50 text-3xs uppercase tracking-widest">
+            <HelpCircle className="h-3.5 w-3.5" />
+            <span>Support</span>
+          </div>
+          <div className="flex items-center gap-2 text-primary/70 text-3xs uppercase tracking-widest">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-glow" />
+            <span>API Status</span>
+          </div>
+        </div>
 
         {/* Sign out */}
         <button
           onClick={() => void logout()}
           title="Sign out"
           className={cn(
-            "flex items-center h-9 w-full px-3 overflow-hidden",
-            "text-xs text-muted-foreground hover:text-red-400 hover:bg-secondary transition-colors"
+            "flex items-center h-9 w-full px-3 overflow-hidden border-t border-border/10",
+            "text-[11px] uppercase tracking-widest text-muted-foreground/40 hover:text-destructive hover:bg-surface-mid/30 transition-colors"
           )}
         >
-          <LogOut className="h-4.5 w-4.5 shrink-0" />
+          <LogOut className="h-4 w-4 shrink-0" />
           <span className={cn(
-            "ml-3 whitespace-nowrap transition-opacity duration-200",
+            "ml-3 whitespace-nowrap font-semibold transition-opacity duration-200",
             pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}>
             Sign out

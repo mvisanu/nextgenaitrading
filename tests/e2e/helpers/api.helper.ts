@@ -8,6 +8,7 @@
 import { type APIRequestContext } from "@playwright/test";
 import {
   API_URL,
+  BASE_URL,
   USER_A,
   USER_B,
   ALPACA_CRED,
@@ -367,6 +368,46 @@ export async function setupTwoUsers(
   for (const user of [USER_A, USER_B]) {
     await getTestToken(request, user.email);
   }
+}
+
+/**
+ * Authenticate a Playwright browser context via the dev_token cookie.
+ * Call this in beforeEach for browser (page-based) tests that need auth.
+ *
+ * @param request - The Playwright APIRequestContext (to call /test/token)
+ * @param browserContext - The Playwright BrowserContext from page.context()
+ * @param email - The user email to authenticate as
+ * @param baseUrl - Frontend base URL (for cookie domain scoping)
+ */
+export async function setBrowserAuth(
+  request: APIRequestContext,
+  browserContext: import("@playwright/test").BrowserContext,
+  email: string,
+  baseUrl: string = BASE_URL
+): Promise<void> {
+  const { token } = await getTestToken(request, email);
+  const url = new URL(baseUrl);
+  await browserContext.addCookies([
+    {
+      name: "dev_token",
+      value: token,
+      domain: url.hostname,
+      path: "/",
+      httpOnly: false,
+      secure: false,
+      sameSite: "Lax",
+    },
+    // Also set auth_session=1 so the middleware cross-origin check passes
+    {
+      name: "auth_session",
+      value: "1",
+      domain: url.hostname,
+      path: "/",
+      httpOnly: false,
+      secure: false,
+      sameSite: "Lax",
+    },
+  ]);
 }
 
 /**

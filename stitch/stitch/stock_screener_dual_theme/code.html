@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sovereign Terminal | Stock Screener</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-fixed-variant": "#683d00",
+              "primary-fixed-dim": "#44dfa3",
+              "surface-container-high": "#252a31",
+              "background": "#0f141a",
+              "on-error-container": "#ffdad6",
+              "on-primary-fixed-variant": "#005237",
+              "surface-container-low": "#171c22",
+              "surface-container": "#1b2026",
+              "primary-fixed": "#67fcbe",
+              "surface": "#0f141a",
+              "outline": "#85948b",
+              "on-secondary-fixed-variant": "#930015",
+              "on-primary-fixed": "#002114",
+              "surface-container-highest": "#30353c",
+              "secondary-container": "#a00118",
+              "on-background": "#dee3eb",
+              "on-tertiary-container": "#784700",
+              "surface-variant": "#30353c",
+              "secondary-fixed-dim": "#ffb3ae",
+              "error": "#ffb4ab",
+              "inverse-surface": "#dee3eb",
+              "on-surface": "#dee3eb",
+              "error-container": "#93000a",
+              "on-tertiary-fixed": "#2c1700",
+              "tertiary-fixed-dim": "#ffb86a",
+              "on-secondary": "#68000c",
+              "surface-dim": "#0f141a",
+              "surface-bright": "#353a40",
+              "tertiary-fixed": "#ffdcbc",
+              "surface-container-lowest": "#0a0f14",
+              "on-surface-variant": "#bbcac0",
+              "on-secondary-container": "#ffa8a3",
+              "primary": "#67fcbe",
+              "outline-variant": "#3c4a42",
+              "secondary": "#ffb3ae",
+              "primary-container": "#44dfa3",
+              "inverse-primary": "#006c4a",
+              "inverse-on-surface": "#2c3137",
+              "on-error": "#690005",
+              "on-secondary-fixed": "#410004",
+              "secondary-fixed": "#ffdad7",
+              "on-primary": "#003825",
+              "tertiary-container": "#ffb869",
+              "on-primary-container": "#005f40",
+              "tertiary": "#ffdcbb",
+              "surface-tint": "#44dfa3",
+              "on-tertiary": "#492900"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+            font-size: 18px;
+        }
+        .tabular { font-variant-numeric: tabular-nums; }
+        /* Tonal depth without borders */
+        .tonal-split { background: linear-gradient(to right, var(--tw-bg-opacity, 1) 256px, transparent 256px); }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3c4a42; border-radius: 2px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary/30 selection:text-primary overflow-hidden">
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar Component -->
+<aside class="hidden md:flex flex-col h-full py-4 w-64 bg-slate-100 dark:bg-[#0D0F14] border-r border-slate-200/50 dark:border-white/5 shrink-0">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary-container flex items-center justify-center rounded-sm">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="terminal">terminal</span>
+</div>
+<div>
+<h1 class="text-slate-900 dark:text-white font-black tracking-tight leading-none text-lg">Sovereign</h1>
+<p class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold text-slate-500 mt-1">Institutional Tier</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1 px-3">
+<!-- Terminal Active -->
+<a class="flex items-center gap-3 py-2.5 px-3 bg-white dark:bg-[#161920] text-[#44DFA3] border-l-4 border-[#44DFA3] ml-0 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Terminal</span>
+</a>
+<a class="flex items-center gap-3 py-2.5 px-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Order Book</span>
+</a>
+<a class="flex items-center gap-3 py-2.5 px-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Positions</span>
+</a>
+<a class="flex items-center gap-3 py-2.5 px-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Analytics</span>
+</a>
+<a class="flex items-center gap-3 py-2.5 px-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Ledger</span>
+</a>
+<a class="flex items-center gap-3 py-2.5 px-3 text-slate-500 dark:text-slate-500 hover:bg-slate-200/50 dark:hover:bg-white/5 hover:translate-x-1 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="lock">lock</span>
+<span class="font-['Inter'] text-[11px] uppercase tracking-widest font-semibold">Vault</span>
+</a>
+</nav>
+<div class="mt-auto px-3 space-y-4">
+<button class="w-full bg-primary-container text-on-primary-container font-bold py-3 text-xs tracking-widest uppercase rounded-sm hover:brightness-110 active:opacity-70 transition-all">
+                    Execute Order
+                </button>
+<div class="pt-4 border-t border-slate-200/50 dark:border-white/5">
+<a class="flex items-center gap-3 py-2 px-3 text-slate-500 dark:text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="contact_support">contact_support</span>
+<span class="text-[10px] uppercase tracking-widest">Support</span>
+</a>
+<a class="flex items-center gap-3 py-2 px-3 text-slate-500 dark:text-slate-400 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]" data-icon="cloud_done">cloud_done</span>
+<span class="text-[10px] uppercase tracking-widest">API Status</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 bg-surface">
+<!-- TopNavBar Component -->
+<header class="flex items-center justify-between px-4 w-full h-12 sticky top-0 z-50 bg-slate-50 dark:bg-[#0A0C10] border-b border-slate-200/50 dark:border-white/5 shadow-sm dark:shadow-none font-['Inter'] tabular-nums text-sm font-medium tracking-tight">
+<div class="flex items-center gap-8">
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+<span class="material-symbols-outlined text-[18px]" data-icon="search">search</span>
+</span>
+<input class="bg-slate-200/30 dark:bg-white/5 border-none h-8 w-64 pl-10 pr-4 text-xs focus:ring-1 focus:ring-primary/50 transition-all rounded-sm" placeholder="Search markets..." type="text"/>
+</div>
+<nav class="hidden lg:flex items-center h-full gap-1">
+<a class="text-slate-900 dark:text-[#44DFA3] border-b-2 border-[#44DFA3] h-12 flex items-center px-3" href="#">Markets</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 h-12 flex items-center transition-colors" href="#">Liquidity</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 h-12 flex items-center transition-colors" href="#">Risk</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 px-3 h-12 flex items-center transition-colors" href="#">Compliance</a>
+</nav>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 hover:bg-slate-200/50 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 cursor-pointer active:opacity-70 transition-colors">
+<span class="material-symbols-outlined" data-icon="dark_mode">dark_mode</span>
+</button>
+<button class="p-2 hover:bg-slate-200/50 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 cursor-pointer active:opacity-70 transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full"></span>
+</button>
+<button class="p-2 hover:bg-slate-200/50 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 cursor-pointer active:opacity-70 transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="ml-2 w-7 h-7 bg-surface-container-highest flex items-center justify-center rounded-sm border border-white/10">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="Institutional trader headshot, professional lighting, clean dark background, serious expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDI3BTrGkqqP_T4OeIqTn72P9HGrT-qQPOhTyovTyUPD_r5JXtKPb0f-dk4YEiO0EooGRpPobVzY7jP9Up9IklDzzOFzSOTNIsJL2pvP6qP3lh2xnx4vhodR4Qo2xHqm7Eq-7WQXUqoYpky3y5QbhDCJkhVHl2XxyeJH5DfShO2dW4UuhNNeAZZR3Qdm1srsCgsNGxtEyFBQ-aUpbsLx-ZN6_Ylu-1BBv-ZlxVHGFh7-pgRHUM0sNDXyw95jI2ozMBmYhLxUi6LDBex"/>
+</div>
+</div>
+</header>
+<!-- Screen Content -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Main Workspace -->
+<div class="flex-1 flex flex-col min-w-0 bg-surface-container-low">
+<!-- Tactical Filter Header -->
+<div class="p-4 bg-surface flex flex-wrap items-center gap-4">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Indices</span>
+<div class="flex bg-surface-container-lowest rounded-sm p-0.5 border border-white/5">
+<button class="px-3 py-1 text-[11px] font-semibold bg-surface-container-high text-primary rounded-sm">NASDAQ 100</button>
+<button class="px-3 py-1 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface">S&amp;P 500</button>
+<button class="px-3 py-1 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface">DJIA</button>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Sector</span>
+<div class="relative">
+<button class="bg-surface-container-lowest text-[11px] font-semibold py-1.5 px-3 pr-8 rounded-sm border border-white/5 flex items-center gap-2 hover:bg-surface-container transition-colors">
+                                    Technology &amp; Semis
+                                    <span class="material-symbols-outlined text-[14px] absolute right-2" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Analyst Rating</span>
+<div class="flex bg-surface-container-lowest rounded-sm p-0.5 border border-white/5">
+<button class="px-3 py-1 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface">All</button>
+<button class="px-3 py-1 text-[11px] font-semibold bg-surface-container-high text-primary rounded-sm">Buy/Strong Buy</button>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Performance</span>
+<div class="bg-surface-container-lowest text-[11px] font-semibold py-1.5 px-3 rounded-sm border border-white/5 flex items-center gap-2">
+<span>Vol &gt; 1M</span>
+<span class="material-symbols-outlined text-[14px] text-primary" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<div class="ml-auto flex items-center gap-2 self-end">
+<button class="bg-surface-container-highest p-1.5 text-on-surface hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+</button>
+<button class="bg-surface-container-highest p-1.5 text-on-surface hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="download">download</span>
+</button>
+</div>
+</div>
+<!-- Data Grid Section -->
+<div class="flex-1 overflow-auto">
+<table class="w-full text-left border-separate border-spacing-0">
+<thead class="sticky top-0 z-10 bg-surface-container-low shadow-sm">
+<tr class="font-['Inter'] text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
+<th class="py-3 px-4 bg-surface-container-low whitespace-nowrap">Symbol</th>
+<th class="py-3 px-4 bg-surface-container-low whitespace-nowrap cursor-pointer hover:text-on-surface group">
+                                        Price <span class="material-symbols-outlined text-[12px] align-middle opacity-0 group-hover:opacity-100" data-icon="arrow_downward">arrow_downward</span>
+</th>
+<th class="py-3 px-4 bg-surface-container-low whitespace-nowrap text-right">Chg%</th>
+<th class="py-3 px-4 bg-surface-container-low whitespace-nowrap text-right">Volume</th>
+<th class="py-3 px-4 bg-surface-container-low whitespace-nowrap text-right">Market Cap</th>
+<th class="py-3 px-4 bg-surface-container-low whitespace-nowrap text-right">P/E</th>
+<th class="py-3 px-4 bg-surface-container-low whitespace-nowrap text-right">Div Yield</th>
+<th class="py-3 px-4 bg-surface-container-low whitespace-nowrap">Recommendation</th>
+</tr>
+</thead>
+<tbody class="text-[13px] tabular">
+<!-- Row 1 -->
+<tr class="bg-surface hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="py-2.5 px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 bg-white rounded-sm flex items-center justify-center p-1 overflow-hidden">
+<img alt="NVDA" data-alt="clean nvidia logo corporate branding on white background minimal" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBq7eikrOU6UHO2blCORp6n7pXHwcDqgH0veTHlvCeQNu2SxPqPe8HWHu2lDc1jZPZtGWEOFnSfADZqqAAbFIsCcQ10z3Hanob8IGUy_5wTzeTnTt0xzfOFV7Uobc1sdZUp0vm-I0cBjaE6xsM9WMblMJ_LlfYrOROWeZ23ORiHigDvJqduXwOlCc-BkhRKczYu63tVp3nOUxiAuaabVBUAX9M2iF0UnnRQw_zzUf5H_JQpA-52Z05Tmg1bANGpEXBTjoPWS-Vhy8Y5"/>
+</div>
+<span class="font-bold text-on-surface">NVDA</span>
+<span class="text-[10px] text-on-surface-variant hidden xl:inline">NVIDIA Corp</span>
+</div>
+</td>
+<td class="py-2.5 px-4 font-medium text-on-surface">124.58</td>
+<td class="py-2.5 px-4 text-right text-primary">+2.45%</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">42.8M</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">3.12T</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">72.4</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">0.02%</td>
+<td class="py-2.5 px-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-sm border border-primary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Strong Buy
+                                        </span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="bg-surface-container-low/50 hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="py-2.5 px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 bg-black rounded-sm flex items-center justify-center p-1 overflow-hidden border border-white/10">
+<img alt="AAPL" data-alt="clean apple logo corporate branding on black background minimal" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSpyH1KKTVwrrfurhMit1537qVN8jlAX4Luvjqpbe8oYj04PNSkt1fLt3cIL95jIM5wljVNfq-mXacOmiz81jHujVRPw7wdp3Umxu8zMfa10D7edXITUTaK9W_ZvOPbT7telGcIKQXgjkOGjdJPrWAlKXJoTdn1rWsllFxtN-idi1rmdQHMmfctBf8TuCdsT_d7sc0kIpifZUhS_wwaZZuinQnKS0XaDhQXZPAvob4hGn-ngSKR1anbngkKfD9wjXJSw7d7kgKXH7E"/>
+</div>
+<span class="font-bold text-on-surface">AAPL</span>
+<span class="text-[10px] text-on-surface-variant hidden xl:inline">Apple Inc</span>
+</div>
+</td>
+<td class="py-2.5 px-4 font-medium text-on-surface">228.22</td>
+<td class="py-2.5 px-4 text-right text-primary">+1.12%</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">61.2M</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">3.48T</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">33.8</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">0.44%</td>
+<td class="py-2.5 px-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-sm border border-primary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Buy
+                                        </span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="bg-surface hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="py-2.5 px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 bg-white rounded-sm flex items-center justify-center p-1 overflow-hidden">
+<img alt="MSFT" data-alt="microsoft windows 11 logo minimalist design" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD9EPCsQhknuJAf3Rm2ZuxT770DexWdMzo1DznKepfZuGMu5tZqbknB0tDfiGHiA1S27b0byq197RZa30KF8vYaHEVA-KLg5p2fOvuZw7OvayGNKKlthADzwSh8TbN2k5I5HPb_KEdH5E9eJsIbuk5wVmranyXjrhz7E4egv6moBw32e0RfXTusoczTF7_fM8lFsm-BMNHPsWGJY19lhMcu2MKGHhBNhDTePDZfPTQY0IXmkfrpMDAJCbgbLtx8jX7UlPUMigDCJxz3"/>
+</div>
+<span class="font-bold text-on-surface">MSFT</span>
+<span class="text-[10px] text-on-surface-variant hidden xl:inline">Microsoft</span>
+</div>
+</td>
+<td class="py-2.5 px-4 font-medium text-on-surface">412.84</td>
+<td class="py-2.5 px-4 text-right text-secondary-container/80 text-secondary">-0.85%</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">22.1M</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">3.08T</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">36.1</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">0.73%</td>
+<td class="py-2.5 px-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-surface-variant text-on-surface text-[10px] font-bold uppercase tracking-wider rounded-sm border border-outline-variant/30">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span> Neutral
+                                        </span>
+</td>
+</tr>
+<!-- Repeat Rows to simulate density -->
+<tr class="bg-surface-container-low/50 hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="py-2.5 px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 bg-slate-800 rounded-sm flex items-center justify-center p-1 overflow-hidden border border-white/10">
+<img alt="TSLA" data-alt="tesla logo minimalist chrome emblem on dark grey background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtHRFox5wcDEv9bnOkVp223nemVE_Z-lGYpFDPNnRl3fhYbKVEw7CG5_LLcRqLMiHns07PRXyIeCnFZ8E94G0zoLA90HqTL95CGdnI3-ETTz849Jb1pZpsSbwXw3Tk3EPEmJM-eHaqq4y0KMRTnNVhZB5AlZaQZ1_KzLtuWQLXWnGm45t04dBKBVlXbdkfcRJNN6qMOic7FaPNUja63939f2fqvXrgoaIXO2onIol2Yvmdm-Ffc_vckMA8W0n3q7-LSMWbVtQ1u5CD"/>
+</div>
+<span class="font-bold text-on-surface">TSLA</span>
+<span class="text-[10px] text-on-surface-variant hidden xl:inline">Tesla Motors</span>
+</div>
+</td>
+<td class="py-2.5 px-4 font-medium text-on-surface">210.65</td>
+<td class="py-2.5 px-4 text-right text-primary">+4.52%</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">105M</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">671B</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">58.2</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">N/A</td>
+<td class="py-2.5 px-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-sm border border-primary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Strong Buy
+                                        </span>
+</td>
+</tr>
+<tr class="bg-surface hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="py-2.5 px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 bg-[#00A1E0] rounded-sm flex items-center justify-center p-1 overflow-hidden">
+<img alt="INTC" data-alt="intel logo modern blue brand identity on clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAERlFyVZNKPRU_meZ54nlHd9nIBdxiPQlLA4jOHpooI_Tjeg1Bcj4gl3zy3GwtZ7WX4kwnxGZF9xNoqvsBuCKykGTi8MfeYvcUgsXsF5sj5EhOpZ-JTfOUeRyiVjKEq7Q3n3F7IbTtHgH6bhxfId2MmuVbhIjFS-zG-z13IeMcowm2iUMZkU0IQ3vIeqKff_3XDWec8Tq8ST9iV_CQtSUka52kWKJWyNPL25DS-VPq-X2s8Ixsx2ouCffZhfAUGgn-j_mzoCAfgu9Y"/>
+</div>
+<span class="font-bold text-on-surface">INTC</span>
+<span class="text-[10px] text-on-surface-variant hidden xl:inline">Intel Corp</span>
+</div>
+</td>
+<td class="py-2.5 px-4 font-medium text-on-surface">22.45</td>
+<td class="py-2.5 px-4 text-right text-secondary-container/80 text-secondary">-1.32%</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">38.4M</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">95.4B</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">18.2</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">2.1%</td>
+<td class="py-2.5 px-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-surface-variant text-on-surface text-[10px] font-bold uppercase tracking-wider rounded-sm border border-outline-variant/30">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span> Neutral
+                                        </span>
+</td>
+</tr>
+<tr class="bg-surface-container-low/50 hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="py-2.5 px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 bg-black rounded-sm flex items-center justify-center p-1 overflow-hidden border border-white/10">
+<img alt="AMD" data-alt="advanced micro devices amd logo on dark tech background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcjLUdvjFxCF0OiF8IvL84MNl5Ot7bnoU8l5IQiih3u1hTZQfQ7MHCNnEWj39szX1oHH9OK--zSWHa7gKk5Dh4Y1A9ZRDXo_WaUOLHyP2h-R5vS6egnB1bWzMOSewkBjUorqbGBYk6WfqaYZ2E9IOew83WE1ckt7IgGXtw8mGTwz5_G23uTk8YiyxSRNNlLrZVmm7gFVqtvKvK7YFe3iXAfzryEsBxL5Ba8L62WLWFR5obW_tvvEjGIaXvBvgtFsfRExLaPVpW4blv"/>
+</div>
+<span class="font-bold text-on-surface">AMD</span>
+<span class="text-[10px] text-on-surface-variant hidden xl:inline">Advanced Micro</span>
+</div>
+</td>
+<td class="py-2.5 px-4 font-medium text-on-surface">156.12</td>
+<td class="py-2.5 px-4 text-right text-primary">+0.88%</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">54.9M</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">252B</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">44.5</td>
+<td class="py-2.5 px-4 text-right text-on-surface-variant">N/A</td>
+<td class="py-2.5 px-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-sm border border-primary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Buy
+                                        </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Contextual Sidebar -->
+<aside class="hidden lg:flex flex-col w-80 bg-surface border-l border-white/5 p-4 space-y-6">
+<div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="font-black text-lg leading-tight">NVDA</h3>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">NVIDIA Corporation</p>
+</div>
+<button class="bg-primary/10 text-primary p-1.5 rounded-sm">
+<span class="material-symbols-outlined" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+</div>
+<!-- Mini Chart Concept -->
+<div class="h-32 w-full bg-surface-container-lowest rounded-sm relative overflow-hidden flex flex-col p-2 group">
+<div class="flex justify-between text-[10px] font-mono text-primary/50">
+<span>126.00</span>
+<span>1D PEAK</span>
+</div>
+<!-- Mock SVG Chart Line -->
+<div class="flex-1 mt-2 relative">
+<svg class="w-full h-full" preserveaspectratio="none">
+<path d="M0 80 Q 20 70, 40 75 T 80 40 T 120 50 T 160 20 T 200 35 T 240 10 T 280 15" fill="none" stroke="#67FCBE" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+<path d="M0 80 Q 20 70, 40 75 T 80 40 T 120 50 T 160 20 T 200 35 T 240 10 T 280 15 V 100 H 0 Z" fill="url(#gradient)" opacity="0.1"></path>
+<defs>
+<lineargradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#67FCBE;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#67FCBE;stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<div class="absolute right-0 top-0 h-full w-px bg-primary/20 group-hover:bg-primary/50"></div>
+</div>
+</div>
+</div>
+<!-- Analyst Rating Gauge -->
+<div class="bg-surface-container-low p-4 rounded-sm border border-white/5">
+<h4 class="text-[10px] uppercase tracking-widest font-black text-on-surface mb-4">Analyst Rating Consenus</h4>
+<div class="flex items-center gap-6">
+<div class="relative w-20 h-20">
+<!-- Semi-circle Gauge -->
+<svg class="w-20 h-20 -rotate-90">
+<circle cx="40" cy="40" fill="none" r="32" stroke="#252a31" stroke-dasharray="201" stroke-dashoffset="100" stroke-width="8"></circle>
+<circle cx="40" cy="40" fill="none" r="32" stroke="#67FCBE" stroke-dasharray="201" stroke-dashoffset="116" stroke-width="8"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center pt-2">
+<span class="text-lg font-black leading-none">84%</span>
+<span class="text-[8px] uppercase tracking-tight text-on-surface-variant font-bold">Buy</span>
+</div>
+</div>
+<div class="flex-1 space-y-2">
+<div class="flex items-center justify-between text-[10px] font-bold">
+<span class="text-on-surface-variant">Strong Buy</span>
+<span class="tabular text-primary">24</span>
+</div>
+<div class="flex items-center justify-between text-[10px] font-bold">
+<span class="text-on-surface-variant">Hold</span>
+<span class="tabular">4</span>
+</div>
+<div class="flex items-center justify-between text-[10px] font-bold">
+<span class="text-on-surface-variant">Sell</span>
+<span class="tabular text-secondary">1</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Performance Stats Table -->
+<div class="space-y-3">
+<h4 class="text-[10px] uppercase tracking-widest font-black text-on-surface">Key Metrics</h4>
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-surface-container-lowest p-3 rounded-sm">
+<span class="block text-[9px] text-on-surface-variant uppercase font-bold mb-1">EPS (TTM)</span>
+<span class="text-sm font-bold tabular">1.80</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-sm">
+<span class="block text-[9px] text-on-surface-variant uppercase font-bold mb-1">Beta</span>
+<span class="text-sm font-bold tabular">1.68</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-sm">
+<span class="block text-[9px] text-on-surface-variant uppercase font-bold mb-1">Prev Close</span>
+<span class="text-sm font-bold tabular">121.60</span>
+</div>
+<div class="bg-surface-container-lowest p-3 rounded-sm">
+<span class="block text-[9px] text-on-surface-variant uppercase font-bold mb-1">52W Range</span>
+<span class="text-[11px] font-bold tabular">40.22 - 140.76</span>
+</div>
+</div>
+</div>
+<!-- Market Sentiment Chip -->
+<div class="mt-auto">
+<div class="bg-primary/5 p-4 rounded-sm border border-primary/20">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="insights">insights</span>
+<span class="text-[10px] uppercase font-black text-primary tracking-widest">Tactical Insight</span>
+</div>
+<p class="text-[11px] leading-relaxed text-on-surface-variant">
+                                NVDA continues to outperform sector benchmarks with strong relative strength index (RSI) at 68. Momentum suggests potential for breakout above resistance.
+                            </p>
+</div>
+</div>
+</aside>
+</div>
+<!-- Mobile Navigation -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-container-highest border-t border-white/5 flex items-center justify-around px-4 z-50">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+<span class="text-[10px] font-bold uppercase">Markets</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="list_alt">list_alt</span>
+<span class="text-[10px] font-bold uppercase">Orders</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+<span class="text-[10px] font-bold uppercase">Stats</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="text-[10px] font-bold uppercase">Wallet</span>
+</button>
+</nav>
+</main>
+</div>
+</body></html>

@@ -28,10 +28,8 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe("Broker Credential API", () => {
   test.beforeEach(async ({ request }) => {
+    // registerUser now calls /test/token which provisions the user and sets dev_token cookie
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
   });
 
   test("CRED-01: POST /broker/credentials creates Alpaca credential and returns masked key", async ({
@@ -133,33 +131,36 @@ test.describe("Broker Credential API", () => {
 
   test("CRED-07: accessing another user's credential returns 403", async ({
     request,
+    playwright,
   }) => {
-    // Create credential as USER_A
+    // Create credential as USER_A (request context already has dev_token from beforeEach)
     const { body: created } = await createCredential(request, ALPACA_CRED);
     const credId = (created as { id: number }).id;
 
-    // Logout and login as a different user
-    await request.post(`${API_URL}/auth/logout`);
+    // Provision a different user via /test/token in a separate context
     const otherEmail = `other-cred-test-${Date.now()}@nextgenstock.io`;
-    await request.post(`${API_URL}/auth/register`, {
-      data: { email: otherEmail, password: "OtherUser123!" },
-    });
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: otherEmail, password: "OtherUser123!" },
-    });
-
-    // Try to access USER_A's credential
-    const res = await request.post(`${API_URL}/broker/credentials/${credId}/test`);
-    expect([403, 404]).toContain(res.status());
+    const otherCtx = await playwright.request.newContext();
+    try {
+      await otherCtx.post(`${API_URL}/test/token`, { data: { email: otherEmail } });
+      // Try to access USER_A's credential as the other user (uses dev_token cookie)
+      const res = await otherCtx.post(`${API_URL}/broker/credentials/${credId}/test`);
+      expect([403, 404]).toContain(res.status());
+    } finally {
+      await otherCtx.dispose();
+    }
   });
 
   test("CRED-08: returns 401 when listing credentials without auth", async ({
-    request,
+    playwright,
   }) => {
-    // Log out first
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/broker/credentials`);
-    expect(res.status()).toBe(401);
+    // Use a fresh context with no cookies
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/broker/credentials`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 });
 

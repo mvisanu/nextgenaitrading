@@ -205,7 +205,7 @@ function OutcomeCell({
         className={cn(
           "h-5 w-5 rounded-sm border transition-colors flex items-center justify-center",
           outcome === "win"
-            ? "bg-emerald-500/20 border-emerald-500 text-emerald-400"
+            ? "bg-primary/20 border-primary text-primary"
             : "border-border/60 text-transparent hover:border-muted-foreground/40"
         )}
         title="Win"
@@ -217,7 +217,7 @@ function OutcomeCell({
         className={cn(
           "h-5 w-5 rounded-sm border transition-colors flex items-center justify-center",
           outcome === "breakeven"
-            ? "bg-blue-500/20 border-blue-500 text-blue-400"
+            ? "bg-muted/40 border-muted-foreground text-muted-foreground"
             : "border-border/60 text-transparent hover:border-muted-foreground/40"
         )}
         title="Break Even"
@@ -229,7 +229,7 @@ function OutcomeCell({
         className={cn(
           "h-5 w-5 rounded-sm border transition-colors flex items-center justify-center",
           outcome === "loss"
-            ? "bg-red-500/20 border-red-500 text-red-400"
+            ? "bg-destructive/20 border-destructive text-destructive"
             : "border-border/60 text-transparent hover:border-muted-foreground/40"
         )}
         title="Loss"
@@ -361,14 +361,14 @@ function KpiCard({
   color: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 min-w-[140px]">
-      <div className={cn("flex items-center justify-center h-8 w-8 rounded-lg", color)}>
+    <div className="flex items-center gap-3 bg-surface-low border border-border/10 rounded-sm px-4 py-3 min-w-[140px]">
+      <div className={cn("flex items-center justify-center h-8 w-8 rounded-sm", color)}>
         <Icon className="h-4 w-4" />
       </div>
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className="text-lg font-bold font-mono leading-tight">{value}</p>
-        {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
+        <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+        <p className="text-lg font-bold font-mono tabular-nums leading-tight">{value}</p>
+        {sub && <p className="text-2xs text-muted-foreground tabular-nums">{sub}</p>}
       </div>
     </div>
   );
@@ -513,14 +513,14 @@ export default function TradeLogPage() {
             value={total > 0 ? `${winRate.toFixed(1)}%` : "\u2014"}
             sub={`${wins}W / ${losses}L of ${total}`}
             icon={Target}
-            color={winRate >= 50 ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}
+            color={winRate >= 50 ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"}
           />
           <KpiCard
             label="Total PnL"
             value={total > 0 ? formatPnl(sumPnl) : "\u2014"}
             sub={total > 0 ? `Avg ${formatPnl(avgPnl)}` : undefined}
             icon={sumPnl >= 0 ? TrendingUp : TrendingDown}
-            color={sumPnl >= 0 ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"}
+            color={sumPnl >= 0 ? "bg-primary/15 text-primary" : "bg-destructive/15 text-destructive"}
           />
           <KpiCard
             label="Avg R-Factor"
@@ -541,15 +541,15 @@ export default function TradeLogPage() {
         {/* ── Win rate bar ──────────────────────────────────────── */}
         {total > 0 && (
           <div className="flex items-center gap-3 px-1">
-            <div className="flex-1 h-2 rounded-full bg-muted/40 overflow-hidden">
+            <div className="flex-1 h-1.5 rounded-sm bg-surface-lowest overflow-hidden">
               <div
-                className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-500 to-emerald-400"
+                className="h-full rounded-sm transition-all duration-500 bg-primary"
                 style={{ width: `${Math.min(winRate, 100)}%` }}
               />
             </div>
             <span className={cn(
-              "text-xs font-mono font-bold min-w-[45px] text-right",
-              winRate >= 50 ? "text-emerald-400" : "text-red-400"
+              "text-xs font-mono font-bold tabular-nums min-w-[45px] text-right",
+              winRate >= 50 ? "text-primary" : "text-destructive"
             )}>
               {winRate.toFixed(1)}%
             </span>
@@ -557,27 +557,27 @@ export default function TradeLogPage() {
         )}
 
         {/* ── Filter bar ───────────────────────────────────────── */}
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 w-fit">
+        <div className="flex items-center gap-1 bg-surface-low border border-border/10 rounded-sm p-1 w-fit">
           {(["all", "win", "breakeven", "loss"] as OutcomeFilter[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize",
+                "px-3 py-1.5 rounded-sm text-xs font-medium transition-colors capitalize",
                 filter === f
                   ? f === "win"
-                    ? "bg-emerald-500/15 text-emerald-400"
+                    ? "bg-primary/15 text-primary"
                     : f === "loss"
-                      ? "bg-red-500/15 text-red-400"
+                      ? "bg-destructive/15 text-destructive"
                       : f === "breakeven"
-                        ? "bg-blue-500/15 text-blue-400"
-                        : "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                        ? "bg-muted/60 text-foreground"
+                        : "bg-surface-high text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-surface-high/50"
               )}
             >
               {f === "breakeven" ? "BE" : f}
               {f !== "all" && (
-                <span className="ml-1 font-mono text-[10px] opacity-60">
+                <span className="ml-1 font-mono text-2xs tabular-nums opacity-60">
                   {f === "win" ? wins : f === "loss" ? losses : filtered.filter((t) => t.outcome === "breakeven").length}
                 </span>
               )}
@@ -586,24 +586,24 @@ export default function TradeLogPage() {
         </div>
 
         {/* ── Trade Table ──────────────────────────────────────── */}
-        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="bg-surface-low border border-border/10 rounded-sm overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/20 hover:bg-muted/20">
-                  <TableHead className="w-8 text-center text-[10px] px-2">#</TableHead>
-                  <TableHead className="text-[10px] px-2 min-w-[90px]">Date</TableHead>
-                  <TableHead className="text-[10px] px-2 min-w-[80px]">Pair</TableHead>
-                  <TableHead className="text-[10px] px-2 min-w-[80px]">Type</TableHead>
-                  <TableHead className="text-[10px] px-2 w-[55px]">Source</TableHead>
-                  <TableHead className="text-[10px] px-2 w-[45px]">TF</TableHead>
-                  <TableHead className="text-[10px] px-2 w-[55px]">Side</TableHead>
-                  <TableHead className="text-[10px] px-2 w-[80px]">Outcome</TableHead>
-                  <TableHead className="text-[10px] px-2 min-w-[90px] text-right">Net PnL</TableHead>
-                  <TableHead className="text-[10px] px-2 min-w-[65px] text-right">Amount</TableHead>
-                  <TableHead className="text-[10px] px-2 min-w-[55px] text-right">R</TableHead>
-                  <TableHead className="text-[10px] px-2 min-w-[100px]">Notes</TableHead>
-                  <TableHead className="w-7 px-1" />
+                <TableRow className="bg-surface-lowest hover:bg-surface-lowest border-border/10">
+                  <TableHead className="w-8 text-center text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2">#</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 min-w-[90px]">Date</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 min-w-[80px]">Pair</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 min-w-[80px]">Type</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 w-[55px]">Source</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 w-[45px]">TF</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 w-[55px]">Side</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 w-[80px]">Outcome</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 min-w-[90px] text-right">Net PnL</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 min-w-[65px] text-right">Amount</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 min-w-[55px] text-right">R</TableHead>
+                  <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground px-2 py-2 min-w-[100px]">Notes</TableHead>
+                  <TableHead className="w-7 px-1 py-2" />
                 </TableRow>
               </TableHeader>
 
@@ -613,7 +613,7 @@ export default function TradeLogPage() {
                     <TableCell colSpan={13} className="text-center py-16 text-muted-foreground">
                       {trades.length === 0 ? (
                         <div className="space-y-3">
-                          <ClipboardList className="h-10 w-10 mx-auto text-muted-foreground/20" />
+                          <ClipboardList className="h-10 w-10 mx-auto text-primary/20" />
                           <p className="text-sm font-medium">No trades logged yet</p>
                           <p className="text-xs text-muted-foreground/60 max-w-sm mx-auto">
                             Trades are automatically logged when you execute orders from Live Trading
@@ -634,11 +634,11 @@ export default function TradeLogPage() {
                     <TableRow
                       key={trade.id}
                       className={cn(
-                        "group transition-colors",
-                        trade.outcome === "win" && "bg-emerald-500/[0.03] hover:bg-emerald-500/[0.06]",
-                        trade.outcome === "loss" && "bg-red-500/[0.03] hover:bg-red-500/[0.06]",
-                        trade.outcome === "breakeven" && "bg-blue-500/[0.02] hover:bg-blue-500/[0.04]",
-                        !trade.outcome && "hover:bg-muted/30"
+                        "group transition-colors border-border/10",
+                        trade.outcome === "win" && "bg-primary/[0.03] hover:bg-primary/[0.06]",
+                        trade.outcome === "loss" && "bg-destructive/[0.03] hover:bg-destructive/[0.06]",
+                        trade.outcome === "breakeven" && "hover:bg-surface-high/20",
+                        !trade.outcome && "hover:bg-surface-high/20"
                       )}
                     >
                       {/* # */}
@@ -724,10 +724,10 @@ export default function TradeLogPage() {
                             })
                           }
                           className={cn(
-                            "px-2 py-0.5 rounded text-[11px] font-semibold transition-colors",
+                            "px-2 py-0.5 rounded-sm text-[11px] font-semibold transition-colors",
                             trade.position === "Long"
-                              ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
-                              : "bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                              ? "bg-primary/15 text-primary hover:bg-primary/25"
+                              : "bg-destructive/15 text-destructive hover:bg-destructive/25"
                           )}
                         >
                           {trade.position}
@@ -756,9 +756,9 @@ export default function TradeLogPage() {
                           className={cn(
                             trade.netPnl !== null &&
                               (trade.netPnl > 0
-                                ? "text-emerald-400"
+                                ? "text-primary"
                                 : trade.netPnl < 0
-                                  ? "text-red-400"
+                                  ? "text-destructive"
                                   : "")
                           )}
                         />

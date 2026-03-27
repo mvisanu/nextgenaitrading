@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import PyJWTError as JWTError
 import jwt
@@ -64,6 +64,7 @@ def _decode_supabase_token(token: str) -> dict:
 
 
 async def get_current_user(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     credentials: Annotated[
         Optional[HTTPAuthorizationCredentials], Depends(_bearer_scheme)
@@ -76,12 +77,22 @@ async def get_current_user(
     For Supabase tokens, the `sub` claim contains the Supabase user UUID.
     We look up the user by email from the token, creating one if needed
     (auto-provisioning on first API call after Supabase auth).
+
+    In debug mode, also accepts a `dev_token` cookie as a fallback Bearer token
+    (used by Playwright E2E tests to avoid the Supabase magic-link flow).
     """
-    if not credentials:
+    # Resolve the token: prefer Authorization header, fall back to dev_token cookie (debug only)
+    raw_token: Optional[str] = None
+    if credentials:
+        raw_token = credentials.credentials
+    elif settings.debug:
+        raw_token = request.cookies.get("dev_token")
+
+    if not raw_token:
         raise _credentials_exception
 
     try:
-        payload = _decode_supabase_token(credentials.credentials)
+        payload = _decode_supabase_token(raw_token)
         # Supabase tokens have `sub` (user UUID) and `email` in the payload
         user_email = payload.get("email")
         user_sub = payload.get("sub")
@@ -126,6 +137,7 @@ async def get_current_user(
 
 
 async def optional_current_user(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     credentials: Annotated[
         Optional[HTTPAuthorizationCredentials], Depends(_bearer_scheme)
@@ -134,10 +146,10 @@ async def optional_current_user(
     """
     Like get_current_user but returns None instead of raising on missing/invalid token.
     """
-    if not credentials:
+    if not credentials and not (settings.debug and request.cookies.get("dev_token")):
         return None
 
     try:
-        return await get_current_user(db, credentials)
+        return await get_current_user(request, db, credentials)
     except HTTPException:
         return None

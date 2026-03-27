@@ -12,7 +12,6 @@
  * Theme names are title-cased for display ("renewable_energy" → "Renewable Energy").
  */
 
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface ThemeScoreBadgeProps {
@@ -28,14 +27,14 @@ function formatThemeName(key: string): string {
     .join(" ");
 }
 
-function badgeClassName(score: number): string {
+function badgeClass(score: number): string {
   if (score >= 0.6) {
-    return "bg-green-500/15 text-green-400 border-green-500/30 hover:bg-green-500/20";
+    return "bg-primary/15 text-primary";
   }
   if (score >= 0.3) {
-    return "bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/20";
+    return "bg-amber-500/15 text-amber-400";
   }
-  return "bg-muted/50 text-muted-foreground border-border hover:bg-muted";
+  return "bg-surface-high text-muted-foreground";
 }
 
 export function ThemeScoreBadge({
@@ -48,22 +47,21 @@ export function ThemeScoreBadge({
 
   if (visibleThemes.length === 0) {
     return (
-      <span className="text-xs text-muted-foreground">No theme alignment</span>
+      <span className="text-2xs text-muted-foreground">No theme alignment</span>
     );
   }
 
   return (
-    <div className={cn("flex flex-wrap gap-1.5", className)}>
+    <div className={cn("flex flex-wrap gap-1", className)}>
       {visibleThemes.map(([key, score]) => (
-        <Badge
+        <span
           key={key}
-          variant="outline"
-          className={cn("text-xs font-medium", badgeClassName(score))}
+          className={cn("text-3xs font-bold px-2 py-0.5 rounded-sm tabular-nums", badgeClass(score))}
           title={`${formatThemeName(key)}: ${(score * 100).toFixed(0)}%`}
         >
           {formatThemeName(key)}
           <span className="ml-1 opacity-70">{(score * 100).toFixed(0)}%</span>
-        </Badge>
+        </span>
       ))}
     </div>
   );

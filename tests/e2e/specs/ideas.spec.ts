@@ -234,30 +234,46 @@ test.describe("Ideas API — conviction_score validation", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("Ideas API — 401 without authentication", () => {
-  test("IDEA-14: GET /api/ideas returns 401 without auth", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/ideas`);
-    expect(res.status()).toBe(401);
+  test("IDEA-14: GET /api/ideas returns 401 without auth", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/ideas`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
-  test("IDEA-15: POST /api/ideas returns 401 without auth", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.post(`${API_URL}/ideas`, { data: VALID_IDEA });
-    expect(res.status()).toBe(401);
+  test("IDEA-15: POST /api/ideas returns 401 without auth", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.post(`${API_URL}/ideas`, { data: VALID_IDEA });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
-  test("IDEA-16: PATCH /api/ideas/{id} returns 401 without auth", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.patch(`${API_URL}/ideas/1`, {
-      data: { title: "Hacked" },
-    });
-    expect(res.status()).toBe(401);
+  test("IDEA-16: PATCH /api/ideas/{id} returns 401 without auth", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.patch(`${API_URL}/ideas/1`, {
+        data: { title: "Hacked" },
+      });
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
-  test("IDEA-17: DELETE /api/ideas/{id} returns 401 without auth", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.delete(`${API_URL}/ideas/1`);
-    expect(res.status()).toBe(401);
+  test("IDEA-17: DELETE /api/ideas/{id} returns 401 without auth", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.delete(`${API_URL}/ideas/1`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 });
 

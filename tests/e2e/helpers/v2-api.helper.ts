@@ -248,8 +248,12 @@ export async function getOpportunities(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Register and log in as a temporary user using a unique email.
+ * Provision a temporary user via /test/token and authenticate the request context.
  * Returns the email used (for cross-user tests).
+ *
+ * The /test/token endpoint sets a dev_token cookie in the response, which
+ * Playwright's APIRequestContext automatically stores and sends in subsequent
+ * requests — providing transparent Bearer-equivalent auth for API tests.
  */
 export async function loginAsNewUser(
   request: APIRequestContext,
@@ -257,28 +261,20 @@ export async function loginAsNewUser(
 ): Promise<string> {
   const tag = suffix ?? Date.now().toString();
   const email = `e2e-v2-${tag}@nextgenstock.io`;
-  const password = "TestPass1234!";
 
-  const regRes = await request.post(`${API_URL}/auth/register`, {
-    data: { email, password },
+  const res = await request.post(`${API_URL}/test/token`, {
+    data: { email },
   });
-  if (!regRes.ok() && regRes.status() !== 409) {
-    throw new Error(`loginAsNewUser register failed: ${regRes.status()}`);
-  }
-
-  const loginRes = await request.post(`${API_URL}/auth/login`, {
-    data: { email, password },
-  });
-  if (!loginRes.ok()) {
-    throw new Error(`loginAsNewUser login failed: ${loginRes.status()}`);
+  if (!res.ok()) {
+    throw new Error(`loginAsNewUser /test/token failed: ${res.status()} ${await res.text()}`);
   }
 
   return email;
 }
 
 /**
- * Log out the current session via API.
+ * Log out — no-op for E2E tests (Supabase handles auth; dev_token has a 1h TTL).
  */
-export async function logoutCurrent(request: APIRequestContext): Promise<void> {
-  await request.post(`${API_URL}/auth/logout`);
+export async function logoutCurrent(_request: APIRequestContext): Promise<void> {
+  // No backend logout endpoint in Supabase auth flow
 }

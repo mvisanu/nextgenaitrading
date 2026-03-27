@@ -57,11 +57,11 @@ test.describe("Login page — magic link form (SA-01)", () => {
     await expect(submitBtn).toContainText(/magic link/i);
   });
 
-  test("SA-01-03: login page shows NextGenStock branding", async ({ page }) => {
+  test("SA-01-03: login page shows NextGenAi Trading branding", async ({ page }) => {
     await page.goto(ROUTES.login);
     await page.waitForLoadState("networkidle");
 
-    await expect(page.locator("text=NextGenStock")).toBeVisible();
+    await expect(page.locator("text=NextGenAi Trading")).toBeVisible();
   });
 
   test("SA-01-04: login page shows 'Sign in' heading", async ({ page }) => {

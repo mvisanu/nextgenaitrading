@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Terminal One | Live Trading AAPL</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        /* Hide scrollbar for high-density feel */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0b0e13; }
+        ::-webkit-scrollbar-thumb { background: #1d2634; border-radius: 10px; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface": "#dce6f9",
+                        "primary-container": "#005237",
+                        "primary-fixed": "#67fcbe",
+                        "on-tertiary-container": "#000000",
+                        "on-secondary-fixed": "#3b3f4b",
+                        "surface-container-highest": "#1d2634",
+                        "on-primary-fixed-variant": "#006948",
+                        "inverse-primary": "#006d4b",
+                        "error": "#ee7d77",
+                        "on-secondary": "#1c202b",
+                        "on-surface-variant": "#a2abbd",
+                        "surface-container-high": "#18202b",
+                        "tertiary-fixed": "#ff333a",
+                        "on-tertiary-fixed-variant": "#220001",
+                        "on-primary": "#004a32",
+                        "outline-variant": "#3f4857",
+                        "on-primary-fixed": "#004931",
+                        "surface-tint": "#44dfa3",
+                        "on-error": "#490106",
+                        "tertiary-fixed-dim": "#ec232f",
+                        "tertiary-container": "#ff333a",
+                        "primary-fixed-dim": "#56eeb0",
+                        "secondary-fixed-dim": "#d1d4e3",
+                        "primary": "#44dfa3",
+                        "on-primary-container": "#51e9ad",
+                        "surface-variant": "#1d2634",
+                        "tertiary-dim": "#e51c2b",
+                        "inverse-on-surface": "#52555b",
+                        "surface": "#0b0e13",
+                        "outline": "#6d7686",
+                        "error-container": "#7f2927",
+                        "secondary-container": "#373b47",
+                        "on-secondary-container": "#bcbfcd",
+                        "surface-container-lowest": "#000000",
+                        "on-secondary-fixed-variant": "#575b68",
+                        "secondary-fixed": "#dfe2f1",
+                        "primary-dim": "#2fd196",
+                        "secondary-dim": "#9a9dac",
+                        "surface-container-low": "#0f141a",
+                        "on-background": "#dce6f9",
+                        "on-error-container": "#ff9993",
+                        "on-tertiary-fixed": "#000000",
+                        "surface-dim": "#0b0e13",
+                        "on-tertiary": "#490005",
+                        "surface-container": "#141a23",
+                        "tertiary": "#ff716a",
+                        "background": "#0b0e13",
+                        "inverse-surface": "#f8f9ff",
+                        "secondary": "#9a9dac",
+                        "surface-bright": "#222d3d",
+                        "error-dim": "#bb5551"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between px-6 w-full sticky top-0 z-50 bg-[#0f141a] border-none shadow-none h-14 font-inter tracking-tight text-sm">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#44dfa3]">Terminal One</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-[#9a9dac] hover:text-[#dce6f9] pb-4 px-1 transition-colors mt-4" href="#">Markets</a>
+<a class="text-[#9a9dac] hover:text-[#dce6f9] pb-4 px-1 transition-colors mt-4" href="#">Portfolio</a>
+<a class="text-[#44dfa3] font-semibold border-b-2 border-[#44dfa3] pb-4 px-1 mt-4" href="#">Terminal</a>
+<a class="text-[#9a9dac] hover:text-[#dce6f9] pb-4 px-1 transition-colors mt-4" href="#">Signals</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined text-secondary cursor-pointer hover:bg-[#18202b] p-1 rounded transition-all">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full border border-surface"></span>
+</div>
+<span class="material-symbols-outlined text-secondary cursor-pointer hover:bg-[#18202b] p-1 rounded transition-all">settings</span>
+<div class="flex items-center gap-2 pl-2 border-l border-outline-variant/30">
+<div class="text-right hidden lg:block">
+<p class="text-[10px] uppercase tracking-widest text-secondary leading-none">Institutional Tier</p>
+<p class="text-xs font-bold text-on-surface">Sovereign Analyst</p>
+</div>
+<span class="material-symbols-outlined text-primary text-3xl">account_circle</span>
+</div>
+</div>
+</header>
+<div class="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-14 h-full z-40 flex flex-col items-center py-4 bg-[#0b0e13] w-20 border-r border-transparent">
+<div class="flex flex-col items-center justify-center w-full py-4 text-[#44dfa3] bg-[#0f141a] border-l-2 border-[#44dfa3] mb-2 cursor-pointer transition-all active:opacity-80">
+<span class="material-symbols-outlined mb-1">dashboard</span>
+<span class="font-inter text-[10px] font-medium uppercase tracking-wider">Terminal</span>
+</div>
+<div class="flex flex-col items-center justify-center w-full py-4 text-[#9a9dac] hover:bg-[#18202b] hover:text-[#dce6f9] mb-2 cursor-pointer transition-all">
+<span class="material-symbols-outlined mb-1">list_alt</span>
+<span class="font-inter text-[10px] font-medium uppercase tracking-wider">Watchlist</span>
+</div>
+<div class="flex flex-col items-center justify-center w-full py-4 text-[#9a9dac] hover:bg-[#18202b] hover:text-[#dce6f9] mb-2 cursor-pointer transition-all">
+<span class="material-symbols-outlined mb-1">reorder</span>
+<span class="font-inter text-[10px] font-medium uppercase tracking-wider">Orders</span>
+</div>
+<div class="flex flex-col items-center justify-center w-full py-4 text-[#9a9dac] hover:bg-[#18202b] hover:text-[#dce6f9] mb-2 cursor-pointer transition-all">
+<span class="material-symbols-outlined mb-1">newspaper</span>
+<span class="font-inter text-[10px] font-medium uppercase tracking-wider">News</span>
+</div>
+<div class="flex flex-col items-center justify-center w-full py-4 text-[#9a9dac] hover:bg-[#18202b] hover:text-[#dce6f9] mb-2 cursor-pointer transition-all">
+<span class="material-symbols-outlined mb-1">history</span>
+<span class="font-inter text-[10px] font-medium uppercase tracking-wider">History</span>
+</div>
+<div class="mt-auto w-full">
+<div class="flex flex-col items-center justify-center w-full py-4 text-[#9a9dac] hover:bg-[#18202b] hover:text-[#dce6f9] cursor-pointer transition-all">
+<span class="material-symbols-outlined mb-1">headset_mic</span>
+<span class="font-inter text-[10px] font-medium uppercase tracking-wider">Support</span>
+</div>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="ml-20 flex-1 flex flex-col overflow-hidden bg-surface">
+<!-- Status Header -->
+<div class="h-12 bg-surface-container-low border-b border-outline-variant/10 flex items-center px-4 justify-between">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs font-bold tracking-wider uppercase text-on-surface-variant">Mode:</span>
+<span class="text-xs font-bold text-primary px-2 py-0.5 bg-primary-container/20 rounded-sm">PAPER TRADING</span>
+</div>
+<div class="h-4 w-px bg-outline-variant/30"></div>
+<div class="flex flex-col">
+<span class="text-[10px] text-secondary leading-none uppercase">Account Balance</span>
+<span class="text-sm font-bold tabular-nums text-on-surface">$100,000.00</span>
+</div>
+<div class="h-4 w-px bg-outline-variant/30"></div>
+<div class="flex flex-col">
+<span class="text-[10px] text-secondary leading-none uppercase">Symbol</span>
+<span class="text-sm font-bold text-on-surface">AAPL <span class="text-primary font-normal text-xs ml-1">+1.24%</span></span>
+</div>
+<div class="h-4 w-px bg-outline-variant/30"></div>
+<div class="flex flex-col">
+<span class="text-[10px] text-secondary leading-none uppercase">Strategy</span>
+<span class="text-sm font-bold text-on-surface">Conservative (1d)</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="bg-surface-container-high hover:bg-surface-bright text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 border border-outline-variant/20">
+<span class="material-symbols-outlined text-sm">fullscreen</span>
+                        Focus Mode
+                    </button>
+</div>
+</div>
+<!-- Dashboard Content -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Execution Desk (Left Panel) -->
+<section class="w-80 bg-surface-container-low flex flex-col border-r border-outline-variant/10 overflow-y-auto">
+<div class="p-4 space-y-6">
+<!-- Step 1: Setup -->
+<div class="space-y-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="w-5 h-5 rounded-full bg-primary-container text-primary flex items-center justify-center text-[10px] font-bold">1</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Setup</h3>
+</div>
+<div class="space-y-3">
+<div>
+<label class="block text-[10px] uppercase font-bold text-secondary mb-1">Broker Credential</label>
+<div class="relative">
+<select class="w-full bg-surface-container-highest border-none rounded-sm text-sm p-2 appearance-none text-on-surface focus:ring-1 focus:ring-primary/50">
+<option>T1-Institutional-Main</option>
+<option>Interactive Brokers (Live)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2 text-secondary pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<div>
+<label class="block text-[10px] uppercase font-bold text-secondary mb-1">Symbol</label>
+<input class="w-full bg-surface-container-highest border-none rounded-sm text-sm p-2 text-on-surface font-bold" readonly="" type="text" value="AAPL"/>
+</div>
+<div>
+<label class="block text-[10px] uppercase font-bold text-secondary mb-1">Timeframe</label>
+<div class="relative">
+<select class="w-full bg-surface-container-highest border-none rounded-sm text-sm p-2 appearance-none text-on-surface focus:ring-1 focus:ring-primary/50">
+<option>Daily</option>
+<option>1H</option>
+<option>15M</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2 text-secondary pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<div>
+<label class="block text-[10px] uppercase font-bold text-secondary mb-1">Strategy Profile</label>
+<div class="relative">
+<select class="w-full bg-surface-container-highest border-none rounded-sm text-sm p-2 appearance-none text-on-surface focus:ring-1 focus:ring-primary/50">
+<option>Conservative Growth</option>
+<option>Aggressive Scalp</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2 text-secondary pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="p-1 bg-surface-container-highest rounded flex">
+<button class="flex-1 text-[10px] font-bold py-1.5 rounded-sm transition-all bg-primary text-on-primary">PAPER</button>
+<button class="flex-1 text-[10px] font-bold py-1.5 rounded-sm transition-all text-secondary hover:text-on-surface">DRY RUN</button>
+<button class="flex-1 text-[10px] font-bold py-1.5 rounded-sm transition-all text-secondary hover:text-on-surface">LIVE</button>
+</div>
+</div>
+</div>
+<!-- Step 2: Analyze Signal -->
+<div class="space-y-4 pt-4 border-t border-outline-variant/10">
+<div class="flex items-center gap-2 mb-2">
+<span class="w-5 h-5 rounded-full bg-surface-container-high text-secondary flex items-center justify-center text-[10px] font-bold">2</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Analyze Signal</h3>
+</div>
+<button class="w-full py-3 bg-surface-bright hover:bg-surface-container-high text-on-surface border border-primary/20 rounded flex items-center justify-center gap-2 transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-primary group-hover:rotate-180 transition-transform">refresh</span>
+<span class="text-xs font-bold tracking-wider">RUN SIGNAL CHECK</span>
+</button>
+<div class="bg-surface-container-lowest p-3 rounded-sm border border-outline-variant/5">
+<div class="flex justify-between items-center mb-1">
+<span class="text-[10px] text-secondary uppercase">Last Result</span>
+<span class="text-[10px] font-bold text-primary">BULLISH</span>
+</div>
+<div class="w-full bg-outline-variant/10 h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[78%]"></div>
+</div>
+<p class="text-[9px] text-on-surface-variant mt-2 italic">Confidence Score: 78.4% based on 14 indicators.</p>
+</div>
+</div>
+<!-- Step 3: Execute Order -->
+<div class="space-y-4 pt-4 border-t border-outline-variant/10">
+<div class="flex items-center gap-2 mb-2">
+<span class="w-5 h-5 rounded-full bg-surface-container-high text-secondary flex items-center justify-center text-[10px] font-bold">3</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Execute Order</h3>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<span class="text-[10px] uppercase text-secondary font-bold">Paper Balance</span>
+<span class="text-sm font-bold tabular-nums text-on-surface">$100,000.00</span>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-primary-container text-primary font-bold text-xs rounded border border-primary/30">BUY</button>
+<button class="flex-1 py-2 bg-surface-container-highest text-secondary font-bold text-xs rounded hover:bg-tertiary-container/20 hover:text-tertiary transition-colors">SELL</button>
+</div>
+<div>
+<label class="block text-[10px] uppercase font-bold text-secondary mb-1">Amount (USD)</label>
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-none rounded-sm text-sm p-3 text-on-surface font-bold tabular-nums focus:ring-1 focus:ring-primary/50" type="number" value="5000"/>
+<span class="absolute right-3 top-3 text-[10px] text-secondary font-bold">MAX</span>
+</div>
+<div class="flex justify-between mt-1 px-1">
+<span class="text-[9px] text-on-surface-variant">Est. Shares: 19.77</span>
+<span class="text-[9px] text-on-surface-variant">Fee: $0.00</span>
+</div>
+</div>
+<button class="w-full py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-extrabold tracking-tighter text-sm rounded shadow-lg active:scale-95 transition-all">
+                                    EXECUTE PAPER TRADE
+                                </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Charting Area (Main Focus) -->
+<section class="flex-1 flex flex-col relative bg-surface-container-lowest">
+<!-- Chart Tool Header -->
+<div class="h-10 border-b border-outline-variant/10 flex items-center px-4 gap-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
+<div class="flex items-center gap-1 pr-4 border-r border-outline-variant/10">
+<span class="text-xs font-bold text-on-surface">AAPL</span>
+<span class="text-[10px] text-secondary">Apple Inc.</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-secondary hover:text-on-surface cursor-pointer p-1">1m</span>
+<span class="text-[10px] font-bold text-secondary hover:text-on-surface cursor-pointer p-1">5m</span>
+<span class="text-[10px] font-bold text-secondary hover:text-on-surface cursor-pointer p-1">15m</span>
+<span class="text-[10px] font-bold text-secondary hover:text-on-surface cursor-pointer p-1">1h</span>
+<span class="text-[10px] font-bold text-primary bg-primary-container/20 rounded px-1.5 py-0.5">1d</span>
+<span class="text-[10px] font-bold text-secondary hover:text-on-surface cursor-pointer p-1">W</span>
+</div>
+<div class="h-4 w-px bg-outline-variant/30"></div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-lg cursor-pointer hover:text-on-surface">show_chart</span>
+<span class="material-symbols-outlined text-secondary text-lg cursor-pointer hover:text-on-surface">candlestick_chart</span>
+<span class="material-symbols-outlined text-secondary text-lg cursor-pointer hover:text-on-surface">functions</span>
+<span class="material-symbols-outlined text-secondary text-lg cursor-pointer hover:text-on-surface">tune</span>
+</div>
+</div>
+<!-- The Canvas Area (Mock Chart) -->
+<div class="flex-1 relative overflow-hidden flex items-center justify-center p-8">
+<!-- Real-time price tag float -->
+<div class="absolute right-0 top-1/2 -translate-y-1/2 z-10">
+<div class="bg-primary text-on-primary font-bold px-2 py-1 text-sm tabular-nums flex items-center gap-1 shadow-2xl">
+                                252.89
+                                <span class="material-symbols-outlined text-sm">arrow_right</span>
+</div>
+</div>
+<!-- Aesthetic Chart Mockup -->
+<div class="w-full h-full relative opacity-80 mix-blend-screen overflow-hidden">
+<!-- Grid lines background -->
+<div class="absolute inset-0 grid grid-cols-12 grid-rows-8 gap-0 border border-outline-variant/5">
+<div class="col-span-full border-b border-outline-variant/5"></div>
+<div class="col-span-full border-b border-outline-variant/5"></div>
+<div class="col-span-full border-b border-outline-variant/5"></div>
+<div class="col-span-full border-b border-outline-variant/5"></div>
+<div class="col-span-full border-b border-outline-variant/5"></div>
+<div class="col-span-full border-b border-outline-variant/5"></div>
+<div class="col-span-full border-b border-outline-variant/5"></div>
+</div>
+<!-- Candlestick Visualizer Mock -->
+<div class="absolute inset-0 flex items-center justify-around px-12 pointer-events-none">
+<!-- Group of candles -->
+<div class="flex items-end gap-3 h-1/2">
+<div class="w-2 bg-error rounded-t-sm h-32 relative">
+<div class="absolute top-[-20px] left-1/2 -translate-x-1/2 w-0.5 h-44 bg-error opacity-40"></div>
+</div>
+<div class="w-2 bg-primary rounded-t-sm h-48 relative">
+<div class="absolute top-[-40px] left-1/2 -translate-x-1/2 w-0.5 h-64 bg-primary opacity-40"></div>
+</div>
+<div class="w-2 bg-primary rounded-t-sm h-64 relative">
+<div class="absolute top-[-30px] left-1/2 -translate-x-1/2 w-0.5 h-80 bg-primary opacity-40"></div>
+</div>
+<div class="w-2 bg-error rounded-t-sm h-24 relative">
+<div class="absolute top-[-10px] left-1/2 -translate-x-1/2 w-0.5 h-40 bg-error opacity-40"></div>
+</div>
+<div class="w-2 bg-primary rounded-t-sm h-72 relative">
+<div class="absolute top-[-10px] left-1/2 -translate-x-1/2 w-0.5 h-80 bg-primary opacity-40"></div>
+</div>
+<div class="w-2 bg-primary rounded-t-sm h-80 relative">
+<div class="absolute top-[-20px] left-1/2 -translate-x-1/2 w-0.5 h-96 bg-primary opacity-40"></div>
+</div>
+</div>
+<!-- Technical Indicators Overlays -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" viewbox="0 0 1000 500">
+<path class="opacity-50" d="M0,400 Q150,380 300,300 T600,250 T1000,100" fill="none" stroke="#44dfa3" stroke-width="2"></path>
+<path class="opacity-30" d="M0,420 Q200,400 400,320 T700,280 T1000,150" fill="none" stroke="#9a9dac" stroke-dasharray="4 4" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<!-- Watermark -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-5">
+<span class="text-9xl font-extrabold text-on-surface-variant tracking-tighter">AAPL</span>
+</div>
+</div>
+<!-- Bottom Metadata Panel -->
+<div class="h-10 border-t border-outline-variant/10 flex items-center px-4 bg-surface gap-8">
+<div class="flex items-center gap-4">
+<span class="text-[10px] uppercase font-bold text-secondary">RSI (14): <span class="text-on-surface">64.2</span></span>
+<span class="text-[10px] uppercase font-bold text-secondary">MACD: <span class="text-primary">+2.14</span></span>
+<span class="text-[10px] uppercase font-bold text-secondary">Vol: <span class="text-on-surface">58.4M</span></span>
+</div>
+<div class="ml-auto flex items-center gap-2">
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] font-bold text-on-surface uppercase tracking-tighter">Live Market Data Stream</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Order Book / Info (Right Panel - Collapsed Style) -->
+<section class="w-64 bg-surface-container-low border-l border-outline-variant/10 hidden xl:flex flex-col">
+<div class="p-4 flex items-center justify-between border-b border-outline-variant/10">
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Market Pulse</h3>
+<span class="material-symbols-outlined text-secondary text-lg">more_horiz</span>
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- Tiny Tick Feed -->
+<div class="p-2 space-y-px">
+<div class="flex justify-between p-2 hover:bg-surface-container-high rounded transition-colors tabular-nums">
+<span class="text-[10px] font-medium text-primary">252.89</span>
+<span class="text-[10px] text-on-surface-variant">0.450</span>
+<span class="text-[9px] text-secondary">14:02:45</span>
+</div>
+<div class="flex justify-between p-2 hover:bg-surface-container-high rounded transition-colors tabular-nums bg-tertiary-container/5">
+<span class="text-[10px] font-medium text-tertiary">252.88</span>
+<span class="text-[10px] text-on-surface-variant">1.204</span>
+<span class="text-[9px] text-secondary">14:02:44</span>
+</div>
+<div class="flex justify-between p-2 hover:bg-surface-container-high rounded transition-colors tabular-nums">
+<span class="text-[10px] font-medium text-primary">252.89</span>
+<span class="text-[10px] text-on-surface-variant">0.100</span>
+<span class="text-[9px] text-secondary">14:02:44</span>
+</div>
+<div class="flex justify-between p-2 hover:bg-surface-container-high rounded transition-colors tabular-nums">
+<span class="text-[10px] font-medium text-primary">252.90</span>
+<span class="text-[10px] text-on-surface-variant">4.500</span>
+<span class="text-[9px] text-secondary">14:02:43</span>
+</div>
+<div class="flex justify-between p-2 hover:bg-surface-container-high rounded transition-colors tabular-nums">
+<span class="text-[10px] font-medium text-on-surface">252.89</span>
+<span class="text-[10px] text-on-surface-variant">0.050</span>
+<span class="text-[9px] text-secondary">14:02:41</span>
+</div>
+</div>
+<!-- Asset Details Section -->
+<div class="p-4 mt-4 bg-surface-container-high mx-2 rounded-lg border border-outline-variant/5">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-white flex items-center justify-center overflow-hidden">
+<img alt="AAPL Logo" class="w-6 h-6" data-alt="minimalist Apple logo black on white background vector style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRdI3APkpmu1MZ6egJ8k90_9Jc306U7sIo9529K7XBZTZQ1y6k195LSx2ot5kUT0Cy_a9zFlGo1lF6VpeQVUKenQ95ANHXF-mGrd1gsWpgGQKFMT0adRjvVGOtwhtfVvd-L0Ua-ETT3LfEbbj4L5azTgw10sVBvUvTPI-qULdpuPu4mFlGSp1p6I1ILLsx7yBdcdmXXoHgF8zW6xucdD3lxGpEBGIQYd21NiLsbaeoc8ZB4iIpLjKQLFkULsnbQef_tV1yZCf1Fw4u"/>
+</div>
+<div>
+<h4 class="text-sm font-bold leading-none">Apple Inc.</h4>
+<span class="text-[10px] text-secondary">Consumer Electronics</span>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-[10px] text-secondary uppercase">Mkt Cap</span>
+<span class="text-xs font-bold text-on-surface">$3.52T</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[10px] text-secondary uppercase">P/E Ratio</span>
+<span class="text-xs font-bold text-on-surface">32.4</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[10px] text-secondary uppercase">52W High</span>
+<span class="text-xs font-bold text-on-surface">263.14</span>
+</div>
+</div>
+<button class="w-full mt-4 py-2 bg-surface-bright text-[10px] font-bold uppercase tracking-widest rounded hover:bg-outline-variant/20 transition-all">View All Data</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

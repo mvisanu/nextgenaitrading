@@ -94,6 +94,16 @@ async def update_settings(
         settings_row.allow_near_earnings = payload.allow_near_earnings
     if payload.allowed_account_ids is not None:
         settings_row.allowed_account_ids_json = payload.allowed_account_ids
+    if payload.execution_timeframe is not None:
+        settings_row.execution_timeframe = payload.execution_timeframe
+    if payload.start_date is not None:
+        settings_row.start_date = payload.start_date
+    if payload.end_date is not None:
+        settings_row.end_date = payload.end_date
+    if payload.target_buy_price is not None:
+        settings_row.target_buy_price = payload.target_buy_price
+    if payload.target_sell_price is not None:
+        settings_row.target_sell_price = payload.target_sell_price
 
     settings_row.updated_at = datetime.now(timezone.utc)
     await db.commit()

@@ -31,9 +31,6 @@ import {
 test.describe("Backtests API", () => {
   test.beforeEach(async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
   });
 
   // ── Run endpoint ────────────────────────────────────────────────────────────
@@ -72,10 +69,14 @@ test.describe("Backtests API", () => {
     expect(body.length).toBeGreaterThanOrEqual(1);
   });
 
-  test("BT-03: GET /backtests returns 401 when unauthenticated", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/backtests`);
-    expect(res.status()).toBe(401);
+  test("BT-03: GET /backtests returns 401 when unauthenticated", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/backtests`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   // ── Single run endpoint ─────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ test.describe("Backtests API", () => {
   });
 
   test("BT-06: GET /backtests/{id} returns 401 when unauthenticated", async ({
-    request,
+    request, playwright,
   }) => {
     const { body: run } = await runBacktest(request, {
       symbol: STOCK_SYMBOL,
@@ -109,9 +110,13 @@ test.describe("Backtests API", () => {
       mode: "conservative",
     });
     const id = (run as { id: number }).id;
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/backtests/${id}`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/backtests/${id}`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   // ── Trades endpoint ─────────────────────────────────────────────────────────
@@ -142,7 +147,7 @@ test.describe("Backtests API", () => {
   });
 
   test("BT-08: GET /backtests/{id}/trades returns 401 when unauthenticated", async ({
-    request,
+    request, playwright,
   }) => {
     const { body: run } = await runBacktest(request, {
       symbol: STOCK_SYMBOL,
@@ -150,9 +155,13 @@ test.describe("Backtests API", () => {
       mode: "conservative",
     });
     const id = (run as { id: number }).id;
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/backtests/${id}/trades`);
-    expect(res.status()).toBe(401);
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/backtests/${id}/trades`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   // ── Leaderboard (optimizer modes only) ─────────────────────────────────────
@@ -261,14 +270,8 @@ test.describe("Backtests API", () => {
     const id = (run as { id: number }).id;
 
     // Switch to USER_B
-    await request.post(`${API_URL}/auth/logout`);
     const otherEmail = `bt-cross-${Date.now()}@nextgenstock.io`;
-    await request.post(`${API_URL}/auth/register`, {
-      data: { email: otherEmail, password: "OtherUser123!" },
-    });
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: otherEmail, password: "OtherUser123!" },
-    });
+    await request.post(`${API_URL}/test/token`, { data: { email: otherEmail } });
 
     const res = await request.get(`${API_URL}/backtests/${id}`);
     expect([403, 404]).toContain(res.status());
@@ -302,9 +305,6 @@ test.describe("Backtests UI — /backtests page", () => {
   }) => {
     // Pre-create a backtest run via API
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
     const { body: run } = await runBacktest(request, {
       symbol: STOCK_SYMBOL,
       timeframe: "1d",
@@ -331,9 +331,6 @@ test.describe("Backtests UI — /backtests page", () => {
     request,
   }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
     const { body: run } = await runBacktest(request, {
       symbol: STOCK_SYMBOL,
       timeframe: "1d",
@@ -362,9 +359,6 @@ test.describe("Backtests UI — /backtests page", () => {
     request,
   }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
     const { body: run } = await runAiPick(request, {
       symbol: CRYPTO_SYMBOL,
       timeframe: "1d",

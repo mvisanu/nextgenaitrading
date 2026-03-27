@@ -3,17 +3,7 @@
 /**
  * WatchlistTable — V3 watchlist table for the Opportunities page.
  *
- * Columns (per PRD3.md Section 4.3):
- *   Ticker | Current Price | Buy Zone | Ideal Entry | Distance to Zone |
- *   Confidence | 90d Win Rate | Signal Status (BuyNowBadge) | Alert toggle | Last Updated
- *
- * Features:
- *   - Ticker add input at the top (POST /api/watchlist)
- *   - Inline trash-icon Remove button per row (DELETE /api/watchlist/{ticker})
- *   - Alert toggle per row (PATCH /api/watchlist/{ticker}/alert)
- *   - Expandable rows reveal EstimatedEntryPanel
- *   - "Ready only" filter + theme chip filters
- *   - Default sort: STRONG_BUY first, then confidence desc
+ * Sovereign Terminal design system applied.
  */
 
 import { useState, useRef, useMemo } from "react";
@@ -43,7 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BuyNowBadge } from "./BuyNowBadge";
 import { EstimatedEntryPanel } from "./EstimatedEntryPanel";
@@ -70,7 +59,7 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
   const [addError, setAddError] = useState<string | null>(null);
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const [readyOnly, setReadyOnly] = useState(false);
-    const [scanning, setScanning] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Add ticker mutation
@@ -166,9 +155,9 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
   if (isLoading) {
     return (
       <div className="space-y-2">
-        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-9 w-full bg-surface-mid" />
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-12 w-full" />
+          <Skeleton key={i} className="h-11 w-full bg-surface-mid" />
         ))}
       </div>
     );
@@ -191,7 +180,7 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
                 if (e.key === "Enter") handleAddTicker();
               }}
               placeholder="Add ticker (e.g. AAPL)"
-              className="h-8 text-xs font-mono"
+              className="h-8 text-xs font-mono bg-surface-lowest border-none focus:ring-1 focus:ring-primary p-2.5"
               maxLength={10}
               aria-label="Add ticker to watchlist"
               aria-invalid={!!addError}
@@ -199,7 +188,7 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
             />
             <Button
               size="sm"
-              className="h-8 text-xs gap-1 shrink-0"
+              className="h-8 text-xs gap-1 shrink-0 bg-primary text-primary-foreground font-bold uppercase tracking-widest"
               disabled={adding || !tickerInput.trim()}
               onClick={handleAddTicker}
             >
@@ -212,7 +201,7 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
             </Button>
           </div>
           {addError && (
-            <p id="add-ticker-error" className="text-[10px] text-red-400 mt-1">
+            <p id="add-ticker-error" className="text-2xs text-destructive mt-1">
               {addError}
             </p>
           )}
@@ -220,9 +209,9 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
 
         {/* Scan Now */}
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="h-8 text-xs gap-1.5 ml-auto"
+          className="h-8 text-xs gap-1.5 ml-auto hover:bg-surface-high/50 font-bold uppercase tracking-widest"
           disabled={scanning || rows.length === 0}
           onClick={handleRunNow}
         >
@@ -237,17 +226,17 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
 
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+        <label className="flex items-center gap-1.5 text-2xs cursor-pointer select-none">
           <input
             type="checkbox"
             checked={readyOnly}
             onChange={(e) => setReadyOnly(e.target.checked)}
             className="h-3.5 w-3.5 rounded accent-primary"
           />
-          <span className="text-muted-foreground">Ready only</span>
+          <span className="text-muted-foreground font-bold uppercase tracking-widest">Ready only</span>
         </label>
 
-        <span className="text-[10px] text-muted-foreground ml-auto">
+        <span className="text-2xs text-muted-foreground ml-auto tabular-nums">
           {displayed.length} ticker{displayed.length !== 1 ? "s" : ""}
         </span>
       </div>
@@ -255,28 +244,28 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
       {/* Table */}
       {displayed.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-14 text-center">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {rows.length === 0
               ? "No tickers in watchlist. Type a ticker above and press Add to get started."
               : "No tickers match the current filters."}
           </p>
         </div>
       ) : (
-        <div className="rounded-md border border-border overflow-x-auto">
+        <div className="rounded-md border border-border/10 overflow-x-auto bg-surface-lowest">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-surface-lowest border-b border-border/10 hover:bg-surface-lowest">
                 <TableHead className="w-8" />
-                <TableHead className="text-xs">Ticker</TableHead>
-                <TableHead className="text-right text-xs">Price</TableHead>
-                <TableHead className="text-xs">Buy Zone</TableHead>
-                <TableHead className="text-right text-xs">Ideal Entry</TableHead>
-                <TableHead className="text-right text-xs">Distance</TableHead>
-                <TableHead className="text-xs">Confidence</TableHead>
-                <TableHead className="text-xs">90d Win Rate</TableHead>
-                <TableHead className="text-xs">Signal</TableHead>
-                <TableHead className="text-xs">Alert</TableHead>
-                <TableHead className="text-xs">Updated</TableHead>
+                <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Ticker</TableHead>
+                <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground">Price</TableHead>
+                <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Buy Zone</TableHead>
+                <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground">Ideal Entry</TableHead>
+                <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground">Distance</TableHead>
+                <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Confidence</TableHead>
+                <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">90d Win</TableHead>
+                <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Signal</TableHead>
+                <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Alert</TableHead>
+                <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Updated</TableHead>
                 <TableHead className="w-8" />
               </TableRow>
             </TableHeader>
@@ -351,7 +340,7 @@ function WatchlistRow({
   const distancePct = row.distance_to_zone_pct ?? 0;
   const distanceColor =
     distancePct <= 0
-      ? "text-green-400" // below zone — in or approaching entry area
+      ? "text-primary" // below zone — in or approaching entry area
       : distancePct <= 5
       ? "text-amber-400"
       : "text-muted-foreground";
@@ -368,11 +357,16 @@ function WatchlistRow({
   return (
     <>
       <TableRow
-        className="cursor-pointer hover:bg-secondary/50"
+        className={cn(
+          "cursor-pointer border-b border-border/10 transition-colors",
+          isExpanded
+            ? "bg-surface-high/40 border-l-2 border-l-primary"
+            : "hover:bg-surface-mid/60"
+        )}
         onClick={onToggleExpand}
       >
         {/* Expand chevron */}
-        <TableCell className="w-8 pr-0">
+        <TableCell className="w-8 pr-0 pl-3">
           {isExpanded ? (
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           ) : (
@@ -381,43 +375,43 @@ function WatchlistRow({
         </TableCell>
 
         {/* Ticker */}
-        <TableCell className="font-mono text-xs font-semibold">
+        <TableCell className="font-mono text-xs font-bold text-foreground">
           {row.ticker}
           {isPending && (
-            <span className="ml-1.5 text-[9px] text-amber-400/70 italic">calculating…</span>
+            <span className="ml-1.5 text-3xs text-amber-400/70 italic">calculating…</span>
           )}
         </TableCell>
 
         {/* Current price */}
-        <TableCell className="text-right text-xs font-mono">
+        <TableCell className="text-right text-xs font-mono tabular-nums text-foreground">
           {row.current_price != null ? usd.format(row.current_price) : "—"}
         </TableCell>
 
         {/* Buy zone */}
-        <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+        <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap tabular-nums">
           {row.buy_zone_low != null && row.buy_zone_high != null ? (
             <>
               {usd.format(row.buy_zone_low)} – {usd.format(row.buy_zone_high)}
             </>
           ) : (
-            <span className="text-muted-foreground/50 italic">—</span>
+            <span className="text-muted-foreground/40 italic">—</span>
           )}
         </TableCell>
 
         {/* Ideal entry */}
-        <TableCell className="text-right text-xs font-mono">
+        <TableCell className="text-right text-xs font-mono tabular-nums">
           {row.ideal_entry_price != null ? (
-            <span className="text-primary font-semibold">
+            <span className="text-primary font-bold">
               {usd.format(row.ideal_entry_price)}
             </span>
           ) : (
-            <span className="text-muted-foreground/50 italic text-[10px]">—</span>
+            <span className="text-muted-foreground/40 italic text-2xs">—</span>
           )}
         </TableCell>
 
         {/* Distance */}
         <TableCell className="text-right">
-          <span className={cn("text-xs font-mono", distanceColor)}>
+          <span className={cn("text-xs font-mono tabular-nums font-bold", distanceColor)}>
             {distancePct >= 0 ? "+" : ""}
             {distancePct.toFixed(1)}%
           </span>
@@ -428,17 +422,18 @@ function WatchlistRow({
           {row.backtest_confidence != null ? (
             <ConfidenceBadge score={row.backtest_confidence} />
           ) : (
-            <span className="text-muted-foreground/50 text-[10px]">—</span>
+            <span className="text-muted-foreground/40 text-2xs">—</span>
           )}
         </TableCell>
 
         {/* 90d win rate */}
-        <TableCell className="text-xs font-mono">
+        <TableCell className="text-xs font-mono tabular-nums">
           {row.backtest_win_rate_90d != null ? (
             <span
               className={cn(
+                "font-bold",
                 row.backtest_win_rate_90d >= 0.65
-                  ? "text-green-400"
+                  ? "text-primary"
                   : row.backtest_win_rate_90d >= 0.50
                   ? "text-amber-400"
                   : "text-muted-foreground"
@@ -447,7 +442,7 @@ function WatchlistRow({
               {(row.backtest_win_rate_90d * 100).toFixed(0)}%
             </span>
           ) : (
-            <span className="text-muted-foreground/50">—</span>
+            <span className="text-muted-foreground/40">—</span>
           )}
         </TableCell>
 
@@ -468,8 +463,8 @@ function WatchlistRow({
             className={cn(
               "transition-colors",
               row.alert_enabled
-                ? "text-primary hover:text-primary/80"
-                : "text-muted-foreground/40 hover:text-primary/60"
+                ? "text-primary hover:text-primary/70"
+                : "text-muted-foreground/30 hover:text-primary/50"
             )}
           >
             {row.alert_enabled ? (
@@ -481,7 +476,7 @@ function WatchlistRow({
         </TableCell>
 
         {/* Last updated */}
-        <TableCell className="text-[10px] text-muted-foreground whitespace-nowrap">
+        <TableCell className="text-2xs text-muted-foreground whitespace-nowrap tabular-nums">
           {updatedDate}
         </TableCell>
 
@@ -491,7 +486,7 @@ function WatchlistRow({
             type="button"
             aria-label={`Remove ${row.ticker} from watchlist`}
             onClick={onRemove}
-            className="text-muted-foreground/40 hover:text-red-400 transition-colors"
+            className="text-muted-foreground/30 hover:text-destructive transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -500,9 +495,9 @@ function WatchlistRow({
 
       {/* Expansion row */}
       {isExpanded && (
-        <TableRow>
+        <TableRow className="border-b border-border/10">
           <TableCell colSpan={12} className="p-0">
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 bg-surface-high/20">
               <EstimatedEntryPanel row={row} />
             </div>
           </TableCell>
@@ -516,19 +511,19 @@ function ConfidenceBadge({ score }: { score: number }) {
   const pct = Math.round(score * 100);
   if (score >= 0.70)
     return (
-      <Badge className="text-[10px] py-0 bg-green-500/15 text-green-400 border-green-500/30">
+      <span className="bg-primary/15 text-primary text-3xs font-bold px-2 py-0.5 rounded-sm tabular-nums">
         {pct}%
-      </Badge>
+      </span>
     );
   if (score >= 0.55)
     return (
-      <Badge variant="secondary" className="text-[10px] py-0">
+      <span className="bg-surface-high text-muted-foreground text-3xs font-bold px-2 py-0.5 rounded-sm tabular-nums">
         {pct}%
-      </Badge>
+      </span>
     );
   return (
-    <Badge variant="outline" className="text-[10px] py-0 text-muted-foreground">
+    <span className="bg-surface-high text-muted-foreground/60 text-3xs font-bold px-2 py-0.5 rounded-sm tabular-nums">
       {pct}%
-    </Badge>
+    </span>
   );
 }

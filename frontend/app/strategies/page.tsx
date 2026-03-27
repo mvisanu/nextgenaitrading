@@ -17,6 +17,7 @@ import type {
   BacktestTrade,
   VariantBacktestResult,
 } from "@/types";
+import type { TabMode } from "@/components/strategy/StrategyModeSelector";
 
 interface RunResult {
   summary: BacktestSummary;
@@ -117,34 +118,69 @@ export default function StrategiesPage() {
 
   return (
     <AppShell title="Strategies">
-      <StrategyModeSelector aiBuilderContent={<AiStrategyBuilder />}>
+      {/* Page header */}
+      <header className="mb-4 sm:mb-6 px-2 sm:px-0">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+          Strategy Simulator
+        </h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Backtest sophisticated algorithmic parameters with zero risk capital.
+        </p>
+      </header>
+
+      {/*
+        StrategyModeSelector renders a two-column grid:
+          Left  (~380px): strategy list + leftSlot (form + run button)
+          Right (flex-1): children render-prop (results panel)
+      */}
+      <StrategyModeSelector
+        aiBuilderContent={<AiStrategyBuilder />}
+        leftSlot={(mode: TabMode) => {
+          if (mode === "ai-builder") return null;
+          const stratMode = mode as StrategyMode;
+          return (
+            <StrategyForm
+              mode={stratMode}
+              onSubmit={(values) =>
+                runStrategy({
+                  mode: stratMode,
+                  request: values,
+                  investmentAmount: values.investment_amount,
+                })
+              }
+              isLoading={isRunning}
+            />
+          );
+        }}
+      >
         {(mode) => {
           const result = results[mode];
+          if (!result) {
+            return (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                  <span className="text-2xl">▶</span>
+                </div>
+                <p className="text-sm font-semibold text-foreground">
+                  No simulation run yet
+                </p>
+                <p className="text-2xs text-muted-foreground mt-1 max-w-xs">
+                  Configure your parameters on the left and press{" "}
+                  <span className="text-primary font-bold">Run Simulation</span> to
+                  see results here.
+                </p>
+              </div>
+            );
+          }
           return (
-            <div>
-              <StrategyForm
-                mode={mode}
-                onSubmit={(values) =>
-                  runStrategy({
-                    mode,
-                    request: values,
-                    investmentAmount: values.investment_amount,
-                  })
-                }
-                isLoading={isRunning}
-              />
-
-              {result && (
-                <ResultsPanel
-                  summary={result.summary}
-                  chartData={result.chartData}
-                  trades={result.trades}
-                  variants={result.variants}
-                  artifactId={result.artifactId}
-                  investmentAmount={result.investmentAmount}
-                />
-              )}
-            </div>
+            <ResultsPanel
+              summary={result.summary}
+              chartData={result.chartData}
+              trades={result.trades}
+              variants={result.variants}
+              artifactId={result.artifactId}
+              investmentAmount={result.investmentAmount}
+            />
           );
         }}
       </StrategyModeSelector>

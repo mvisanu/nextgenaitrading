@@ -1,7 +1,7 @@
 """Pydantic v2 schemas for Auto-Buy endpoints."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -20,6 +20,11 @@ class AutoBuySettingsOut(BaseModel):
     max_expected_drawdown: float
     allow_near_earnings: bool
     allowed_account_ids: list
+    execution_timeframe: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    target_buy_price: Optional[float] = None
+    target_sell_price: Optional[float] = None
     created_at: datetime
     updated_at: datetime
 
@@ -36,6 +41,11 @@ class AutoBuySettingsOut(BaseModel):
             max_expected_drawdown=s.max_expected_drawdown,  # type: ignore[attr-defined]
             allow_near_earnings=s.allow_near_earnings,  # type: ignore[attr-defined]
             allowed_account_ids=s.allowed_account_ids_json,  # type: ignore[attr-defined]
+            execution_timeframe=s.execution_timeframe,  # type: ignore[attr-defined]
+            start_date=s.start_date,  # type: ignore[attr-defined]
+            end_date=s.end_date,  # type: ignore[attr-defined]
+            target_buy_price=s.target_buy_price,  # type: ignore[attr-defined]
+            target_sell_price=s.target_sell_price,  # type: ignore[attr-defined]
             created_at=s.created_at,  # type: ignore[attr-defined]
             updated_at=s.updated_at,  # type: ignore[attr-defined]
         )
@@ -55,6 +65,11 @@ class AutoBuySettingsUpdate(BaseModel):
     max_expected_drawdown: float | None = Field(default=None, le=0.0)
     allow_near_earnings: bool | None = None
     allowed_account_ids: list | None = None
+    execution_timeframe: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    target_buy_price: float | None = Field(default=None, gt=0)
+    target_sell_price: float | None = Field(default=None, gt=0)
 
 
 class AutoBuyDecisionLogOut(BaseModel):

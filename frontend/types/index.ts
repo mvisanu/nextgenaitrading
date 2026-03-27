@@ -451,6 +451,11 @@ export interface AutoBuySettings {
   max_expected_drawdown: number;
   allow_near_earnings: boolean;
   allowed_account_ids_json: number[];
+  execution_timeframe: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  target_buy_price: number | null;
+  target_sell_price: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -465,6 +470,11 @@ export interface UpdateAutoBuySettingsRequest {
   max_expected_drawdown?: number;
   allow_near_earnings?: boolean;
   allowed_account_ids_json?: number[];
+  execution_timeframe?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  target_buy_price?: number | null;
+  target_sell_price?: number | null;
 }
 
 export interface AutoBuyDecisionLog {

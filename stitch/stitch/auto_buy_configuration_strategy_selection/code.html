@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Auto-Buy Configuration | Sovereign Terminal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "outline": "#6d7686",
+                        "tertiary-container": "#ff333a",
+                        "inverse-primary": "#006d4b",
+                        "on-primary": "#004a32",
+                        "surface-container-highest": "#1d2634",
+                        "surface": "#0b0e13",
+                        "secondary-dim": "#9a9dac",
+                        "inverse-on-surface": "#52555b",
+                        "primary-fixed": "#67fcbe",
+                        "primary-container": "#005237",
+                        "on-tertiary": "#490005",
+                        "on-tertiary-container": "#000000",
+                        "tertiary-dim": "#e51c2b",
+                        "secondary-fixed-dim": "#d1d4e3",
+                        "on-error": "#490106",
+                        "tertiary-fixed-dim": "#ec232f",
+                        "primary-fixed-dim": "#56eeb0",
+                        "primary": "#44dfa3",
+                        "surface-container-low": "#0f141a",
+                        "on-primary-fixed": "#004931",
+                        "on-surface-variant": "#a2abbd",
+                        "secondary-fixed": "#dfe2f1",
+                        "secondary-container": "#373b47",
+                        "on-tertiary-fixed-variant": "#220001",
+                        "on-surface": "#dce6f9",
+                        "error-container": "#7f2927",
+                        "on-secondary-fixed-variant": "#575b68",
+                        "on-primary-fixed-variant": "#006948",
+                        "on-primary-container": "#51e9ad",
+                        "surface-bright": "#222d3d",
+                        "background": "#0b0e13",
+                        "on-background": "#dce6f9",
+                        "tertiary": "#ff716a",
+                        "on-error-container": "#ff9993",
+                        "on-secondary-container": "#bcbfcd",
+                        "inverse-surface": "#f8f9ff",
+                        "on-tertiary-fixed": "#000000",
+                        "surface-variant": "#1d2634",
+                        "tertiary-fixed": "#ff333a",
+                        "surface-container-lowest": "#000000",
+                        "on-secondary": "#1c202b",
+                        "surface-tint": "#44dfa3",
+                        "surface-dim": "#0b0e13",
+                        "surface-container-high": "#18202b",
+                        "surface-container": "#141a23",
+                        "on-secondary-fixed": "#3b3f4b",
+                        "error-dim": "#bb5551",
+                        "secondary": "#9a9dac",
+                        "primary-dim": "#2fd196",
+                        "outline-variant": "#3f4857",
+                        "error": "#ee7d77"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #0b0e13; color: #dce6f9; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="antialiased overflow-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center h-16 px-6 w-full bg-[#0f141a] border-none font-['Inter'] antialiased tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tighter text-[#dce6f9]">Sovereign Terminal</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-[#9a9dac] hover:text-[#dce6f9] transition-colors" href="#">Markets</a>
+<a class="text-[#9a9dac] hover:text-[#dce6f9] transition-colors" href="#">Portfolio</a>
+<a class="text-[#44dfa3] border-b-2 border-[#44dfa3] pb-1 font-semibold" href="#">Auto-Trade</a>
+<a class="text-[#9a9dac] hover:text-[#dce6f9] transition-colors" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-secondary text-sm">search</span>
+<input class="bg-surface-container-highest border-none text-xs rounded-lg pl-9 pr-4 py-2 w-64 focus:ring-1 focus:ring-primary" placeholder="Search Markets..." type="text"/>
+</div>
+<button class="p-2 text-secondary hover:bg-[#18202b] rounded transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-secondary hover:bg-[#18202b] rounded transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<img class="w-8 h-8 rounded-full border border-outline-variant/30" data-alt="Close-up of a professional male trader headshot with neutral expression in low-key lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuYh715LQJCSJh7cJdxfWFYXz3JGqwB_AIFDroHf8H-FfjEi_RFtRsetGpeIctAL-T4L6Q6v4AZ2KLeXYn_Wnh3zlNP6E9cLpatQsjyQ2wJEVsJFtkp1R6oEzp_ERkxogwKrwV1AGbeTHjS6FbQmlBoCvYH_j6JGHV28VLppS35-35SO1SrTKTcUiOxFbnyYj27zZOngTsqbUfmliDUmD0aqvSNMHlrvCDfBQTwx21A6uYcFpOEvFUBnYGIGYkOlHFXY_AJ50yUR2Z"/>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 z-40 bg-[#0f141a] opacity-95 backdrop-blur-xl border-r border-[#18202b]/15 flex flex-col py-4">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<div>
+<p class="text-xs font-black text-[#dce6f9] uppercase tracking-widest">Node_01</p>
+<p class="text-[10px] text-secondary">Active | 12ms Latency</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="text-[#9a9dac] flex items-center px-4 py-3 gap-3 hover:bg-[#0f141a]/50 cursor-pointer transition-all duration-150 font-['Inter'] text-xs font-medium uppercase tracking-widest">
+<span class="material-symbols-outlined">grid_view</span> Terminal
+            </div>
+<div class="bg-[#18202b] text-[#44dfa3] border-l-4 border-[#44dfa3] flex items-center px-4 py-3 gap-3 cursor-pointer transition-all duration-150 font-['Inter'] text-xs font-medium uppercase tracking-widest">
+<span class="material-symbols-outlined">query_stats</span> Strategy Builder
+            </div>
+<div class="text-[#9a9dac] flex items-center px-4 py-3 gap-3 hover:bg-[#0f141a]/50 cursor-pointer transition-all duration-150 font-['Inter'] text-xs font-medium uppercase tracking-widest">
+<span class="material-symbols-outlined">list_alt</span> Execution Log
+            </div>
+<div class="text-[#9a9dac] flex items-center px-4 py-3 gap-3 hover:bg-[#0f141a]/50 cursor-pointer transition-all duration-150 font-['Inter'] text-xs font-medium uppercase tracking-widest">
+<span class="material-symbols-outlined">account_balance_wallet</span> Assets
+            </div>
+<div class="text-[#9a9dac] flex items-center px-4 py-3 gap-3 hover:bg-[#0f141a]/50 cursor-pointer transition-all duration-150 font-['Inter'] text-xs font-medium uppercase tracking-widest">
+<span class="material-symbols-outlined">security</span> Risk Manager
+            </div>
+</nav>
+<div class="px-4 mt-auto space-y-4">
+<button class="w-full bg-primary-container text-primary text-[10px] font-bold py-3 px-4 rounded-lg uppercase tracking-widest hover:brightness-110 transition-all">
+                Deploy Strategy
+            </button>
+<div class="pt-4 border-t border-outline-variant/10 space-y-1">
+<div class="text-[#9a9dac] flex items-center px-4 py-2 gap-3 hover:bg-[#18202b] rounded text-xs transition-all cursor-pointer">
+<span class="material-symbols-outlined">help_outline</span> Support
+                </div>
+<div class="text-[#9a9dac] flex items-center px-4 py-2 gap-3 hover:bg-[#18202b] rounded text-xs transition-all cursor-pointer">
+<span class="material-symbols-outlined">code</span> API
+                </div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 h-[calc(100vh-64px)] overflow-y-auto bg-background p-6 space-y-6 custom-scrollbar">
+<!-- Real-Time Status Header -->
+<section class="grid grid-cols-4 gap-4 bg-surface-container-low p-4 rounded-xl border-none">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-secondary uppercase tracking-widest font-semibold">Engine Status</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-sm font-bold text-on-surface">ACTIVE</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-secondary uppercase tracking-widest font-semibold">Connected Broker</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary">account_balance</span>
+<span class="text-sm font-bold text-on-surface">Interactive Brokers</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-secondary uppercase tracking-widest font-semibold">Pending Orders</span>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-on-surface tabular-nums">04</span>
+<span class="text-[10px] bg-surface-container-high px-1.5 py-0.5 rounded text-secondary">Total: $12,450.00</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-secondary uppercase tracking-widest font-semibold">Last Execution</span>
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-on-surface tabular-nums">14:02:15 UTC</span>
+</div>
+</div>
+</section>
+<!-- Configuration Workflow -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Left Panel: Stepper & Config -->
+<div class="col-span-12 lg:col-span-8 space-y-6">
+<!-- Step 1: Safety & Mode -->
+<div class="bg-surface-container-low p-6 rounded-xl border-none">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-sm">01</div>
+<h2 class="text-lg font-bold tracking-tight text-on-surface">Safety &amp; Operational Mode</h2>
+</div>
+<div class="bg-error-container/20 border border-error/20 p-4 rounded-lg flex items-start gap-4 mb-6">
+<span class="material-symbols-outlined text-error">warning</span>
+<div class="space-y-1">
+<p class="text-xs font-bold text-error uppercase tracking-wide">Live Execution Warning</p>
+<p class="text-xs text-on-surface/80 leading-relaxed">Switching to 'Live' mode will authorize real-money transactions on your linked brokerage account. Ensure all risk parameters are verified.</p>
+</div>
+</div>
+<div class="flex gap-8">
+<div class="flex-1 space-y-3">
+<div class="flex justify-between items-center">
+<label class="text-sm font-medium text-on-surface">Auto-Buy Engine</label>
+<div class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-secondary after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+</div>
+<p class="text-[11px] text-secondary">Enable or disable the global automated purchasing logic.</p>
+</div>
+<div class="flex-1 space-y-3">
+<div class="flex justify-between items-center">
+<label class="text-sm font-medium text-on-surface">Execution Mode</label>
+<div class="flex bg-surface-container-highest p-1 rounded-lg">
+<button class="px-4 py-1.5 text-[10px] font-bold rounded-md bg-surface text-secondary">PAPER</button>
+<button class="px-4 py-1.5 text-[10px] font-bold rounded-md bg-tertiary text-on-tertiary">LIVE</button>
+</div>
+</div>
+<p class="text-[11px] text-secondary">Paper mode uses virtual funds for strategy testing.</p>
+</div>
+</div>
+</div><div class="bg-surface-container-low p-6 rounded-xl border-none">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-sm">02</div>
+<h2 class="text-lg font-bold tracking-tight text-on-surface">Strategy Selection</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+<!-- Conservative Card -->
+<div class="group relative p-4 rounded-lg bg-surface-container-highest border border-outline-variant/20 hover:border-primary/50 cursor-pointer transition-all">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary">shield</span>
+<h3 class="text-xs font-bold uppercase tracking-wider text-on-surface">Conservative</h3>
+</div>
+<p class="text-[10px] text-secondary leading-tight">Low volatility focus with tight stop-losses and steady accumulation.</p>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[9px] font-bold text-primary/70 uppercase tracking-tighter">Low Risk</span>
+<span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity text-primary">check_circle</span>
+</div>
+</div>
+<!-- Aggressive Card -->
+<div class="group relative p-4 rounded-lg bg-surface-container-highest border border-outline-variant/20 hover:border-primary/50 cursor-pointer transition-all">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-tertiary">bolt</span>
+<h3 class="text-xs font-bold uppercase tracking-wider text-on-surface">Aggressive</h3>
+</div>
+<p class="text-[10px] text-secondary leading-tight">High momentum scalping. Optimized for rapid entry/exit in volatile markets.</p>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[9px] font-bold text-tertiary/70 uppercase tracking-tighter">High Reward</span>
+<span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity text-primary">check_circle</span>
+</div>
+</div>
+<!-- AI Pick Card -->
+<div class="group relative p-4 rounded-lg bg-surface-container-highest border-2 border-primary cursor-pointer transition-all shadow-lg shadow-primary/5">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<h3 class="text-xs font-bold uppercase tracking-wider text-on-surface">AI Pick</h3>
+</div>
+<p class="text-[10px] text-secondary leading-tight">Dynamic model-driven weights based on real-time sentiment and technicals.</p>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[9px] font-bold text-primary uppercase tracking-tighter">Selected</span>
+<span class="material-symbols-outlined text-sm text-primary">check_circle</span>
+</div>
+</div>
+<!-- Mean Reversion Card -->
+<div class="group relative p-4 rounded-lg bg-surface-container-highest border border-outline-variant/20 hover:border-primary/50 cursor-pointer transition-all">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-secondary">swap_vert</span>
+<h3 class="text-xs font-bold uppercase tracking-wider text-on-surface">Mean Reversion</h3>
+</div>
+<p class="text-[10px] text-secondary leading-tight">Classical 'Buy Low Sell High' logic targeting price equilibrium points.</p>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[9px] font-bold text-secondary/70 uppercase tracking-tighter">Standard</span>
+<span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity text-primary">check_circle</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Step 2: Define Targets -->
+<div class="bg-surface-container-low p-6 rounded-xl border-none">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-sm">03</div>
+<h2 class="text-lg font-bold tracking-tight text-on-surface">Define Targets</h2>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-secondary uppercase tracking-widest">Symbol</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-secondary text-base">search</span>
+<input class="w-full bg-surface-container-highest border-none text-sm font-bold text-primary rounded-lg pl-10 pr-4 py-3 focus:ring-1 focus:ring-primary" type="text" value="AAPL"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-secondary uppercase tracking-widest">Max Order Amount (USD)</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-secondary text-base">attach_money</span>
+<input class="w-full bg-surface-container-highest border-none text-sm font-bold text-on-surface tabular-nums rounded-lg pl-10 pr-4 py-3 focus:ring-1 focus:ring-primary" type="text" value="5,000.00"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-secondary uppercase tracking-widest">Target Buy Price</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-secondary text-base">trending_down</span>
+<input class="w-full bg-surface-container-highest border-none text-sm font-bold text-primary tabular-nums rounded-lg pl-10 pr-4 py-3 focus:ring-1 focus:ring-primary" type="text" value="215.50"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-secondary uppercase tracking-widest">Target Sell Price</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-secondary text-base">trending_up</span>
+<input class="w-full bg-surface-container-highest border-none text-sm font-bold text-tertiary tabular-nums rounded-lg pl-10 pr-4 py-3 focus:ring-1 focus:ring-primary" type="text" value="245.00"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Step 3: Execution Timeframe -->
+<div class="bg-surface-container-low p-6 rounded-xl border-none">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-sm">04</div>
+<h2 class="text-lg font-bold tracking-tight text-on-surface">Execution Timeframe</h2>
+</div>
+<div class="grid grid-cols-12 gap-6">
+<div class="col-span-5 space-y-4">
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-secondary uppercase tracking-widest">Start Date/Time</label>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-highest border-none text-xs rounded-lg py-3 px-3" type="date" value="2023-11-20"/>
+<input class="w-24 bg-surface-container-highest border-none text-xs rounded-lg py-3 px-3" type="time" value="09:30"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-bold text-secondary uppercase tracking-widest">End Date/Time</label>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-highest border-none text-xs rounded-lg py-3 px-3" type="date" value="2023-11-27"/>
+<input class="w-24 bg-surface-container-highest border-none text-xs rounded-lg py-3 px-3" type="time" value="16:00"/>
+</div>
+</div>
+</div>
+<div class="col-span-4 space-y-2">
+<label class="text-[10px] font-bold text-secondary uppercase tracking-widest">Check Interval</label>
+<select class="w-full bg-surface-container-highest border-none text-sm rounded-lg py-3 px-4 focus:ring-1 focus:ring-primary appearance-none">
+<option>Every 5 seconds</option>
+<option>Every 1 minute</option>
+<option>Every 5 minutes</option>
+<option>On Tick Change</option>
+</select>
+</div>
+<div class="col-span-3 flex flex-col justify-end gap-3">
+<button class="w-full py-3 bg-surface-container-highest text-on-surface text-xs font-bold rounded-lg border border-outline-variant/20 hover:bg-surface-bright transition-all">
+                                Dry Run Test
+                            </button>
+<button class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-on-primary text-xs font-bold rounded-lg hover:brightness-110 shadow-lg shadow-primary/10 transition-all">
+                                Deploy Strategy
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Visual Context / Summary -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Market Preview Card -->
+<div class="bg-surface-container-low rounded-xl overflow-hidden flex flex-col">
+<div class="p-6 bg-surface-container-lowest">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-2xl font-bold tracking-tighter tabular-nums">AAPL</h3>
+<p class="text-xs text-secondary">Apple Inc. · NASDAQ</p>
+</div>
+<div class="text-right">
+<p class="text-2xl font-bold tabular-nums">$224.12</p>
+<p class="text-xs text-primary">+1.42% (Today)</p>
+</div>
+</div>
+<div class="h-32 w-full flex items-end gap-1">
+<div class="flex-1 bg-primary/20 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/30 h-2/3 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/20 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/40 h-3/4 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/20 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/10 h-1/3 rounded-t-sm"></div>
+<div class="flex-1 bg-primary/50 h-full rounded-t-sm"></div>
+</div>
+</div>
+<div class="p-6 space-y-4">
+<h4 class="text-[10px] font-black text-secondary uppercase tracking-[0.2em]">Strategy Overview</h4>
+<div class="space-y-3">
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<span class="text-xs text-secondary">Trigger Price</span>
+<span class="text-xs font-bold text-primary tabular-nums">$215.50</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<span class="text-xs text-secondary">Est. Shares</span>
+<span class="text-xs font-bold text-on-surface tabular-nums">23.20</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/10">
+<span class="text-xs text-secondary">Potential Profit</span>
+<span class="text-xs font-bold text-primary tabular-nums">+$684.40</span>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="text-xs text-secondary">Risk Profile</span>
+<span class="text-[10px] px-2 py-0.5 bg-tertiary/20 text-tertiary rounded font-bold">MODERATE</span>
+</div>
+</div>
+</div>
+</div><div class="bg-surface-container-low p-6 rounded-xl border-none">
+<div class="flex items-center gap-4 mb-6">
+<div class="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-sm">02</div>
+<h2 class="text-lg font-bold tracking-tight text-on-surface">Strategy Selection</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+<!-- Conservative Card -->
+<div class="group relative p-4 rounded-lg bg-surface-container-highest border border-outline-variant/20 hover:border-primary/50 cursor-pointer transition-all">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary">shield</span>
+<h3 class="text-xs font-bold uppercase tracking-wider text-on-surface">Conservative</h3>
+</div>
+<p class="text-[10px] text-secondary leading-tight">Low volatility focus with tight stop-losses and steady accumulation.</p>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[9px] font-bold text-primary/70 uppercase tracking-tighter">Low Risk</span>
+<span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity text-primary">check_circle</span>
+</div>
+</div>
+<!-- Aggressive Card -->
+<div class="group relative p-4 rounded-lg bg-surface-container-highest border border-outline-variant/20 hover:border-primary/50 cursor-pointer transition-all">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-tertiary">bolt</span>
+<h3 class="text-xs font-bold uppercase tracking-wider text-on-surface">Aggressive</h3>
+</div>
+<p class="text-[10px] text-secondary leading-tight">High momentum scalping. Optimized for rapid entry/exit in volatile markets.</p>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[9px] font-bold text-tertiary/70 uppercase tracking-tighter">High Reward</span>
+<span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity text-primary">check_circle</span>
+</div>
+</div>
+<!-- AI Pick Card -->
+<div class="group relative p-4 rounded-lg bg-surface-container-highest border-2 border-primary cursor-pointer transition-all shadow-lg shadow-primary/5">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<h3 class="text-xs font-bold uppercase tracking-wider text-on-surface">AI Pick</h3>
+</div>
+<p class="text-[10px] text-secondary leading-tight">Dynamic model-driven weights based on real-time sentiment and technicals.</p>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[9px] font-bold text-primary uppercase tracking-tighter">Selected</span>
+<span class="material-symbols-outlined text-sm text-primary">check_circle</span>
+</div>
+</div>
+<!-- Mean Reversion Card -->
+<div class="group relative p-4 rounded-lg bg-surface-container-highest border border-outline-variant/20 hover:border-primary/50 cursor-pointer transition-all">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-secondary">swap_vert</span>
+<h3 class="text-xs font-bold uppercase tracking-wider text-on-surface">Mean Reversion</h3>
+</div>
+<p class="text-[10px] text-secondary leading-tight">Classical 'Buy Low Sell High' logic targeting price equilibrium points.</p>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[9px] font-bold text-secondary/70 uppercase tracking-tighter">Standard</span>
+<span class="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity text-primary">check_circle</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Active Strategy Stats -->
+<div class="bg-surface-container-low p-6 rounded-xl border-none">
+<h4 class="text-[10px] font-black text-secondary uppercase tracking-[0.2em] mb-4">Account Liquidity</h4>
+<div class="space-y-4">
+<div>
+<div class="flex justify-between mb-1">
+<span class="text-[10px] text-on-surface/60">Utilized Capital</span>
+<span class="text-[10px] font-bold tabular-nums">65%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 65%"></div>
+</div>
+</div>
+<p class="text-[10px] text-secondary leading-relaxed">Available for strategy deployment: <span class="text-on-surface font-bold">$18,450.22 USD</span></p>
+</div>
+</div>
+</div>
+</div>
+<!-- Live Decision Log -->
+<section class="bg-surface-container-low rounded-xl overflow-hidden border-none mb-10">
+<div class="px-6 py-4 flex justify-between items-center bg-surface-container">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary">terminal</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface">Live Decision Log</h3>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-surface-container-highest text-[10px] font-bold rounded hover:bg-surface-bright transition-all">EXPORT CSV</button>
+<button class="px-3 py-1 bg-surface-container-highest text-[10px] font-bold rounded hover:bg-surface-bright transition-all text-tertiary">CLEAR LOG</button>
+</div>
+</div>
+<div class="h-64 overflow-y-auto no-scrollbar font-mono text-[11px] leading-6 bg-surface-container-lowest/50 p-4">
+<div class="flex gap-4 border-b border-outline-variant/5 py-1">
+<span class="text-secondary tabular-nums">[14:02:15]</span>
+<span class="text-on-surface/90">Engine process check initiated...</span>
+</div>
+<div class="flex gap-4 border-b border-outline-variant/5 py-1">
+<span class="text-secondary tabular-nums">[14:02:16]</span>
+<span class="text-on-surface/90">Checking market price... AAPL @ <span class="text-on-surface font-bold">$224.12</span>. Target <span class="text-primary font-bold">$215.50</span> not met.</span>
+</div>
+<div class="flex gap-4 border-b border-outline-variant/5 py-1">
+<span class="text-secondary tabular-nums">[14:02:21]</span>
+<span class="text-on-surface/90">Checking market price... AAPL @ <span class="text-on-surface font-bold">$224.11</span>. Target <span class="text-primary font-bold">$215.50</span> not met.</span>
+</div>
+<div class="flex gap-4 border-b border-outline-variant/5 py-1">
+<span class="text-secondary tabular-nums">[14:02:26]</span>
+<span class="text-tertiary tabular-nums">REJECTED: Insufficient volatility for scalp-mode trigger.</span>
+</div>
+<div class="flex gap-4 border-b border-outline-variant/5 py-1">
+<span class="text-secondary tabular-nums">[14:02:31]</span>
+<span class="text-on-surface/90">Checking market price... AAPL @ <span class="text-on-surface font-bold">$224.15</span>. Target <span class="text-primary font-bold">$215.50</span> not met.</span>
+</div>
+<div class="flex gap-4 border-b border-outline-variant/5 py-1">
+<span class="text-secondary tabular-nums">[14:02:36]</span>
+<span class="text-on-surface/90">Checking market price... AAPL @ <span class="text-on-surface font-bold">$224.18</span>. Target <span class="text-primary font-bold">$215.50</span> not met.</span>
+</div>
+<div class="flex gap-4 border-b border-outline-variant/5 py-1">
+<span class="text-secondary tabular-nums">[14:02:41]</span>
+<span class="text-primary font-bold">EVENT: Price drop detected in MSFT. Global context updated.</span>
+</div>
+<div class="flex gap-4 border-b border-outline-variant/5 py-1">
+<span class="text-secondary tabular-nums">[14:02:46]</span>
+<span class="text-on-surface/90">Checking market price... AAPL @ <span class="text-on-surface font-bold">$224.12</span>. Target <span class="text-primary font-bold">$215.50</span> not met.</span>
+</div>
+</div>
+</section>
+</main>
+</body></html>

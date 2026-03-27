@@ -6,19 +6,10 @@ import { z } from "zod";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/utils";
-import { Loader2, Zap, Mail, CheckCircle } from "lucide-react";
+import { Loader2, Mail, CheckCircle, Activity } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -105,42 +96,42 @@ export default function LoginPage() {
   if (magicLinkSent) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="flex items-center justify-center gap-2">
-            <Zap className="h-7 w-7 text-primary" />
-            <span className="text-xl font-semibold">NextGenStock</span>
+        <div className="w-full max-w-sm space-y-8">
+          {/* Brand */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
+              <Activity className="h-6 w-6 text-primary" />
+            </div>
+            <span className="text-xl font-black tracking-tighter text-foreground">NextGenAi Trading</span>
+            <span className="text-3xs text-primary tracking-widest uppercase">Institutional Tier</span>
           </div>
 
-          <Card>
-            <CardHeader className="space-y-1 text-center">
-              <div className="flex justify-center mb-2">
-                <CheckCircle className="h-12 w-12 text-green-500" />
+          <div className="bg-surface-low border border-border/10 rounded-sm p-6 space-y-4">
+            <div className="flex flex-col items-center space-y-3">
+              <div className="h-12 w-12 rounded-sm bg-primary/10 flex items-center justify-center">
+                <CheckCircle className="h-7 w-7 text-primary" />
               </div>
-              <CardTitle className="text-2xl">Check your email</CardTitle>
-              <CardDescription>
-                We sent a magic link to <strong>{sentEmail}</strong>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Click the link in the email to sign in. The link expires in 1
-                hour.
+              <h2 className="text-xl font-bold text-foreground">Check your email</h2>
+              <p className="text-sm text-muted-foreground text-center">
+                We sent a magic link to <strong className="text-foreground">{sentEmail}</strong>
               </p>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setMagicLinkSent(false);
-                  setLoginError(null);
-                }}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Try a different email
-              </Button>
-            </CardContent>
-          </Card>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Click the link in the email to sign in. The link expires in 1 hour.
+            </p>
+            <button
+              className="w-full py-2.5 border border-border/20 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-surface-high/50 transition-colors rounded-sm flex items-center justify-center gap-2"
+              onClick={() => {
+                setMagicLinkSent(false);
+                setLoginError(null);
+              }}
+            >
+              <Mail className="h-4 w-4" />
+              Try a different email
+            </button>
+          </div>
 
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="text-center text-3xs text-muted-foreground/50 uppercase tracking-widest">
             Educational software only. Live trading carries real financial risk.
           </p>
         </div>
@@ -150,87 +141,91 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm space-y-6">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-2">
-          <Zap className="h-7 w-7 text-primary" />
-          <span className="text-xl font-semibold">NextGenStock</span>
+      <div className="w-full max-w-sm space-y-8">
+        {/* Brand */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
+            <Activity className="h-6 w-6 text-primary" />
+          </div>
+          <span className="text-xl font-black tracking-tighter text-foreground">NextGenAi Trading</span>
+          <span className="text-3xs text-primary tracking-widest uppercase">Institutional Tier</span>
         </div>
 
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl">Sign in</CardTitle>
-            <CardDescription>
+        {/* Login card */}
+        <div className="bg-surface-low border border-border/10 rounded-sm p-6 space-y-5">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Sign in</h2>
+            <p className="text-xs text-muted-foreground mt-1">
               Enter your email to receive a magic link
-            </CardDescription>
-          </CardHeader>
+            </p>
+          </div>
 
-          <CardContent>
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="space-y-4"
-              noValidate
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  disabled={isPending}
-                  {...register("email")}
-                />
-                {errors.email && (
-                  <p className="text-xs text-destructive">
-                    {errors.email.message}
-                  </p>
-                )}
-              </div>
-
-              {loginError && (
-                <p role="alert" className="text-sm text-destructive">
-                  {loginError}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                disabled={isPending}
+                className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/40"
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-3xs text-destructive">
+                  {errors.email.message}
                 </p>
               )}
+            </div>
 
-              <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Mail className="h-4 w-4 mr-2" />
-                )}
-                Send magic link
-              </Button>
+            {loginError && (
+              <p role="alert" className="text-xs text-destructive bg-destructive/5 border border-destructive/20 p-2 rounded-sm">
+                {loginError}
+              </p>
+            )}
 
-              {IS_DEV && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full border-dashed border-yellow-500 text-yellow-600 hover:bg-yellow-50"
-                  disabled={isPending}
-                  onClick={handleDevLogin}
-                >
-                  Dev Login (skip magic link)
-                </Button>
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-primary text-primary-foreground font-bold text-xs uppercase tracking-widest rounded-sm hover:opacity-90 active:opacity-70 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+              disabled={isPending}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4" />
               )}
-            </form>
-          </CardContent>
+              Send magic link
+            </button>
 
-          <CardFooter className="flex justify-center">
-            <p className="text-sm text-muted-foreground">
+            {IS_DEV && (
+              <button
+                type="button"
+                className="w-full py-2.5 border border-dashed border-yellow-500/30 text-yellow-500 text-xs font-bold uppercase tracking-widest rounded-sm hover:bg-yellow-500/5 transition-colors disabled:opacity-50"
+                disabled={isPending}
+                onClick={handleDevLogin}
+              >
+                Dev Login (skip magic link)
+              </button>
+            )}
+          </form>
+
+          <div className="text-center pt-2">
+            <p className="text-xs text-muted-foreground">
               Don&apos;t have an account?{" "}
               <Link
                 href="/register"
-                className="text-primary hover:underline font-medium"
+                className="text-primary hover:underline font-semibold"
               >
                 Create one
               </Link>
             </p>
-          </CardFooter>
-        </Card>
+          </div>
+        </div>
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-3xs text-muted-foreground/50 uppercase tracking-widest">
           Educational software only. Live trading carries real financial risk.
         </p>
       </div>

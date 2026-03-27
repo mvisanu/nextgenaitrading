@@ -8,14 +8,16 @@ import { ScreenerControls } from "@/components/screener/ScreenerControls";
 import { ScreenerResults } from "@/components/screener/ScreenerResults";
 import { TechnicalAnalysis } from "@/components/screener/TechnicalAnalysis";
 import { AnalystSummary } from "@/components/screener/AnalystSummary";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { screenerTvApi, taApi } from "@/lib/api";
 import { RefreshCcw, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { AssetUniverse, ScreenerRow, ScreenerRequest, TATimeframe } from "@/types";
+
+type ScanTab = "hot" | "trending";
 
 function ScreenerContent() {
   const [universe, setUniverse] = useState<AssetUniverse>("stocks");
+  const [scanTab, setScanTab] = useState<ScanTab>("hot");
   const [searchParams, setSearchParams] = useState<ScreenerRequest>({
     universe: "stocks",
     sort_by: "change_pct",
@@ -127,21 +129,65 @@ function ScreenerContent() {
       actions={
         <div className="flex items-center gap-2">
           {lastUpdated && (
-            <Badge variant="outline" className="text-[10px] gap-1 font-normal">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-surface-high rounded text-3xs text-muted-foreground font-bold uppercase tracking-widest">
               <Clock className="h-3 w-3" />
               {lastUpdated}
-            </Badge>
+            </div>
           )}
-          <Button variant="outline" size="sm" onClick={handleRefresh} className="h-7 text-xs">
-            <RefreshCcw className="h-3 w-3 mr-1" />
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-high border border-white/5 hover:bg-surface-highest text-2xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground rounded transition-all"
+          >
+            <RefreshCcw className="h-3 w-3" />
             Refresh
-          </Button>
+          </button>
         </div>
       }
     >
-      <div className="flex flex-col lg:flex-row gap-4 h-full">
+      {/* Page title + tab bar */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Market Scanner
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Real-time volatility tracking and technical signal strength analysis.
+          </p>
+        </div>
+
+        {/* Hot Stocks / Trending tabs */}
+        <div className="flex items-center gap-2">
+          <div className="flex bg-surface-mid p-1 rounded-lg gap-1">
+            <button
+              onClick={() => setScanTab("hot")}
+              className={cn(
+                "px-4 py-1.5 text-2xs font-bold uppercase tracking-wider rounded transition-all",
+                scanTab === "hot"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-surface-high text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Hot Stocks
+            </button>
+            <button
+              onClick={() => setScanTab("trending")}
+              className={cn(
+                "px-4 py-1.5 text-2xs font-bold uppercase tracking-wider rounded transition-all",
+                scanTab === "trending"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-surface-high text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Trending
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main layout */}
+      <div className="flex flex-col lg:flex-row gap-4">
         {/* Left column: controls + results */}
-        <div className="lg:w-[55%] xl:w-[60%] space-y-4 min-w-0">
+        <div className="lg:w-[58%] xl:w-[62%] space-y-4 min-w-0">
           <ScreenerControls
             universe={universe}
             onUniverseChange={handleUniverseChange}
@@ -161,7 +207,7 @@ function ScreenerContent() {
         </div>
 
         {/* Right column: TA + summary */}
-        <div className="lg:w-[45%] xl:w-[40%] space-y-4 min-w-0">
+        <div className="lg:w-[42%] xl:w-[38%] space-y-4 min-w-0">
           <TechnicalAnalysis
             result={taQuery.data ?? null}
             onTimeframeChange={handleTimeframeChange}

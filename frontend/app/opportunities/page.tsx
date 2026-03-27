@@ -3,9 +3,7 @@
 /**
  * /opportunities — V3 Watchlist + Buy Zone + Live Scanner
  *
- * Refactored layout: full-width scanner table with status strip header,
- * onboarding empty state, and streamlined add/scan controls.
- *
+ * Sovereign Terminal design system applied.
  * Protected route: requires authentication.
  */
 
@@ -39,20 +37,20 @@ function StatusStrip({ rows }: { rows: import("@/types").OpportunityRow[] }) {
   if (stats.total === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-card/50 border border-border rounded-lg text-xs">
+    <div className="flex flex-wrap items-center gap-4 px-4 py-2.5 bg-surface-low border border-border/10 rounded-md text-xs">
       <div className="flex items-center gap-1.5">
         <Eye className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-muted-foreground">Tracking</span>
-        <span className="font-semibold text-foreground tabular-nums">{stats.total}</span>
+        <span className="font-bold text-foreground tabular-nums">{stats.total}</span>
       </div>
 
       {stats.strongBuy > 0 && (
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
           </span>
-          <span className="text-green-400 font-semibold tabular-nums">{stats.strongBuy}</span>
+          <span className="text-primary font-bold tabular-nums">{stats.strongBuy}</span>
           <span className="text-muted-foreground">STRONG BUY</span>
         </div>
       )}
@@ -60,7 +58,7 @@ function StatusStrip({ rows }: { rows: import("@/types").OpportunityRow[] }) {
       {stats.watching > 0 && (
         <div className="flex items-center gap-1.5">
           <Crosshair className="h-3 w-3 text-muted-foreground" />
-          <span className="text-foreground font-semibold tabular-nums">{stats.watching}</span>
+          <span className="text-foreground font-bold tabular-nums">{stats.watching}</span>
           <span className="text-muted-foreground">watching</span>
         </div>
       )}
@@ -68,7 +66,7 @@ function StatusStrip({ rows }: { rows: import("@/types").OpportunityRow[] }) {
       {stats.pending > 0 && (
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-amber-400/60 shrink-0" />
-          <span className="text-amber-400 font-semibold tabular-nums">{stats.pending}</span>
+          <span className="text-amber-400 font-bold tabular-nums">{stats.pending}</span>
           <span className="text-muted-foreground">calculating</span>
         </div>
       )}
@@ -84,7 +82,7 @@ function OnboardingGuide() {
       <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
         <Radar className="h-6 w-6 text-primary" />
       </div>
-      <h2 className="text-lg font-semibold text-foreground mb-2">
+      <h2 className="text-base font-bold text-foreground mb-1.5">
         Live Scanner & Buy Signals
       </h2>
       <p className="text-sm text-muted-foreground mb-6">
@@ -92,7 +90,7 @@ function OnboardingGuide() {
         to find high-probability entry zones.
       </p>
 
-      <div className="w-full space-y-3 text-left">
+      <div className="w-full space-y-2 text-left">
         {[
           {
             step: "1",
@@ -115,22 +113,22 @@ function OnboardingGuide() {
         ].map((item) => (
           <div
             key={item.step}
-            className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card/50"
+            className="flex items-start gap-3 p-3 rounded-md border border-border/10 bg-surface-mid"
           >
-            <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-primary">{item.step}</span>
+            <div className="h-6 w-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+              <span className="text-3xs font-bold text-primary">{item.step}</span>
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">{item.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
+              <p className="text-xs font-bold text-foreground">{item.title}</p>
+              <p className="text-2xs text-muted-foreground mt-0.5">{item.desc}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="flex items-start gap-2 mt-6 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-left">
-        <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-        <p className="text-[11px] text-muted-foreground">
+      <div className="flex items-start gap-2 mt-5 p-3 rounded-md bg-amber-500/5 border border-amber-500/15 text-left">
+        <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+        <p className="text-2xs text-muted-foreground">
           Signals are based on historical backtest data and technical indicators.
           This is not financial advice. Always do your own research.
         </p>
@@ -159,18 +157,23 @@ export default function OpportunitiesPage() {
 
   return (
     <AppShell title="Opportunities">
-      <h1 data-testid="page-title" className="sr-only">
+      <h1 data-testid="page-title" className="opacity-0 absolute pointer-events-none">
         Opportunities
       </h1>
 
       <div className="space-y-4">
+        {/* Page header */}
+        <div>
+          <p className="text-xl font-bold text-foreground">Opportunities</p>
+          <p className="text-sm text-muted-foreground">Live scanner — buy zone signals across your watchlist</p>
+        </div>
+
         {/* Status summary */}
         <StatusStrip rows={opportunities} />
 
         {/* Scanner table or onboarding */}
         {!isLoading && !hasData ? (
           <>
-            {/* Show add ticker input above the onboarding guide */}
             <WatchlistTable
               rows={opportunities}
               isLoading={isLoading}

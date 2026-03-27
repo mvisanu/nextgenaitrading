@@ -32,9 +32,6 @@ import {
 test.describe("Artifacts API", () => {
   test.beforeEach(async ({ request }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
   });
 
   test("ART-01: GET /artifacts returns empty array for new user", async ({ request }) => {
@@ -140,9 +137,7 @@ test.describe("Artifacts API", () => {
     // Must be authenticated — the route checks auth before resource lookup,
     // so an unauthenticated request returns 401, not 404.
     const uniqueArt07Email = `art07-${Date.now()}@nextgenstock.io`;
-    await request.post(`${API_URL}/auth/register`, {
-      data: { email: uniqueArt07Email, password: "TestPass1234!" },
-    });
+    await request.post(`${API_URL}/test/token`, { data: { email: uniqueArt07Email } });
     const res = await request.get(`${API_URL}/artifacts/999999999`);
     expect(res.status()).toBe(404);
   });
@@ -203,10 +198,14 @@ test.describe("Artifacts API", () => {
     expect(artifact.symbol).toBe(CRYPTO_SYMBOL);
   }, 180_000);
 
-  test("ART-11: GET /artifacts returns 401 when unauthenticated", async ({ request }) => {
-    await request.post(`${API_URL}/auth/logout`);
-    const res = await request.get(`${API_URL}/artifacts`);
-    expect(res.status()).toBe(401);
+  test("ART-11: GET /artifacts returns 401 when unauthenticated", async ({ request, playwright }) => {
+    const freshCtx = await playwright.request.newContext();
+    try {
+      const res = await freshCtx.get(`${API_URL}/artifacts`);
+      expect(res.status()).toBe(401);
+    } finally {
+      await freshCtx.dispose();
+    }
   });
 
   test("ART-12: GET /artifacts/{id}/pine-script returns 403 for another user's artifact", async ({
@@ -222,14 +221,8 @@ test.describe("Artifacts API", () => {
     const artifactId = (artifacts[0] as { id: number }).id;
 
     // Switch to another user
-    await request.post(`${API_URL}/auth/logout`);
     const otherEmail = `art-cross-${Date.now()}@nextgenstock.io`;
-    await request.post(`${API_URL}/auth/register`, {
-      data: { email: otherEmail, password: "OtherUser123!" },
-    });
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: otherEmail, password: "OtherUser123!" },
-    });
+    await request.post(`${API_URL}/test/token`, { data: { email: otherEmail } });
 
     const res = await request.get(`${API_URL}/artifacts/${artifactId}/pine-script`);
     expect([403, 404]).toContain(res.status());
@@ -254,9 +247,6 @@ test.describe("Artifacts UI — /artifacts page", () => {
   }) => {
     // Pre-create an artifact via API
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
     await runAiPick(request, {
       symbol: CRYPTO_SYMBOL,
       timeframe: "1d",
@@ -276,9 +266,6 @@ test.describe("Artifacts UI — /artifacts page", () => {
     request,
   }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
     await runAiPick(request, {
       symbol: CRYPTO_SYMBOL,
       timeframe: "1d",
@@ -310,9 +297,6 @@ test.describe("Artifacts UI — /artifacts page", () => {
     request,
   }) => {
     await registerUser(request, USER_A.email, USER_A.password);
-    await request.post(`${API_URL}/auth/login`, {
-      data: { email: USER_A.email, password: USER_A.password },
-    });
     await runAiPick(request, {
       symbol: CRYPTO_SYMBOL,
       timeframe: "1d",

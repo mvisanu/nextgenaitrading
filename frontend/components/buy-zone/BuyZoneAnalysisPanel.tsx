@@ -19,7 +19,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, RefreshCw, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -96,12 +95,12 @@ export function BuyZoneAnalysisPanel({
   const isLoading = snapshotLoading || themeLoading;
 
   return (
-    <div className={cn("rounded-md border border-border overflow-hidden", className)}>
+    <div className={cn("rounded-md border border-border/10 bg-surface-low overflow-hidden", className)}>
       {/* Collapsible header */}
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-secondary transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 text-xs font-bold hover:bg-surface-mid/50 transition-colors"
       >
         <span className="flex items-center gap-2">
           {open ? (
@@ -109,26 +108,26 @@ export function BuyZoneAnalysisPanel({
           ) : (
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
-          Buy Zone Analysis — {ticker}
+          <span className="uppercase tracking-widest text-muted-foreground">Buy Zone Analysis — {ticker}</span>
         </span>
         <div className="flex items-center gap-2">
           {autoBuyEligible && (
-            <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-xs">
+            <span className="bg-primary/15 text-primary text-3xs font-bold px-2 py-0.5 rounded-sm">
               Auto-buy eligible
-            </Badge>
+            </span>
           )}
           {alertRule?.enabled && (
-            <Badge variant="secondary" className="text-xs">
-              <Bell className="h-3 w-3 mr-1" />
+            <span className="bg-surface-high text-muted-foreground text-3xs font-bold px-2 py-0.5 rounded-sm inline-flex items-center gap-1">
+              <Bell className="h-3 w-3" />
               Alert on
-            </Badge>
+            </span>
           )}
         </div>
       </button>
 
       {/* Collapsible body */}
       {open && (
-        <div className="border-t border-border p-4 space-y-4">
+        <div className="border-t border-border/10 p-4 space-y-4">
           {/* Action bar */}
           <div className="flex items-center justify-between flex-wrap gap-2">
             {/* Alert toggle */}
@@ -140,9 +139,9 @@ export function BuyZoneAnalysisPanel({
                   onCheckedChange={(checked) => toggleAlert(checked)}
                   disabled={isTogglingAlert}
                 />
-                <Label htmlFor={`alert-toggle-${ticker}`} className="text-xs cursor-pointer flex items-center gap-1">
+                <Label htmlFor={`alert-toggle-${ticker}`} className="text-xs font-bold cursor-pointer flex items-center gap-1">
                   {alertRule.enabled ? (
-                    <Bell className="h-3.5 w-3.5" />
+                    <Bell className="h-3.5 w-3.5 text-primary" />
                   ) : (
                     <BellOff className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
@@ -153,11 +152,11 @@ export function BuyZoneAnalysisPanel({
 
             {/* Recalculate button */}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => recalculate()}
               disabled={isRecalculating}
-              className="ml-auto"
+              className="ml-auto text-xs font-bold uppercase tracking-widest hover:bg-surface-high/50"
             >
               <RefreshCw
                 className={cn("h-3.5 w-3.5 mr-1.5", isRecalculating && "animate-spin")}
@@ -168,13 +167,13 @@ export function BuyZoneAnalysisPanel({
 
           {/* Content */}
           {isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-32 w-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-48 w-full bg-surface-mid" />
+              <Skeleton className="h-32 w-full bg-surface-mid" />
             </div>
           ) : snapshotError ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3">
-              <p className="text-sm text-destructive">
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+              <p className="text-xs text-destructive">
                 Failed to load buy zone data for {ticker}.
               </p>
             </div>
@@ -186,7 +185,7 @@ export function BuyZoneAnalysisPanel({
               {/* Theme alignment */}
               {themeScore && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
                     Theme alignment
                   </p>
                   <ThemeScoreBadge
@@ -196,7 +195,7 @@ export function BuyZoneAnalysisPanel({
               )}
             </>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-6">
+            <p className="text-xs text-muted-foreground text-center py-6">
               No buy zone data available. Click Recalculate to compute.
             </p>
           )}

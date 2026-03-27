@@ -2,8 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -126,40 +124,38 @@ export function ResultsPanel({
   const maxDrawdownDollars = inv * (Math.abs(summary.max_drawdown_pct) / 100);
 
   return (
-    <div className="space-y-6 mt-6">
+    <div className="space-y-4 mt-4">
       {/* Investment Summary */}
-      <Card className="border-primary/30 bg-primary/5">
-        <CardHeader className="pb-3 px-4 sm:px-6">
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
-            Investment Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 sm:px-6">
+      <div className="bg-surface-low border border-primary/20 rounded-sm">
+        <div className="px-4 sm:px-5 py-3 border-b border-border/10 flex items-center gap-2">
+          <DollarSign className="h-3.5 w-3.5 text-primary" />
+          <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Investment Summary</span>
+        </div>
+        <div className="px-4 sm:px-5 py-4">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4">
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Starting Capital</p>
-              <p className="text-base sm:text-xl font-bold text-foreground">
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Starting Capital</p>
+              <p className="text-base sm:text-xl font-bold tabular-nums text-foreground mt-0.5">
                 {formatCurrency(inv)}
               </p>
             </div>
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Final Balance</p>
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Final Balance</p>
               <p
-                className={`text-base sm:text-xl font-bold ${
-                  finalBalance >= inv ? "text-green-400" : "text-red-400"
+                className={`text-base sm:text-xl font-bold tabular-nums mt-0.5 ${
+                  finalBalance >= inv ? "text-primary" : "text-destructive"
                 }`}
               >
                 {formatCurrency(finalBalance)}
               </p>
             </div>
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
                 {totalProfit >= 0 ? "Potential Profit" : "Potential Loss"}
               </p>
               <p
-                className={`text-base sm:text-xl font-bold flex items-center gap-1 ${
-                  totalProfit >= 0 ? "text-green-400" : "text-red-400"
+                className={`text-base sm:text-xl font-bold tabular-nums flex items-center gap-1 mt-0.5 ${
+                  totalProfit >= 0 ? "text-primary" : "text-destructive"
                 }`}
               >
                 {totalProfit >= 0 ? (
@@ -172,10 +168,10 @@ export function ResultsPanel({
               </p>
             </div>
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Return</p>
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Return</p>
               <p
-                className={`text-base sm:text-xl font-bold ${
-                  totalReturnPct >= 0 ? "text-green-400" : "text-red-400"
+                className={`text-base sm:text-xl font-bold tabular-nums mt-0.5 ${
+                  totalReturnPct >= 0 ? "text-primary" : "text-destructive"
                 }`}
               >
                 {formatPct(totalReturnPct)}
@@ -183,65 +179,62 @@ export function ResultsPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 mt-4 pt-4 border-t border-border">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 mt-4 pt-4 border-t border-border/10">
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Max Drawdown</p>
-              <p className="text-sm sm:text-base font-semibold text-red-400">
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Max Drawdown</p>
+              <p className="text-sm sm:text-base font-bold tabular-nums text-destructive mt-0.5">
                 -{formatCurrency(maxDrawdownDollars)}
               </p>
-              <p className="text-xs text-red-400/70">{formatPct(summary.max_drawdown_pct)}</p>
+              <p className="text-2xs text-destructive/70 tabular-nums">{formatPct(summary.max_drawdown_pct)}</p>
             </div>
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Sharpe-Like</p>
-              <p className={`text-sm sm:text-base font-semibold ${summary.sharpe_like >= 1 ? "text-green-400" : "text-foreground"}`}>
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Sharpe-Like</p>
+              <p className={`text-sm sm:text-base font-bold tabular-nums mt-0.5 ${summary.sharpe_like >= 1 ? "text-primary" : "text-foreground"}`}>
                 {summary.sharpe_like.toFixed(2)}
               </p>
             </div>
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Win Rate</p>
-              <p className={`text-sm sm:text-base font-semibold ${summary.win_rate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Win Rate</p>
+              <p className={`text-sm sm:text-base font-bold tabular-nums mt-0.5 ${summary.win_rate >= 0.5 ? "text-primary" : "text-destructive"}`}>
                 {(summary.win_rate * 100).toFixed(1)}%
               </p>
             </div>
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Total Trades</p>
-              <p className="text-sm sm:text-base font-semibold text-foreground flex items-center gap-1">
+              <p className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Total Trades</p>
+              <p className="text-sm sm:text-base font-bold tabular-nums text-foreground mt-0.5 flex items-center gap-1">
                 <BarChart3 className="h-3.5 w-3.5" />
                 {summary.trade_count}
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Unit of Risk — Probability & Expectancy */}
       {tradeActionsWithR.length > 0 && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardHeader className="pb-3 px-4 sm:px-6">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-amber-400" />
-              Unit of Risk Analysis
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
+        <div className="bg-surface-low border border-border/10 rounded-sm">
+          <div className="px-4 sm:px-6 py-3 border-b border-border/10 flex items-center gap-2">
+            <ShieldAlert className="h-3.5 w-3.5 text-primary" />
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Unit of Risk Analysis</span>
+          </div>
+          <div className="px-4 sm:px-6 py-4">
+            <p className="text-2xs text-muted-foreground mb-4 tabular-nums">
               1R = {formatCurrency(avgLossMove)} per share (avg losing trade move)
             </p>
-          </CardHeader>
-          <CardContent className="px-4 sm:px-6">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {/* Win/Loss visual */}
               <div className="col-span-2 sm:col-span-1">
                 <div className="flex gap-2 h-full">
-                  {/* Risk visual — stacked R blocks like the image */}
                   <div className="flex-1 space-y-1">
-                    {/* Green reward zone */}
+                    {/* Reward zone */}
                     <div
-                      className="rounded-sm bg-green-500/20 border border-green-500/30 flex items-center justify-center text-xs font-mono text-green-400 p-2"
+                      className="rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center text-2xs font-mono text-primary p-2"
                       style={{ minHeight: `${Math.min(Math.max(avgWinR, 0.5), 5) * 24}px` }}
                     >
                       {avgWinR.toFixed(1)}R avg win
                     </div>
-                    {/* Red risk zone */}
-                    <div className="rounded-sm bg-red-500/20 border border-red-500/30 flex items-center justify-center text-xs font-mono text-red-400 p-2 h-[24px]">
+                    {/* Risk zone */}
+                    <div className="rounded-sm bg-destructive/10 border border-destructive/20 flex items-center justify-center text-2xs font-mono text-destructive p-2 h-[24px]">
                       1R risk
                     </div>
                   </div>
@@ -250,17 +243,16 @@ export function ResultsPanel({
 
               {/* Winning % */}
               <div className="space-y-2">
-                <h5 className="text-sm font-semibold text-foreground">Winning %</h5>
-                <p className={`text-2xl sm:text-3xl font-bold font-mono ${winRate >= 0.5 ? "text-green-400" : "text-red-400"}`}>
+                <h5 className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Winning %</h5>
+                <p className={`text-2xl sm:text-3xl font-bold font-mono tabular-nums ${winRate >= 0.5 ? "text-primary" : "text-destructive"}`}>
                   {(winRate * 100).toFixed(0)}%
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-2xs text-muted-foreground tabular-nums">
                   {winningTrades.length}W / {losingTrades.length}L
                 </p>
-                {/* Win/loss bar */}
-                <div className="flex h-2 rounded-full overflow-hidden bg-red-500/30">
+                <div className="flex h-1.5 rounded-full overflow-hidden bg-destructive/20">
                   <div
-                    className="bg-green-500 transition-all"
+                    className="bg-primary transition-all"
                     style={{ width: `${winRate * 100}%` }}
                   />
                 </div>
@@ -268,55 +260,63 @@ export function ResultsPanel({
 
               {/* Average Win/Loss */}
               <div className="space-y-2">
-                <h5 className="text-sm font-semibold text-foreground">Average Win / Loss</h5>
+                <h5 className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Avg Win / Loss</h5>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-green-400">Avg Win</span>
-                    <span className="text-sm font-bold font-mono text-green-400">
+                    <span className="text-2xs text-primary">Avg Win</span>
+                    <span className="text-xs font-bold font-mono tabular-nums text-primary">
                       +{formatCurrency(avgWinDollar)} ({avgWinR.toFixed(1)}R)
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-red-400">Avg Loss</span>
-                    <span className="text-sm font-bold font-mono text-red-400">
+                    <span className="text-2xs text-destructive">Avg Loss</span>
+                    <span className="text-xs font-bold font-mono tabular-nums text-destructive">
                       -{formatCurrency(avgLossDollar)} ({avgLossR.toFixed(1)}R)
                     </span>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-border">
+                <div className="pt-2 border-t border-border/10">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Expectancy</span>
-                    <span className={`text-sm font-bold font-mono ${expectancyR >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    <span className="text-2xs text-muted-foreground">Expectancy</span>
+                    <span className={`text-xs font-bold font-mono tabular-nums ${expectancyR >= 0 ? "text-primary" : "text-destructive"}`}>
                       {expectancyR >= 0 ? "+" : ""}{expectancyR.toFixed(2)}R per trade
                     </span>
                   </div>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Signal badges */}
       <div className="flex items-center gap-3 flex-wrap">
         {run.current_regime && (
-          <div className="flex items-center gap-1.5 text-sm sm:text-base">
-            <span className="text-muted-foreground">Regime:</span>
-            <Badge variant={getRegimeVariant(run.current_regime)} className="text-xs sm:text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="text-2xs text-muted-foreground uppercase tracking-widest">Regime:</span>
+            <span className={`text-3xs font-bold px-2 py-0.5 rounded-sm ${
+              getRegimeVariant(run.current_regime) === "default"
+                ? "bg-primary/15 text-primary"
+                : "bg-destructive/15 text-destructive"
+            }`}>
               {run.current_regime}
-            </Badge>
+            </span>
           </div>
         )}
         {run.current_signal && (
-          <div className="flex items-center gap-1.5 text-sm sm:text-base">
-            <span className="text-muted-foreground">Signal:</span>
-            <Badge variant={getSignalVariant(run.current_signal)} className="text-xs sm:text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="text-2xs text-muted-foreground uppercase tracking-widest">Signal:</span>
+            <span className={`text-3xs font-bold px-2 py-0.5 rounded-sm ${
+              getSignalVariant(run.current_signal) === "default"
+                ? "bg-primary/15 text-primary"
+                : "bg-destructive/15 text-destructive"
+            }`}>
               {run.current_signal.toUpperCase()}
-            </Badge>
+            </span>
           </div>
         )}
         {run.confirmation_count !== null && (
-          <span className="text-sm sm:text-base text-muted-foreground">
+          <span className="text-2xs text-muted-foreground tabular-nums">
             {run.confirmation_count} confirmations
           </span>
         )}
@@ -324,88 +324,84 @@ export function ResultsPanel({
 
       {/* Price Chart */}
       {chartData && chartData.candles.length > 0 && (
-        <Card>
-          <CardHeader className="px-4 sm:px-6">
-            <CardTitle className="text-sm sm:text-base">Price Chart — {run.symbol}</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-6">
+        <div className="bg-surface-low border border-border/10 rounded-sm">
+          <div className="px-4 sm:px-6 py-3 border-b border-border/10">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              Price Chart — {run.symbol}
+            </span>
+          </div>
+          <div className="px-2 sm:px-6 py-4">
             <PriceChart
               data={chartData.candles}
               signals={chartData.signals}
               symbol={run.symbol}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Equity Curve */}
       {(trades.length > 0 || (chartData?.equity?.length ?? 0) > 0) && (
-        <Card>
-          <CardHeader className="px-4 sm:px-6">
-            <CardTitle className="text-sm sm:text-base">Equity Curve</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-6">
+        <div className="bg-surface-low border border-border/10 rounded-sm">
+          <div className="px-4 sm:px-6 py-3 border-b border-border/10">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Equity Curve</span>
+          </div>
+          <div className="px-2 sm:px-6 py-4">
             <EquityCurve
               trades={trades}
               equityPoints={chartData?.equity}
               showPnlBars
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Variant Leaderboard (AI Pick / BLSH) */}
       {isOptimizer && variants.length > 0 && (
-        <Card>
-          <CardHeader className="px-4 sm:px-6">
-            <CardTitle className="text-sm sm:text-base">Variant Leaderboard</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 px-2 sm:px-6">
+        <div className="bg-surface-low border border-border/10 rounded-sm">
+          <div className="px-4 sm:px-6 py-3 border-b border-border/10">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Variant Leaderboard</span>
+          </div>
+          <div className="space-y-4 px-2 sm:px-6 py-4">
             <ScrollArea className="max-h-72">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs sm:text-sm">Variant</TableHead>
-                      <TableHead className="text-right text-xs sm:text-sm">Val. Return</TableHead>
-                      <TableHead className="text-right text-xs sm:text-sm hidden sm:table-cell">Drawdown</TableHead>
-                      <TableHead className="text-right text-xs sm:text-sm hidden sm:table-cell">Sharpe</TableHead>
-                      <TableHead className="text-right text-xs sm:text-sm">Trades</TableHead>
+                    <TableRow className="bg-surface-lowest hover:bg-surface-lowest border-border/10">
+                      <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Variant</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Val. Return</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4 hidden sm:table-cell">Drawdown</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4 hidden sm:table-cell">Sharpe</TableHead>
+                      <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-4">Trades</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {variants
                       .sort((a, b) => b.validation_score - a.validation_score)
                       .map((v) => (
-                        <TableRow key={v.id}>
-                          <TableCell>
+                        <TableRow key={v.id} className="border-border/10 hover:bg-surface-high/30">
+                          <TableCell className="py-2 px-4">
                             <div className="flex items-center gap-2">
                               {v.selected_winner && (
                                 <Trophy className="h-3.5 w-3.5 text-yellow-400" />
                               )}
-                              <span className="font-mono text-xs sm:text-sm">
+                              <span className="font-mono text-xs tabular-nums">
                                 {v.variant_name}
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right text-xs sm:text-sm">
-                            <span
-                              className={
-                                v.validation_return >= 0
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }
-                            >
+                          <TableCell className="text-right text-xs py-2 px-4">
+                            <span className={`tabular-nums font-mono ${v.validation_return >= 0 ? "text-primary" : "text-destructive"}`}>
                               {formatPct(v.validation_return)}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right text-xs sm:text-sm text-red-400 hidden sm:table-cell">
+                          <TableCell className="text-right text-xs py-2 px-4 text-destructive tabular-nums font-mono hidden sm:table-cell">
                             {formatPct(v.max_drawdown)}
                           </TableCell>
-                          <TableCell className="text-right text-xs sm:text-sm hidden sm:table-cell">
+                          <TableCell className="text-right text-xs py-2 px-4 tabular-nums font-mono hidden sm:table-cell">
                             {v.sharpe_like.toFixed(2)}
                           </TableCell>
-                          <TableCell className="text-right text-xs sm:text-sm">
+                          <TableCell className="text-right text-xs py-2 px-4 tabular-nums">
                             {v.trade_count}
                           </TableCell>
                         </TableRow>
@@ -416,85 +412,81 @@ export function ResultsPanel({
             </ScrollArea>
 
             <OptimizationScatter variants={variants} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Buy / Sell Trade Actions */}
       {tradeActionsWithR.length > 0 && (
-        <Card>
-          <CardHeader className="px-4 sm:px-6">
-            <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              Trade Actions ({tradeActionsWithR.length}) — When to Buy & Sell
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-6">
+        <div className="bg-surface-low border border-border/10 rounded-sm">
+          <div className="px-4 sm:px-6 py-3 border-b border-border/10 flex items-center gap-2">
+            <BarChart3 className="h-3.5 w-3.5 text-primary" />
+            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              Trade Actions ({tradeActionsWithR.length}) — When to Buy &amp; Sell
+            </span>
+          </div>
+          <div className="px-2 sm:px-6 py-4">
             {/* Mobile: card layout */}
             <div className="block sm:hidden space-y-3">
               {tradeActionsWithR.map((t) => (
-                <div key={t.id} className="rounded-lg border border-border overflow-hidden">
+                <div key={t.id} className="rounded-sm border border-border/10 overflow-hidden">
                   {/* BUY */}
-                  <div className="bg-green-500/5 p-3 border-b border-border">
+                  <div className="bg-primary/[0.03] p-3 border-b border-border/10">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <ArrowUpCircle className="h-5 w-5 text-green-400" />
-                        <Badge variant="default" className="bg-green-600 text-white text-xs">
-                          BUY
-                        </Badge>
+                        <ArrowUpCircle className="h-4 w-4 text-primary" />
+                        <span className="bg-primary/15 text-primary text-3xs font-bold px-2 py-0.5 rounded-sm">BUY</span>
                       </div>
-                      <span className="text-sm font-mono font-bold">{formatCurrency(t.entry_price)}</span>
+                      <span className="text-xs font-mono font-bold tabular-nums">{formatCurrency(t.entry_price)}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <span className="text-muted-foreground text-xs">Date</span>
-                        <p className="font-mono text-xs">{formatDateTime(t.entry_time)}</p>
+                        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Date</span>
+                        <p className="font-mono text-2xs tabular-nums">{formatDateTime(t.entry_time)}</p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground text-xs">Shares</span>
-                        <p className="font-mono text-xs">{t.shares.toFixed(4)}</p>
+                        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Shares</span>
+                        <p className="font-mono text-2xs tabular-nums">{t.shares.toFixed(4)}</p>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-muted-foreground text-xs">Amount</span>
-                        <p className="font-mono text-sm font-semibold">{formatCurrency(t.balanceBefore)}</p>
+                        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Amount</span>
+                        <p className="font-mono text-xs font-semibold tabular-nums">{formatCurrency(t.balanceBefore)}</p>
                       </div>
                     </div>
                   </div>
                   {/* SELL */}
-                  <div className="bg-red-500/5 p-3">
+                  <div className="bg-destructive/[0.03] p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <ArrowDownCircle className="h-5 w-5 text-red-400" />
-                        <Badge variant="destructive" className="text-xs">
-                          SELL
-                        </Badge>
+                        <ArrowDownCircle className="h-4 w-4 text-destructive" />
+                        <span className="bg-destructive/15 text-destructive text-3xs font-bold px-2 py-0.5 rounded-sm">SELL</span>
                       </div>
-                      <span className="text-sm font-mono font-bold">{formatCurrency(t.exit_price)}</span>
+                      <span className="text-xs font-mono font-bold tabular-nums">{formatCurrency(t.exit_price)}</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-sm">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <span className="text-muted-foreground text-xs">Date</span>
-                        <p className="font-mono text-xs">{formatDateTime(t.exit_time)}</p>
+                        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Date</span>
+                        <p className="font-mono text-2xs tabular-nums">{formatDateTime(t.exit_time)}</p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground text-xs">Reason</span>
-                        <p className="font-mono text-xs">{t.exit_reason}</p>
+                        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Reason</span>
+                        <p className="font-mono text-2xs">{t.exit_reason}</p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground text-xs">Risk (R)</span>
-                        <p className={`font-mono text-sm font-bold ${t.rUnits >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Risk (R)</span>
+                        <p className={`font-mono text-xs font-bold tabular-nums ${t.rUnits >= 0 ? "text-primary" : "text-destructive"}`}>
                           {t.rUnits >= 0 ? "+" : ""}{t.rUnits.toFixed(1)}R
                         </p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground text-xs">P&L</span>
-                        <p className={`font-mono text-sm font-bold ${t.dollarPnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">P&amp;L</span>
+                        <p className={`font-mono text-xs font-bold tabular-nums ${t.dollarPnl >= 0 ? "text-primary" : "text-destructive"}`}>
                           {t.dollarPnl >= 0 ? "+" : ""}{formatCurrency(t.dollarPnl)}
                         </p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground text-xs">Balance</span>
-                        <p className={`font-mono text-sm font-bold ${t.balanceAfter >= inv ? "text-green-400" : "text-red-400"}`}>
+                        <span className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">Balance</span>
+                        <p className={`font-mono text-xs font-bold tabular-nums ${t.balanceAfter >= inv ? "text-primary" : "text-destructive"}`}>
                           {formatCurrency(t.balanceAfter)}
                         </p>
                       </div>
@@ -510,89 +502,85 @@ export function ResultsPanel({
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="bg-surface-lowest hover:bg-surface-lowest border-border/10">
                         <TableHead className="w-[28px]"></TableHead>
-                        <TableHead className="text-sm">Date</TableHead>
-                        <TableHead className="text-sm">Action</TableHead>
-                        <TableHead className="text-right text-sm">Price</TableHead>
-                        <TableHead className="text-right text-sm">Shares</TableHead>
-                        <TableHead className="text-right text-sm">Invested</TableHead>
-                        <TableHead className="text-right text-sm">P&L</TableHead>
-                        <TableHead className="text-right text-sm">R Units</TableHead>
-                        <TableHead className="text-right text-sm">Balance</TableHead>
-                        <TableHead className="text-sm">Reason</TableHead>
+                        <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">Date</TableHead>
+                        <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">Action</TableHead>
+                        <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">Price</TableHead>
+                        <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">Shares</TableHead>
+                        <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">Invested</TableHead>
+                        <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">P&amp;L</TableHead>
+                        <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">R Units</TableHead>
+                        <TableHead className="text-right text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">Balance</TableHead>
+                        <TableHead className="text-3xs font-bold uppercase tracking-widest text-muted-foreground py-2 px-3">Reason</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {tradeActionsWithR.map((t) => (
                         <React.Fragment key={`trade-${t.id}`}>
                           {/* BUY row */}
-                          <TableRow className="bg-green-500/5 border-b-0">
-                            <TableCell>
-                              <ArrowUpCircle className="h-4 w-4 text-green-400" />
+                          <TableRow className="bg-primary/[0.03] hover:bg-primary/[0.06] border-b-0 border-border/10">
+                            <TableCell className="py-2 px-3">
+                              <ArrowUpCircle className="h-3.5 w-3.5 text-primary" />
                             </TableCell>
-                            <TableCell className="text-sm font-mono">
+                            <TableCell className="text-xs font-mono tabular-nums py-2 px-3">
                               {formatDateTime(t.entry_time)}
                             </TableCell>
-                            <TableCell>
-                              <Badge variant="default" className="bg-green-600 text-white text-xs px-2">
-                                BUY
-                              </Badge>
+                            <TableCell className="py-2 px-3">
+                              <span className="bg-primary/15 text-primary text-3xs font-bold px-2 py-0.5 rounded-sm">BUY</span>
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
                               {formatCurrency(t.entry_price)}
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
                               {t.shares.toFixed(4)}
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
                               {formatCurrency(t.balanceBefore)}
                             </TableCell>
-                            <TableCell className="text-right text-sm text-muted-foreground">—</TableCell>
-                            <TableCell className="text-right text-sm text-muted-foreground">—</TableCell>
-                            <TableCell className="text-right text-sm font-mono text-muted-foreground">
+                            <TableCell className="text-right text-xs text-muted-foreground py-2 px-3">—</TableCell>
+                            <TableCell className="text-right text-xs text-muted-foreground py-2 px-3">—</TableCell>
+                            <TableCell className="text-right text-xs font-mono tabular-nums text-muted-foreground py-2 px-3">
                               {formatCurrency(t.balanceBefore)}
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">Entry</TableCell>
+                            <TableCell className="text-xs text-muted-foreground py-2 px-3">Entry</TableCell>
                           </TableRow>
                           {/* SELL row */}
-                          <TableRow className="bg-red-500/5">
-                            <TableCell>
-                              <ArrowDownCircle className="h-4 w-4 text-red-400" />
+                          <TableRow className="bg-destructive/[0.03] hover:bg-destructive/[0.06] border-border/10">
+                            <TableCell className="py-2 px-3">
+                              <ArrowDownCircle className="h-3.5 w-3.5 text-destructive" />
                             </TableCell>
-                            <TableCell className="text-sm font-mono">
+                            <TableCell className="text-xs font-mono tabular-nums py-2 px-3">
                               {formatDateTime(t.exit_time)}
                             </TableCell>
-                            <TableCell>
-                              <Badge variant="destructive" className="text-xs px-2">
-                                SELL
-                              </Badge>
+                            <TableCell className="py-2 px-3">
+                              <span className="bg-destructive/15 text-destructive text-3xs font-bold px-2 py-0.5 rounded-sm">SELL</span>
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
                               {formatCurrency(t.exit_price)}
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
                               {t.shares.toFixed(4)}
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
                               {formatCurrency(t.shares * t.exit_price)}
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
-                              <span className={t.dollarPnl >= 0 ? "text-green-400" : "text-red-400"}>
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
+                              <span className={t.dollarPnl >= 0 ? "text-primary" : "text-destructive"}>
                                 {t.dollarPnl >= 0 ? "+" : ""}{formatCurrency(t.dollarPnl)}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
-                              <span className={`font-bold ${t.rUnits >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
+                              <span className={`font-bold ${t.rUnits >= 0 ? "text-primary" : "text-destructive"}`}>
                                 {t.rUnits >= 0 ? "+" : ""}{t.rUnits.toFixed(1)}R
                               </span>
                             </TableCell>
-                            <TableCell className="text-right text-sm font-mono">
-                              <span className={t.balanceAfter >= inv ? "text-green-400" : "text-red-400"}>
+                            <TableCell className="text-right text-xs font-mono tabular-nums py-2 px-3">
+                              <span className={t.balanceAfter >= inv ? "text-primary" : "text-destructive"}>
                                 {formatCurrency(t.balanceAfter)}
                               </span>
                             </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
+                            <TableCell className="text-xs text-muted-foreground py-2 px-3">
                               {t.exit_reason}
                             </TableCell>
                           </TableRow>
@@ -605,23 +593,23 @@ export function ResultsPanel({
             </div>
 
             {/* Bottom line summary */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-4 pt-4 border-t border-border gap-2">
-              <span className="text-sm sm:text-base text-muted-foreground">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-4 pt-4 border-t border-border/10 gap-2">
+              <span className="text-2xs text-muted-foreground">
                 {investmentAmount
                   ? `Based on ${formatCurrency(inv)} investment`
                   : `Simulated with $10,000 (enter amount above for custom)`}
               </span>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-center">
-                <span className={`text-sm font-semibold font-mono ${expectancyR >= 0 ? "text-green-400" : "text-red-400"}`}>
+                <span className={`text-xs font-semibold font-mono tabular-nums ${expectancyR >= 0 ? "text-primary" : "text-destructive"}`}>
                   Expectancy: {expectancyR >= 0 ? "+" : ""}{expectancyR.toFixed(2)}R/trade
                 </span>
-                <span className={`text-base sm:text-lg font-bold ${totalProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                <span className={`text-sm font-bold tabular-nums ${totalProfit >= 0 ? "text-primary" : "text-destructive"}`}>
                   Net: {totalProfit >= 0 ? "+" : ""}{formatCurrency(totalProfit)} ({formatPct(totalReturnPct)})
                 </span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Risk Calculator & Position Sizer */}

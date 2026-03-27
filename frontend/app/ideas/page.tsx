@@ -8,6 +8,7 @@
  *   2. AI Suggestions — auto-generated ideas from V3 idea engine (IdeaFeed)
  *   3. My Ideas — manually created investment theses (IdeaList)
  *
+ * Sovereign Terminal design system applied.
  * Protected route: requires authentication.
  */
 
@@ -20,7 +21,6 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { AppShell, useAuth } from "@/components/layout/AppShell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -80,14 +80,24 @@ export default function IdeasPage() {
     <AppShell
       title="Ideas"
       actions={
-        <Button size="sm" onClick={() => setNewIdeaOpen(true)}>
+        <Button
+          size="sm"
+          onClick={() => setNewIdeaOpen(true)}
+          className="bg-primary text-primary-foreground font-bold uppercase tracking-widest text-xs h-8 px-3"
+        >
           <Plus className="h-3.5 w-3.5 mr-1.5" />
           New Idea
         </Button>
       }
     >
+      {/* Page header */}
+      <div className="mb-4">
+        <p className="text-xl font-bold text-foreground">Ideas</p>
+        <p className="text-sm text-muted-foreground">Market pulse, AI-generated suggestions, and your investment theses</p>
+      </div>
+
       {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-4 border-b border-border overflow-x-auto">
+      <div className="flex items-center gap-0 mb-4 border-b border-border/10 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const count =
@@ -102,18 +112,18 @@ export default function IdeasPage() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 whitespace-nowrap transition-colors",
+                "flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 whitespace-nowrap transition-colors uppercase tracking-widest",
                 activeTab === tab.key
-                  ? "border-primary text-foreground"
+                  ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               <Icon className="h-3.5 w-3.5" />
               {tab.label}
               {count > 0 && (
-                <Badge variant="secondary" className="text-[10px] py-0">
+                <span className="bg-surface-high text-muted-foreground text-3xs font-bold px-1.5 py-0.5 rounded-sm tabular-nums">
                   {count}
-                </Badge>
+                </span>
               )}
             </button>
           );
@@ -127,9 +137,9 @@ export default function IdeasPage() {
 
       {/* New Idea dialog */}
       <Dialog open={newIdeaOpen} onOpenChange={setNewIdeaOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-surface-low border border-border/10">
           <DialogHeader>
-            <DialogTitle>New idea</DialogTitle>
+            <DialogTitle className="text-sm font-bold uppercase tracking-widest text-foreground">New idea</DialogTitle>
           </DialogHeader>
           <IdeaForm onSuccess={() => { setNewIdeaOpen(false); setActiveTab("my"); }} />
         </DialogContent>
