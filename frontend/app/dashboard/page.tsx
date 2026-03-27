@@ -499,11 +499,29 @@ function SymbolSearch({
     ]),
   ];
 
-  const filtered = query.trim()
-    ? allSymbols.filter((s) =>
-        s.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 12)
-    : POPULAR_SYMBOLS.slice(0, 12);
+  const filtered = useMemo(() => {
+    if (!query.trim()) return POPULAR_SYMBOLS.slice(0, 12);
+    const q = query.trim().toUpperCase();
+    const matches = allSymbols.filter((s) =>
+      s.toUpperCase().includes(q)
+    );
+    // Sort: exact match first, then starts-with, then contains
+    matches.sort((a, b) => {
+      const au = a.toUpperCase(), bu = b.toUpperCase();
+      if (au === q) return -1;
+      if (bu === q) return 1;
+      const aStarts = au.startsWith(q);
+      const bStarts = bu.startsWith(q);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return a.length - b.length; // shorter symbols first
+    });
+    // If the typed symbol isn't in the list, add it as first option
+    if (q.length >= 1 && !matches.some((s) => s.toUpperCase() === q)) {
+      matches.unshift(q);
+    }
+    return matches.slice(0, 12);
+  }, [query, allSymbols]);
 
   // Close dropdown on outside click
   useEffect(() => {
