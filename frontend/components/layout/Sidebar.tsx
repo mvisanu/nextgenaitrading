@@ -165,7 +165,7 @@ export function Sidebar() {
     ? user.email.slice(0, 2).toUpperCase()
     : "SV";
 
-  const expandedWidth = pinned ? "w-[220px]" : "w-12 hover:w-[220px]";
+  const expandedWidth = pinned ? "w-[190px]" : "w-12 hover:w-[190px]";
 
   return (
     <aside
@@ -187,10 +187,10 @@ export function Sidebar() {
           pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}>
           <span className="text-sm font-black tracking-tighter text-foreground">
-            NextGenAi Trading
+            NextGen Trading
           </span>
           <span className="text-3xs text-primary tracking-widest uppercase opacity-80">
-            Work hard, Play hard
+            Play Smart
           </span>
         </div>
         <button
@@ -344,9 +344,6 @@ export function Sidebar() {
               "ml-2.5 flex flex-col whitespace-nowrap transition-opacity duration-200",
               pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}>
-              <span className="text-[11px] font-semibold text-foreground truncate max-w-[140px]">
-                {user?.email ?? "Profile"}
-              </span>
               <span className="text-3xs text-muted-foreground/60 uppercase tracking-widest">
                 AI Trader
               </span>

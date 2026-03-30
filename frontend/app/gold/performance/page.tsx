@@ -146,7 +146,7 @@ export default function GoldPerformancePage() {
 
   return (
     <AppShell title="Performance — Commodity">
-      <div className="p-3 lg:p-4 space-y-4 max-w-[1400px] mx-auto">
+      <div className="p-2 sm:p-3 lg:p-4 space-y-4 max-w-[1400px] mx-auto">
 
         {/* Sub-nav */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -196,7 +196,7 @@ export default function GoldPerformancePage() {
           </div>
 
           {/* Days selector */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             {DAY_OPTIONS.map((d) => (
               <button
                 key={d}

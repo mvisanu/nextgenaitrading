@@ -89,7 +89,7 @@ export default function GoldRiskPage() {
 
   return (
     <AppShell title="Risk Management — Commodity">
-      <div className="p-3 lg:p-4 space-y-4 max-w-[1400px] mx-auto">
+      <div className="p-2 sm:p-3 lg:p-4 space-y-4 max-w-[1400px] mx-auto">
 
         {/* Sub-nav */}
         <div className="flex items-center gap-2 flex-wrap">

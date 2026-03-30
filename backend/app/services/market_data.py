@@ -14,6 +14,31 @@ logger = logging.getLogger(__name__)
 
 REQUIRED_COLUMNS = {"Open", "High", "Low", "Close", "Volume"}
 
+# Maps common commodity/forex display symbols to their yfinance tickers.
+# Matching strips "/" and "-" so XAU-USD, XAU/USD, XAUUSD all resolve.
+_SYMBOL_MAP: dict[str, str] = {
+    "XAUUSD": "GC=F",
+    "XAGUSD": "SI=F",
+    "XPTUSD": "PL=F",
+    "XPDUSD": "PA=F",
+    "USOIL": "CL=F",
+    "BRENTOIL": "BZ=F",
+    "COPPER": "HG=F",
+    "NATGAS": "NG=F",
+    "BTCUSD": "BTC-USD",
+    "ETHUSD": "ETH-USD",
+    "SOLUSD": "SOL-USD",
+    "EURUSD": "EURUSD=X",
+    "GBPUSD": "GBPUSD=X",
+    "USDJPY": "USDJPY=X",
+}
+
+
+def normalize_symbol(symbol: str) -> str:
+    """Translate display symbols (e.g. XAU-USD) to yfinance tickers (e.g. GC=F)."""
+    key = symbol.upper().replace("/", "").replace("-", "")
+    return _SYMBOL_MAP.get(key, symbol)
+
 
 def load_ohlcv(
     symbol: str, interval: str = "1d", period: str = "730d"
@@ -53,7 +78,7 @@ def validate_symbol(symbol: str) -> None:
     Raises HTTP 422 with a clear message if not found.
     """
     try:
-        load_ohlcv(symbol, interval="1d", period="5d")
+        load_ohlcv(normalize_symbol(symbol), interval="1d", period="5d")
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -67,6 +92,7 @@ def load_ohlcv_for_strategy(symbol: str, timeframe: str) -> pd.DataFrame:
     Period length is chosen per timeframe to ensure enough bars remain after
     indicator warmup (EMA-50 alone consumes the first 50 bars).
     """
+    symbol = normalize_symbol(symbol)
     interval_map = {
         "1m": "1m",
         "2m": "2m",

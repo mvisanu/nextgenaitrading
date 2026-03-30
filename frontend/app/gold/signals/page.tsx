@@ -133,7 +133,7 @@ export default function GoldSignalsPage() {
 
   return (
     <AppShell title="Signals — Commodity">
-      <div className="p-3 lg:p-4 space-y-4 max-w-[1400px] mx-auto">
+      <div className="p-2 sm:p-3 lg:p-4 space-y-4 max-w-[1400px] mx-auto">
 
         {/* Sub-nav */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -180,7 +180,7 @@ export default function GoldSignalsPage() {
           </div>
 
           {/* Timeframe */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             {TIMEFRAMES.map((tf) => (
               <button
                 key={tf}
@@ -198,7 +198,7 @@ export default function GoldSignalsPage() {
           </div>
 
           {/* Status filter */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             {["all", "approved", "candidate", "blocked", "sent", "expired"].map((s) => (
               <button
                 key={s}

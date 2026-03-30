@@ -887,7 +887,7 @@ export default function GoldPage() {
 
   return (
     <AppShell title="Commodity Signals">
-      <div className="p-3 lg:p-4 space-y-4 max-w-[1400px] mx-auto">
+      <div className="p-2 sm:p-3 lg:p-4 space-y-4 max-w-[1400px] mx-auto">
 
         {/* ── Backend offline banner ────────────────────────────────────── */}
         {engineOnline === false && (

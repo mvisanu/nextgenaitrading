@@ -112,7 +112,7 @@ export function AppShell({ children, title, actions }: AppShellProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-1 lg:p-1 pb-20 lg:pb-1 bg-card">
+        <main className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 pb-20 lg:pb-4 bg-card">
           {isLoading ? (
             <div className="p-4 space-y-3">
               <Skeleton className="h-8 w-48 bg-surface-high" />

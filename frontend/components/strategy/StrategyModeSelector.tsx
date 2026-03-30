@@ -99,7 +99,7 @@ export function StrategyModeSelector({
   const leftContent = leftSlot ? leftSlot(activeMode) : null;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] xl:grid-cols-[380px_1fr] gap-6 items-start">
       {/* ── Left column: strategy list + form ── */}
       <div className="space-y-4">
         {/* Strategy selector list */}

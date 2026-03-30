@@ -512,7 +512,7 @@ export default function AutoBuyPage() {
         {/* Section 2: Strategy Selection (8 cols) */}
         <section className="col-span-12 lg:col-span-8 bg-surface-mid p-4">
           <SectionHeader icon={Cpu} title="Strategy Selection" />
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             {STRATEGIES.map((s) => (
               <StrategyCard
                 key={s.id}
@@ -685,7 +685,7 @@ export default function AutoBuyPage() {
       </div>
 
       {/* ── Footer actions ────────────────────────────────────────── */}
-      <div className="flex items-center justify-end gap-3 pt-6 mt-2 border-t border-border/10">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-6 mt-2 border-t border-border/10">
         <Button
           variant="outline"
           className="px-6 text-2xs font-bold uppercase tracking-widest border-border/40 text-muted-foreground hover:bg-surface-highest hover:text-foreground"

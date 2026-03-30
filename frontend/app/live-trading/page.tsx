@@ -330,7 +330,7 @@ export default function LiveTradingPage() {
     <AppShell title="Live Trading">
 
       {/* ── Status Header Strip ── */}
-      <div className="h-10 bg-surface-low border-b border-border/10 flex items-center px-4 justify-between mb-4 -mt-4 -mx-4 sm:-mx-6">
+      <div className="min-h-[2.5rem] bg-surface-low border-b border-border/10 flex items-center px-3 sm:px-4 justify-between mb-4 -mt-1 -mx-1 sm:-mx-1 flex-wrap gap-y-1 py-1.5 sm:py-0">
         <div className="flex items-center gap-5 overflow-x-auto">
           {/* Mode pill */}
           <div className="flex items-center gap-2 shrink-0">
@@ -409,7 +409,7 @@ export default function LiveTradingPage() {
       )}
 
       {/* ── Main 3-column terminal layout ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr_16rem] gap-0 rounded-sm overflow-hidden border border-border/10">
+      <div className="grid grid-cols-1 lg:grid-cols-[18rem_1fr] xl:grid-cols-[20rem_1fr_16rem] gap-0 rounded-sm overflow-hidden border border-border/10">
 
         {/* ════ LEFT — Execution Desk ════ */}
         <section className="bg-surface-low border-r border-border/10 flex flex-col overflow-y-auto">
@@ -677,7 +677,7 @@ export default function LiveTradingPage() {
         </section>
 
         {/* ════ CENTER — Charting Area ════ */}
-        <section className="flex flex-col bg-surface-lowest min-h-[560px]">
+        <section className="flex flex-col bg-surface-lowest min-h-[320px] sm:min-h-[420px] lg:min-h-[560px]">
           {/* Chart toolbar */}
           <div className="h-10 border-b border-border/10 flex items-center px-4 gap-4 overflow-x-auto bg-surface-low">
             {/* Symbol label */}
@@ -739,7 +739,7 @@ export default function LiveTradingPage() {
                 data={chartData.candles}
                 signals={signalResult ? buildSignalMarkers(signalResult, chartData.candles) : []}
                 symbol={committedSymbol}
-                height={420}
+                height={320}
                 theme={theme}
                 bollingerData={chartData.bollinger ?? undefined}
               />
@@ -780,7 +780,7 @@ export default function LiveTradingPage() {
         </section>
 
         {/* ════ RIGHT — Market Pulse ════ */}
-        <section className="bg-surface-low border-l border-border/10 hidden xl:flex flex-col">
+        <section className="bg-surface-low border-l border-border/10 hidden xl:flex flex-col" aria-label="Market Pulse">
           <div className="p-4 flex items-center justify-between border-b border-border/10">
             <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Market Pulse</h3>
           </div>

@@ -356,7 +356,7 @@ export default function StockAnalysisPage({ params }: PageProps) {
 
   return (
     <AppShell title="Stock Analysis" actions={backAction}>
-      <div className="max-w-[1400px] mx-auto p-4 lg:p-6 space-y-6">
+      <div className="max-w-[1400px] mx-auto p-2 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
 
         {/* ── Hero Header ─────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">

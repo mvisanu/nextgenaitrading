@@ -244,7 +244,7 @@ export default function ProfilePage() {
               {displayName}
             </h1>
             <span className="text-3xs uppercase tracking-widest text-primary font-bold block mb-1">
-              NextGenAi Trading
+              NextGen Trading
             </span>
             <span className="text-2xs text-muted-foreground tabular-nums">
               {user?.email ?? "—"}
