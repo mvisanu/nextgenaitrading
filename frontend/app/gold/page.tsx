@@ -635,6 +635,140 @@ function NotificationPrefsPanel() {
 }
 
 // ---------------------------------------------------------------------------
+// Stats bar (Active Signals · Win Rate · Uptime · Last Data)
+// ---------------------------------------------------------------------------
+
+function StatsBar({
+  signals,
+  performance,
+  engineOnline,
+  uptimeStr,
+  risk,
+}: {
+  signals: GoldSignal[];
+  performance: GoldPerformanceResponse | null;
+  engineOnline: boolean | null;
+  uptimeStr: string;
+  risk: GoldRiskStatus | null;
+}) {
+  const activeSignals = signals.filter(
+    (s) => s.status === "approved" || s.status === "candidate"
+  );
+  const todaySignals = signals.filter((s) => {
+    const d = new Date(s.timestamp);
+    const now = new Date();
+    return d.toDateString() === now.toDateString();
+  });
+
+  let totalWins = 0;
+  let totalLosses = 0;
+  if (performance) {
+    performance.strategies.forEach((s) => {
+      const wins = Math.round(s.total_signals * s.win_rate);
+      totalWins += wins;
+      totalLosses += s.total_signals - wins;
+    });
+  }
+
+  const lastSignalTs =
+    signals.length > 0
+      ? new Date(Math.max(...signals.map((s) => new Date(s.timestamp).getTime())))
+      : null;
+  const lastDataStr = lastSignalTs
+    ? lastSignalTs.toLocaleDateString([], { day: "numeric", month: "short" }) +
+      " " +
+      lastSignalTs.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "--";
+
+  const winRate = performance
+    ? (performance.overall_win_rate * 100).toFixed(1) + "%"
+    : "--";
+
+  const schedulerRunning = risk?.mode !== "kill_switch";
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Active Signals */}
+      <div className="rounded bg-surface-2 border border-border/10 p-4 space-y-1">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">
+          Active Signals
+        </p>
+        <p className="text-3xl font-black text-foreground tabular-nums leading-none">
+          {activeSignals.length}
+        </p>
+        <p className="text-[11px] text-muted-foreground/50">
+          {todaySignals.length} today
+        </p>
+      </div>
+
+      {/* Win Rate */}
+      <div className="rounded bg-surface-2 border border-border/10 p-4 space-y-1">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">
+          Win Rate
+        </p>
+        <p
+          className={cn(
+            "text-3xl font-black tabular-nums leading-none",
+            performance ? "text-emerald-400" : "text-muted-foreground/40"
+          )}
+        >
+          {winRate}
+        </p>
+        <p className="text-[11px] text-muted-foreground/50">
+          {performance ? `${totalWins}W / ${totalLosses}L` : "--"}
+        </p>
+      </div>
+
+      {/* Uptime */}
+      <div className="rounded bg-surface-2 border border-border/10 p-4 space-y-1">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">
+          Uptime
+        </p>
+        <p
+          className={cn(
+            "text-3xl font-black tabular-nums leading-none",
+            engineOnline ? "text-primary" : "text-muted-foreground/40"
+          )}
+        >
+          {engineOnline ? uptimeStr : "--"}
+        </p>
+        <p className="text-[11px] mt-0.5">
+          <span
+            className={cn(
+              "font-semibold",
+              engineOnline ? "text-emerald-400" : "text-amber-400"
+            )}
+          >
+            DB: {engineOnline ? "connected" : "offline"}
+          </span>
+        </p>
+      </div>
+
+      {/* Last Data */}
+      <div className="rounded bg-surface-2 border border-border/10 p-4 space-y-1">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">
+          Last Data
+        </p>
+        <p className="text-xl font-black text-foreground leading-tight tabular-nums">
+          {lastDataStr}
+        </p>
+        <p className="text-[11px]">
+          Scheduler:{" "}
+          <span
+            className={cn(
+              "font-semibold",
+              schedulerRunning ? "text-emerald-400" : "text-red-400"
+            )}
+          >
+            {schedulerRunning ? "running" : "halted"}
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -657,6 +791,10 @@ export default function GoldPage() {
 
   // Connection status: null = checking, true = online, false = offline
   const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
+
+  // Uptime tracking
+  const [uptimeStart, setUptimeStart] = useState<Date | null>(null);
+  const [uptimeStr, setUptimeStr] = useState("--");
 
   // Fetch signals + risk + performance whenever committed symbol or timeframe changes
   const fetchAll = useCallback(async (symbol: string, tf: Timeframe) => {
@@ -692,6 +830,28 @@ export default function GoldPage() {
   useEffect(() => {
     void fetchAll(committedSymbol, timeframe);
   }, [committedSymbol, timeframe, fetchAll]);
+
+  // Start uptime clock when engine first comes online
+  useEffect(() => {
+    if (engineOnline === true && !uptimeStart) {
+      setUptimeStart(new Date());
+    }
+  }, [engineOnline, uptimeStart]);
+
+  useEffect(() => {
+    if (!uptimeStart) return;
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - uptimeStart.getTime()) / 1000);
+      const d = Math.floor(elapsed / 86400);
+      const h = Math.floor((elapsed % 86400) / 3600);
+      const m = Math.floor((elapsed % 3600) / 60);
+      const s = elapsed % 60;
+      if (d > 0) setUptimeStr(`${d}d ${h}h`);
+      else if (h > 0) setUptimeStr(`${h}h ${m}m`);
+      else setUptimeStr(`${m}m ${s}s`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [uptimeStart]);
 
   const handleAnalyze = useCallback(async () => {
     setLoadingAnalyze(true);
@@ -892,6 +1052,15 @@ export default function GoldPage() {
             {analyzeMsg}
           </div>
         )}
+
+        {/* ── KPI Stats Bar ────────────────────────────────────────────── */}
+        <StatsBar
+          signals={signals}
+          performance={performance}
+          engineOnline={engineOnline}
+          uptimeStr={uptimeStr}
+          risk={risk}
+        />
 
         {/* ── Main 2-column layout ──────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
