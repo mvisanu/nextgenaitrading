@@ -510,3 +510,94 @@ export const newsApi = {
     return get<NewsItem[]>(`/news?${qs.toString()}`);
   },
 };
+
+// ── Commodity Signal Engine ───────────────────────────────────────────────────
+//
+// goldApi calls go through the main backend (/gold/*) with Bearer auth.
+// The standalone gold_engine folder has been removed — all logic lives in
+// backend/app/api/gold.py.
+
+export interface GoldSignal {
+  id: string;
+  symbol: string;
+  timeframe: string;
+  strategy_name: string;
+  direction: "long" | "short";
+  timestamp: string;
+  entry_price: number;
+  stop_loss: number;
+  take_profit: number;
+  risk_reward_ratio: number;
+  confidence_score: number;
+  reasoning_summary: string;
+  status: "candidate" | "approved" | "blocked" | "expired" | "sent";
+  volatility_snapshot: number;
+  position_size_recommendation: number;
+}
+
+export interface GoldRiskStatus {
+  symbol: string;
+  kill_switch_active: boolean;
+  kill_switch_reason: string | null;
+  consecutive_losses: number;
+  daily_loss_pct: number;
+  daily_loss_cap_pct: number;
+  signals_blocked_today: number;
+  mode: "active" | "paused" | "kill_switch";
+  last_updated: string;
+}
+
+export interface GoldStrategyPerformance {
+  strategy_name: string;
+  win_rate: number;
+  expectancy: number;
+  profit_factor: number;
+  max_drawdown: number;
+  avg_r_multiple: number;
+  total_signals: number;
+}
+
+export interface GoldPerformanceResponse {
+  symbol: string;
+  days: number;
+  strategies: GoldStrategyPerformance[];
+  overall_win_rate: number;
+  overall_expectancy: number;
+}
+
+export interface GoldSignalListResponse {
+  symbol: string;
+  timeframe: string;
+  signals: GoldSignal[];
+  total: number;
+}
+
+export interface GoldAnalyzeResponse {
+  symbol: string;
+  signals_generated: number;
+  signals: GoldSignal[];
+  message: string;
+}
+
+export const goldApi = {
+  signals: (symbol: string, timeframe?: string, limit = 20): Promise<GoldSignalListResponse> => {
+    const qs = new URLSearchParams({ symbol, limit: String(limit) });
+    if (timeframe) qs.set("timeframe", timeframe);
+    return get<GoldSignalListResponse>(`/gold/signals?${qs.toString()}`);
+  },
+
+  analyze: (symbol: string, timeframe = "1h"): Promise<GoldAnalyzeResponse> => {
+    const qs = new URLSearchParams({ symbol, timeframe });
+    return post<GoldAnalyzeResponse>(`/gold/analyze?${qs.toString()}`);
+  },
+
+  riskStatus: (symbol: string): Promise<GoldRiskStatus> => {
+    const qs = new URLSearchParams({ symbol });
+    return get<GoldRiskStatus>(`/gold/risk-status?${qs.toString()}`);
+  },
+
+  performance: (symbol: string, days = 30): Promise<GoldPerformanceResponse> => {
+    const qs = new URLSearchParams({ symbol, days: String(days) });
+    return get<GoldPerformanceResponse>(`/gold/performance?${qs.toString()}`);
+  },
+};

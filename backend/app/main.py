@@ -219,6 +219,8 @@ from app.api.scanner import router as scanner_router
 from app.api.watchlist import router as watchlist_router
 from app.api.generated_ideas import router as generated_ideas_router
 from app.api.news_feed import router as news_feed_router
+# commodity signal engine
+from app.api.gold import router as gold_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -238,6 +240,8 @@ app.include_router(scanner_router)
 app.include_router(watchlist_router)
 app.include_router(generated_ideas_router)
 app.include_router(news_feed_router)
+# commodity signal engine
+app.include_router(gold_router)
 
 # Test-only utilities (only mounted in debug mode)
 if settings.debug:

@@ -1,4 +1,4 @@
-# NextGenStock
+# NextGenAi Trading
 
 **A production-grade, multi-user AI trading platform built across three feature generations.**
 
@@ -9,7 +9,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-NextGenStock is a full-stack algorithmic trading platform that takes a user from strategy backtesting all the way to a live automated watchlist scanner — without a single command-line step. The quant engine combines GaussianHMM regime detection, 8-confirmation signal gating, a multi-variant parameter optimiser, and a 10-condition ALL-PASS buy signal gate into a coherent async Python backend. The frontend surfaces every layer through a polished Next.js interface with three purpose-selected charting libraries and a real-time scheduler driving ideas and alerts in the background.
+NextGenAi Trading is a full-stack algorithmic trading platform that takes a user from strategy backtesting all the way to a live automated watchlist scanner — without a single command-line step. The quant engine combines GaussianHMM regime detection, 8-confirmation signal gating, a multi-variant parameter optimiser, and a 10-condition ALL-PASS buy signal gate into a coherent async Python backend. The frontend surfaces every layer through a polished "Sovereign Terminal" Next.js interface with three purpose-selected charting libraries and a real-time scheduler driving ideas and alerts in the background.
 
 ---
 
@@ -27,6 +27,9 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Fernet credential encryption** — broker API keys encrypted at rest, decrypted in-memory at execution time only, never returned in any API response
 - **APScheduler background jobs** — buy zone refresh (every 4h), alert evaluation (every 5min), auto-buy engine (every 5min), live watchlist scanner (every 5min), idea generator (every 60min)
 - **Pine Script v5 generation** — winning optimiser variants serialised to executable TradingView strategy code
+- **Sovereign Terminal UI** — Deep Titanium dark theme, emerald primary, 7-tier tonal surface hierarchy, Webull-style dual timeline, BB Squeeze overlay, FVG drawings, mobile-responsive across all pages
+- **Commodity signal engine** — XAUUSD/XAGUSD/multi-symbol signal engine integrated into the main backend with sidebar sub-menu (Overview, Signals, Performance, Risk)
+- **Portfolio ledger** — editable holdings and activity log persisted to localStorage with computed P&L, asset allocation donut, and CSV export
 
 ---
 
@@ -34,14 +37,17 @@ This is a portfolio project. The points below are the ones technical evaluators 
 
 Screenshots coming soon. The platform includes the following main views:
 
-- Dashboard — KPI cards, recent strategy runs, equity sparkline, shared watchlist panel
-- Strategies — 4-tab mode selector (Conservative / Aggressive / AI Pick / Buy Low Sell High) with results panel, equity curve, and trade table
-- Backtests — run leaderboard, per-variant scatter plot (Plotly), trade-level detail
-- Live Trading — signal check with per-indicator breakdown, BUY/SELL/HOLD banner, candlestick chart with markers, dollar-amount order entry
-- Opportunities — watchlist table with buy zone, estimated entry, confidence, 90d win rate, STRONG BUY badge, and expandable EstimatedEntryPanel
-- Ideas — auto-generated idea cards with megatrend tags, moat score, financial quality, news catalyst, and one-click Add to Watchlist
-- Alerts — per-ticker alert configuration
-- Auto-Buy — dry-run and live auto-buy settings, decision log
+- **Dashboard** — KPI cards, Webull-style period bar (1D/5D/1M/3M/6M/YTD/1Y/5Y/Max), BB Squeeze overlay, FVG drawings, shared watchlist panel
+- **Strategies** — 5-tab mode selector (Conservative / Aggressive / AI Pick / Buy Low Sell High / BB Squeeze) with results panel, equity curve, and trade table
+- **Backtests** — run leaderboard, per-variant scatter plot (Plotly), trade-level detail
+- **Live Trading** — signal check with per-indicator breakdown, BUY/SELL/HOLD banner, candlestick chart with markers, dollar-amount order entry
+- **Opportunities** — watchlist table with buy zone, estimated entry, confidence, 90d win rate, STRONG BUY badge, and expandable EstimatedEntryPanel
+- **Ideas** — auto-generated idea cards with megatrend tags, moat score, financial quality, news catalyst, and one-click Add to Watchlist
+- **Alerts** — per-ticker alert configuration
+- **Auto-Buy** — dry-run and live auto-buy settings, decision log
+- **Portfolio** — editable holdings ledger, equity curve, asset allocation and sector exposure donuts, activity log with CSV export
+- **Multi-Chart** — 2×3 chart grid with watchlist sidebar
+- **Stock Detail** — financial KPIs, analyst consensus gauge, earnings history
 
 ---
 
@@ -55,6 +61,8 @@ Screenshots coming soon. The platform includes the following main views:
 │                                                                  │
 │  Pages: dashboard, strategies, backtests, live-trading,          │
 │         opportunities, ideas, alerts, auto-buy, artifacts,       │
+│         portfolio, multi-chart, stock/[symbol],                  │
+│         gold (overview/signals/performance/risk),                │
 │         profile, faq (Thai/English i18n), learn                  │
 │                                                                  │
 │  Lightweight Charts (candlestick) · Recharts (equity/KPIs)       │
@@ -73,13 +81,14 @@ Screenshots coming soon. The platform includes the following main views:
 │  auth/     — Supabase JWT verification, /me, auto-provisioning   │
 │  api/      — profile, broker, backtests, strategies, live,       │
 │              artifacts, buy_zone, alerts, ideas, auto_buy,       │
-│              opportunities, watchlist, scanner                   │
+│              opportunities, watchlist, scanner, gold             │
 │  core/     — Fernet encryption, assert_ownership(), config       │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐     │
 │  │  Strategy Engine                                        │     │
 │  │  conservative.py  — HMM 2-state, 2.5x leverage, 7/8    │     │
 │  │  aggressive.py    — HMM + 5% trailing stop, 4.0x, 5/8  │     │
+│  │  bollinger_squeeze.py — 8-condition squeeze, 2.5x, 6/8 │     │
 │  │  ai_pick_optimizer      — 12-variant MACD/RSI/EMA grid  │     │
 │  │  buy_low_sell_high_opt  — 8-variant RSI/BB/cycle grid   │     │
 │  │  backtesting/engine.py  — 60/20/20, cooldown, trailing  │     │
@@ -98,6 +107,7 @@ Screenshots coming soon. The platform includes the following main views:
 │  │  idea_generator_service — 3-source merge + scoring      │     │
 │  │  moat_scoring_service   — competitive moat heuristic    │     │
 │  │  financial_quality_svc  — yfinance revenue/margin data  │     │
+│  │  bollinger_squeeze_svc  — squeeze detection + breakout  │     │
 │  └─────────────────────────────────────────────────────────┘     │
 │                                                                  │
 │  scheduler/ — APScheduler: buy zone (4h), alerts (5min),        │
@@ -142,7 +152,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Frontend framework | Next.js 14+ (App Router) | RSC for fast initial load; `middleware.ts` for Supabase SSR session checks |
 | UI components | shadcn/ui + Radix primitives | Accessible, unstyled base with Tailwind customisation |
 | Server state | TanStack Query v5 | Declarative cache invalidation on mutations; no Redux boilerplate |
-| Candlestick charts | Lightweight Charts (TradingView) | Native OHLCV + volume + signal marker support; minimal bundle |
+| Candlestick charts | Lightweight Charts (TradingView) | Native OHLCV + volume + signal marker + BB overlay support; minimal bundle |
 | Metric charts | Recharts | Composable area/bar charts for equity curves and KPI sparklines |
 | Research charts | Plotly.js | Scatter plots for optimisation variant analysis |
 | Backend framework | FastAPI + Pydantic v2 | Async-first; automatic OpenAPI docs; Pydantic v2 performance |
@@ -172,6 +182,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Multi-tenant isolation | Every table has `user_id FK ondelete=CASCADE`; every service method calls `assert_ownership()` |
 | Conservative strategy | GaussianHMM 2-state regime, 8 confirmation indicators, 2.5x leverage, 7/8 threshold |
 | Aggressive strategy | Same as conservative + 5% trailing stop, 4.0x leverage, 5/8 threshold |
+| BB Squeeze strategy | Bollinger Band squeeze detection, 8 squeeze-specific confirmations, 2.5x leverage, 6/8 threshold; BB overlay on chart |
 | AI Pick optimiser | 12-variant MACD/RSI/EMA grid; winner selected by `validation_score = validation_return / (1 + max_drawdown)` |
 | Buy Low/Sell High optimiser | 8-variant RSI/Bollinger/cycle grid; dip entry + cycle exit logic |
 | Backtesting engine | 60/20/20 train/validate/test split, cooldown, trailing stop simulation |
@@ -179,13 +190,14 @@ Screenshots coming soon. The platform includes the following main views:
 | Live trading | Signal check with per-indicator breakdown, BUY/SELL/HOLD banner, notional USD order entry, dry-run default |
 | Broker abstraction | `AbstractBrokerClient` → `AlpacaClient` (full) / `RobinhoodClient` (stub) |
 | Fernet encryption | Broker API keys encrypted at rest; never returned in responses |
+| Webull-style dashboard | Bottom period bar (1D/5D/1M/3M/6M/YTD/1Y/5Y/Max), intraday time axis, drawing tools (FVG, trend lines) |
 
 ### V2 — Intelligence layer
 
 | Feature | Description |
 |---|---|
 | Buy zone analysis | ATR-based zone calculation + analog scoring (90d win rate from similar historical setups) |
-| Theme scoring | Megatrend tags (AI, Robotics, Longevity, Energy, Defense, Space, Semiconductors) scored per ticker |
+| Theme scoring | Megatrend tags (AI, Robotics, Longevity, Energy, Defense, Space, Semiconductors, Bitcoin, Healthcare, Medicine) scored per ticker |
 | Price alerts | Configurable alert rules per ticker with `entered_buy_zone`, `price_above`, `price_below` types |
 | Auto-buy engine | Automated execution when alert conditions met; notional size limits, dry-run mode, decision logging |
 | Investment ideas | User-authored idea cards with conviction score, tickers, notes |
@@ -203,13 +215,25 @@ Screenshots coming soon. The platform includes the following main views:
 | Auto-generated idea feed | Three parallel background scanners: news RSS, theme scanner, technical universe — merged, deduplicated, scored every 60min |
 | News RSS scanner | Fetches 5 free RSS feeds, extracts tickers/sector keywords, matches megatrend themes, scores by mention frequency |
 | Theme scanner | Loads theme-tagged tickers from `stock_theme_scores`, applies 4 quality filters, computes moat and financial quality scores |
-| Technical universe scanner | ~50-ticker universe; checks 4 conditions (above 50d/200d MA, RSI 35–55, volume declining); surface tickers where 3+ pass |
+| Technical universe scanner | ~50-ticker universe; checks 4 conditions (above 50d/200d MA, RSI 35–55, volume declining); surfaces tickers where 3+ pass |
 | 6-component idea scoring | `idea_score` combines: theme fit, moat score, financial quality, entry priority (near 52w low / at weekly support), analog win rate, confidence |
 | Competitive moat scoring | `HIGH_MOAT_TICKERS` map + yfinance market cap / competitor heuristic fallback |
 | Financial quality scoring | yfinance `revenueGrowth`, `grossMargins`, `earningsGrowth`, `operatingMargins` |
 | Add to Watchlist (one-click) | Creates `UserWatchlist` entry + `PriceAlertRule` in one backend call; marks idea as `added_to_watchlist=True` |
 | Manual scan trigger | `POST /api/scanner/run-now` and `POST /api/ideas/generated/run-now` for on-demand execution |
 | Scan universe themes | AI, Energy, Defense, Space, Semiconductors, Longevity, Robotics, Bitcoin, Healthcare, Medicine (~50 tickers) |
+
+### Additional features
+
+| Feature | Description |
+|---|---|
+| Commodity signal engine | XAUUSD/XAGUSD/multi-symbol signal engine fully integrated into the main backend (`/gold/*` endpoints, Bearer auth); sidebar sub-menu with Overview, Signals, Performance, and Risk sub-pages |
+| Portfolio ledger | Editable holdings table + activity log persisted to localStorage; computed total market value, day P&L, unrealized P&L; asset allocation + sector donut charts; CSV export |
+| Multi-Chart view | 2×3 chart grid with configurable symbols and watchlist sidebar |
+| Stock detail page | Per-ticker financial KPIs, analyst consensus gauge, earnings history |
+| Mobile responsiveness | All pages phone-friendly — hamburger menus, scrollable tables, Sheet overlays, responsive grids |
+| Thai/English i18n | FAQ page with full Thai translations + language toggle |
+| OWASP security hardening | CORS restricted, rate limiting (slowapi), account lockout (5 attempts / 15min), Swagger disabled in production, DOMPurify XSS sanitisation |
 
 ---
 
@@ -261,8 +285,8 @@ The API is available at:
 | URL | Description |
 |---|---|
 | `http://localhost:8000` | API base |
-| `http://localhost:8000/docs` | Swagger UI (interactive) |
-| `http://localhost:8000/redoc` | ReDoc |
+| `http://localhost:8000/docs` | Swagger UI (interactive, debug mode only) |
+| `http://localhost:8000/redoc` | ReDoc (debug mode only) |
 | `http://localhost:8000/healthz` | Health check |
 
 ### 3. Configure and start the frontend
@@ -290,6 +314,8 @@ npm run build && npm run start
 npm run lint
 ```
 
+> **Dev login:** In development mode (`NODE_ENV=development`) or when `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true`, a "Dev Login" button appears on the login page. It calls `POST /test/token` to bypass Supabase magic links — useful for local dev and demo deployments.
+
 ---
 
 ## Configuration
@@ -307,6 +333,7 @@ npm run lint
 | `SUPABASE_SERVICE_ROLE_KEY` | No | — | Supabase service role key (server-side admin operations) |
 | `JWT_ALGORITHM` | No | `HS256` | JWT signing algorithm |
 | `CORS_ORIGINS` | No | `http://localhost:3000` | Comma-separated allowed CORS origins |
+| `DEBUG` | No | `false` | Enables Swagger UI, `/test/token`, and `dev_token` cookie auth |
 | `ALPACA_BASE_URL` | No | `https://api.alpaca.markets` | Alpaca live trading API URL |
 | `ALPACA_PAPER_URL` | No | `https://paper-api.alpaca.markets` | Alpaca paper trading API URL |
 
@@ -317,6 +344,7 @@ npm run lint
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon/public key (safe for client-side) |
 | `NEXT_PUBLIC_API_BASE_URL` | Yes | FastAPI backend URL, e.g. `http://localhost:8000` |
+| `NEXT_PUBLIC_ENABLE_DEV_LOGIN` | No | Set `true` to show Dev Login button on deployed demo |
 
 No secrets belong in the frontend environment. The Supabase anon key is designed to be public.
 
@@ -380,7 +408,7 @@ Authentication is handled entirely by Supabase on the frontend (magic link login
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/backtests/run` | Run Conservative or Aggressive backtest |
+| `POST` | `/backtests/run` | Run Conservative, Aggressive, or BB Squeeze backtest |
 | `GET` | `/backtests/{id}` | Backtest summary + KPIs |
 | `GET` | `/backtests/{id}/trades` | Trade-level results |
 | `GET` | `/backtests/{id}/chart-data` | Candles, signal markers, equity curve |
@@ -391,33 +419,45 @@ Authentication is handled entirely by Supabase on the frontend (magic link login
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/live/run-signal-check` | Run regime check + 8-indicator breakdown |
+| `POST` | `/live/run-signal-check` | Run regime check + 8-indicator breakdown + BB squeeze data |
 | `POST` | `/live/execute` | Submit order (dry-run or live; notional USD) |
 | `GET` | `/live/orders` | Order history |
 | `GET` | `/live/positions` | Open position snapshots |
+| `GET` | `/live/chart-data` | OHLCV candles + optional Bollinger Band overlay |
 
 ### V2 — Intelligence layer
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/buy-zone/{ticker}` | Current buy zone snapshot for a ticker |
+| `GET` | `/stocks/{ticker}/buy-zone` | Current buy zone snapshot for a ticker |
 | `GET` | `/opportunities` | Tickers with active buy zone data |
-| `GET/POST/DELETE` | `/alerts` | Price alert rule CRUD |
-| `GET/POST` | `/auto-buy` | Auto-buy settings + decision log |
+| `GET/POST/PATCH/DELETE` | `/alerts` / `/alerts/{id}` | Price alert rule CRUD |
+| `GET/PATCH` | `/auto-buy/settings` | Auto-buy settings |
+| `GET` | `/auto-buy/decision-log` | Auto-buy evaluation history |
+| `POST` | `/auto-buy/dry-run/{ticker}` | Dry-run evaluation for a specific ticker |
 | `GET/POST` | `/ideas` | User-authored idea cards |
 
 ### V3 — Scanner and generated ideas
 
 | Method | Path | Description |
 |---|---|---|
-| `GET/POST/DELETE` | `/api/watchlist` / `/api/watchlist/{ticker}` | Personal watchlist CRUD |
+| `GET/POST/DELETE` | `/watchlist` / `/watchlist/{ticker}` | Personal watchlist CRUD |
 | `GET` | `/opportunities/watchlist` | Watchlist rows with signal status + buy zone |
-| `GET` | `/api/scanner/status` | Scanner health, market hours active, next scan time |
-| `POST` | `/api/scanner/run-now` | On-demand watchlist scan |
-| `GET` | `/api/ideas/generated` | Auto-generated idea feed (filter by source, theme) |
-| `GET` | `/api/ideas/generated/last-scan` | Last scan timestamp + ideas generated count |
-| `POST` | `/api/ideas/generated/run-now` | On-demand idea generation (bypasses market hours) |
-| `POST` | `/api/ideas/generated/{id}/add-to-watchlist` | One-click watchlist + alert creation from idea card |
+| `GET` | `/scanner/status` | Scanner health, market hours active, next scan time |
+| `POST` | `/scanner/run-now` | On-demand watchlist scan |
+| `GET` | `/ideas/generated` | Auto-generated idea feed (filter by source, theme) |
+| `GET` | `/ideas/generated/last-scan` | Last scan timestamp + ideas generated count |
+| `POST` | `/ideas/generated/run-now` | On-demand idea generation (bypasses market hours) |
+| `POST` | `/ideas/generated/{id}/add-to-watchlist` | One-click watchlist + alert creation from idea card |
+
+### Commodity signal engine (`/gold/*`)
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/gold/signals` | Signal list for a symbol (timeframe, limit) |
+| `POST` | `/gold/analyze` | Run live analysis and return new signals |
+| `GET` | `/gold/risk-status` | Current risk engine state (kill switch, daily loss, consecutive losses) |
+| `GET` | `/gold/performance` | Per-strategy performance metrics over a date window |
 
 ---
 
@@ -432,7 +472,7 @@ NextgenAiTrading/
 │   │   │   ├── config.py                 # pydantic-settings: all env vars
 │   │   │   └── security.py              # Fernet encryption, assert_ownership()
 │   │   ├── auth/                         # Supabase JWT verification, /me, auto-provisioning
-│   │   ├── api/                          # 14 router modules (V1 + V2 + V3)
+│   │   ├── api/                          # 15 router modules (V1 + V2 + V3 + commodity)
 │   │   ├── models/                       # SQLAlchemy ORM models (24 tables)
 │   │   ├── schemas/                      # Pydantic v2 request/response DTOs
 │   │   ├── db/session.py                 # AsyncSession + asyncpg engine
@@ -445,7 +485,8 @@ NextgenAiTrading/
 │   │   ├── strategies/
 │   │   │   ├── base.py                   # SignalResult dataclass + confirmation_details
 │   │   │   ├── conservative.py           # HMM + 8 confirmations + 2.5x leverage
-│   │   │   └── aggressive.py             # HMM + trailing stop + 4.0x leverage
+│   │   │   ├── aggressive.py             # HMM + trailing stop + 4.0x leverage
+│   │   │   └── bollinger_squeeze.py      # Squeeze detection + 8 confirmations + 2.5x
 │   │   ├── optimizers/
 │   │   │   ├── ai_pick_optimizer.py      # 12-variant MACD/RSI/EMA grid
 │   │   │   └── buy_low_sell_high_optimizer.py  # 8-variant RSI/BB/cycle grid
@@ -462,8 +503,8 @@ NextgenAiTrading/
 ├── frontend/
 │   ├── app/
 │   │   ├── (auth)/login, (auth)/register
-│   │   ├── dashboard/                    # KPIs, recent runs, equity sparkline, watchlist
-│   │   ├── strategies/                   # 4-tab mode selector + run form + ResultsPanel
+│   │   ├── dashboard/                    # KPIs, period bar, BB overlay, watchlist
+│   │   ├── strategies/                   # 5-tab mode selector + run form + ResultsPanel
 │   │   ├── backtests/                    # Run list + [id] detail with equity curve + trade table
 │   │   ├── live-trading/                 # Signal check, BUY/SELL/HOLD banner, order entry
 │   │   ├── opportunities/                # V3 WatchlistTable + EstimatedEntryPanel
@@ -471,13 +512,20 @@ NextgenAiTrading/
 │   │   ├── alerts/                       # AlertConfigForm
 │   │   ├── auto-buy/                     # Auto-buy settings + dry-run panel + decision log
 │   │   ├── artifacts/                    # Pine Script viewer + [id] detail
+│   │   ├── portfolio/                    # Editable holdings ledger + activity log (localStorage)
+│   │   ├── multi-chart/                  # 2×3 chart grid + watchlist sidebar
+│   │   ├── stock/[symbol]/               # Financial KPIs, analyst gauge, earnings history
+│   │   ├── gold/                         # Commodity signal engine (Overview)
+│   │   │   ├── signals/                  # Signals table with strategy/direction/confidence
+│   │   │   ├── performance/              # Per-strategy ranking and stats
+│   │   │   └── risk/                     # Risk engine status (kill switch, loss cap, consecutive losses)
 │   │   ├── profile/                      # User info + broker credential management
 │   │   ├── faq/                          # Thai/English language toggle (i18n)
 │   │   └── learn/
 │   ├── components/
 │   │   ├── ui/                           # shadcn/ui primitives (Radix-backed)
 │   │   ├── charts/                       # PriceChart, EquityCurve, OptimizationScatter
-│   │   ├── layout/                       # Sidebar, TopNav, AppShell
+│   │   ├── layout/                       # Sidebar, TopNav, AppShell (mobile-responsive)
 │   │   ├── strategy/                     # StrategyModeSelector, StrategyForm, ResultsPanel
 │   │   ├── buy-zone/                     # BuyZoneCard, BuyZoneAnalysisPanel, ThemeScoreBadge
 │   │   ├── alerts/                       # AlertConfigForm
@@ -492,14 +540,17 @@ NextgenAiTrading/
 │   └── middleware.ts                     # Supabase SSR session check → /login redirect
 │
 ├── tests/
-│   └── e2e/                              # Playwright E2E tests
-│       ├── specs/                        # V1, V2, V3 test specs
+│   └── e2e/                              # Playwright E2E tests (499 cases, Chromium)
+│       ├── fixtures/                     # auth.fixture.ts (dev_token cookie injection)
+│       ├── helpers/                      # api.helper.ts, v2-api.helper.ts
+│       ├── specs/                        # 24 spec files (V1, V2, V3, security, supabase-auth)
 │       └── playwright.config.ts          # workers: 1 (sequential; requires live backend)
 │
 ├── docker-compose.yml                    # PostgreSQL 16 on port 5432
-├── PRD.md, PRD2.md, PRD3.md             # V1/V2/V3 product requirements
-├── BACKEND.md, BACKEND2.md, BACKEND3.md  # Backend handoff docs
-├── FRONTEND.md, FRONTEND2.md, FRONTEND3.md  # Frontend handoff docs
+├── SPEC.md                               # Full feature specs (V1 + V2 + V3 + Screener + Bitcoin)
+├── PRD.md                                # Product requirements (Parts 1–3)
+├── BACKEND.md                            # Backend architecture handoff
+├── FRONTEND.md                           # Frontend architecture handoff
 └── CLAUDE.md                             # Project guidance for AI-assisted development
 ```
 
@@ -519,10 +570,10 @@ pytest tests/ -v
 
 ### E2E tests (Playwright)
 
-E2E tests require both the backend and frontend running.
+E2E tests require both the backend (`DEBUG=true`) and frontend running. Auth uses `POST /test/token` — a debug-only endpoint that provisions users and sets a `dev_token` cookie, bypassing Supabase magic links.
 
 ```bash
-# Terminal 1 — backend
+# Terminal 1 — backend (DEBUG=true required for /test/token)
 cd backend && uvicorn app.main:app --reload --port 8000
 
 # Terminal 2 — frontend
@@ -534,13 +585,17 @@ npm install                          # First time only
 npx playwright test --config=e2e/playwright.config.ts
 ```
 
-Test coverage by generation:
+Test coverage by suite:
 
-| Suite | Cases | Status |
+| Suite | Cases | Notes |
 |---|---|---|
-| V1 E2E (auth, strategies, backtests, live, artifacts) | 263 cases × 3 browsers | 421/789 passing (53.4%) |
-| V2 E2E (opportunities, ideas, alerts, auto-buy) | 159 cases | Written; run against live stack |
-| V3 E2E (watchlist, scanner, generated ideas) | 34 cases | Written in `v3-opportunities.spec.ts` + `v3-ideas.spec.ts` |
+| `supabase-auth.spec.ts` | 61 | Magic link form structure, route protection, Bearer auth, removed-endpoint verification |
+| `security.spec.ts` | 29 | CORS, rate limiting, XSS, OWASP top 10 |
+| `nextgenstock-live.spec.ts` | ~40 | Auth pages, middleware, dashboard, protected pages, navigation |
+| `multi-tenancy.spec.ts` | ~25 | Cross-user data isolation using fresh Playwright contexts |
+| `broker-credentials.spec.ts` | 14 | Credential CRUD, masking, ownership |
+| V2 specs (buy-zone, alerts, ideas, auto-buy, opportunities) | ~159 | V2 service-layer API + UI tests |
+| V3 specs (v3-opportunities, v3-ideas) | 34 | Watchlist scanner, generated ideas |
 
 ---
 
@@ -553,6 +608,8 @@ Test coverage by generation:
 **Broker credentials:** `api_key` and `secret_key` columns store Fernet-encrypted ciphertext. Decryption occurs only inside `broker/factory.py` at execution time, in-memory, and is never logged. API responses return `****(encrypted)` for the key field.
 
 **Live trading safety:** Defaults to `dry_run=True`. Real-money execution requires explicit UI toggle plus a confirmation dialog. A persistent risk disclaimer banner is shown on the live trading page regardless of mode.
+
+**Rate limiting:** `slowapi` middleware — auth endpoints limited to 5–10 requests/min, trade execution to 10 requests/min. Account lockout after 5 consecutive failed attempts (15-minute window, in-memory tracker).
 
 **Scanner language constraints:** V3 scanner output never uses "guaranteed", "safe", or "certain to go up". All wording uses "historically favorable", "high-probability entry zone", and "confidence score".
 
@@ -575,6 +632,7 @@ Test coverage by generation:
    - `NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key`
    - `NEXT_PUBLIC_API_BASE_URL=https://your-render-service.onrender.com`
+   - `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true` (optional, for demo deployments)
 3. Deploy. Auto-deploys on every push to `main`
 
 ### Render (backend)
@@ -614,6 +672,7 @@ python -c "import secrets; print(secrets.token_hex(32))"
 | Aggressive | 4.0x | 5 / 8 | HMM + 5% trailing stop; looser confirmation gate |
 | AI Pick | — | — | 12-variant MACD/RSI/EMA grid; auto-selects winner by `validation_score` |
 | Buy Low / Sell High | — | — | 8-variant RSI/Bollinger/cycle grid; dip entry, cycle exit |
+| BB Squeeze | 2.5x | 6 / 8 | Bollinger Band squeeze detection; breakout confirmation; overlay on chart |
 
 Supported symbols: any valid yfinance ticker (`AAPL`, `BTC-USD`, `SPY`, `ETH-USD`, etc.).
 
@@ -640,15 +699,3 @@ Supported timeframes: `1d`, `1h`, `4h` (resampled from 1h internally), `1wk`.
 - **LLM-generated thesis copy** — natural-language idea summaries via an LLM provider
 - **Live earnings calendar** — near_earnings flag driven by live API rather than manual flag
 - **Subscription tiers** — usage quotas per tier; Stripe billing integration
-
----
-
-## Disclaimer
-
-**This is educational software.** Running live trades with real broker credentials carries significant financial risk. The authors accept no responsibility for trading losses. Always test thoroughly with paper trading before enabling real-money execution. Past backtest performance does not guarantee future results. A persistent risk disclaimer is displayed in the live trading UI regardless of dry-run state.
-
----
-
-## License
-
-MIT. See [LICENSE](LICENSE) for details.

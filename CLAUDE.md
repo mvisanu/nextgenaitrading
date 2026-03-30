@@ -69,6 +69,7 @@ frontend/
     (auth)/login, (auth)/register
     dashboard, strategies, backtests, live-trading, artifacts, strategy-samples, profile, faq, learn
     opportunities, ideas, alerts, auto-buy   # v2 feature pages
+    gold/, gold/signals/, gold/performance/, gold/risk/   # commodity signal engine (integrated from gold_engine/)
   components/
     ui/                 # shadcn/ui primitives
     charts/             # PriceChart (Lightweight Charts), EquityCurve (Recharts), OptimizationScatter (Plotly)
@@ -196,6 +197,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 | Supabase Auth E2E tests (90 cases) | `supabase-auth.spec.ts` 61/61 (100%), `security.spec.ts` 29/29 (100%); legacy `auth.spec.ts` deleted |
 | Dev Login (local + demo) | Complete — `/test/token` bypass, `dev_token` cookie, Supabase graceful degradation |
 | Mobile dashboard v2 | Complete — decluttered OHLCV bar, prominent price, news toggle on mobile, smart symbol search |
+| Commodity signal engine | Complete — `gold_engine/` removed; `backend/app/api/gold.py` is authoritative; `goldApi` uses main backend with Bearer auth; 4 frontend sub-pages (`/gold`, `/gold/signals`, `/gold/performance`, `/gold/risk`); sidebar sub-menu with expand/collapse |
 
 ### Running E2E Tests
 ```bash
@@ -438,8 +440,19 @@ Added execution scheduling fields to auto-buy so users can configure when and at
 - **`frontend/app/auto-buy/page.tsx`**: `ExecutionSettings` component (Section 4) now includes: execution timeframe dropdown (1m–1wk), start/end date pickers with validation, target buy/sell price inputs with `$` prefix and validation (sell > buy)
 - **DB migration needed**: `ALTER TABLE auto_buy_settings ADD COLUMN execution_timeframe VARCHAR(10), ADD COLUMN start_date DATE, ADD COLUMN end_date DATE, ADD COLUMN target_buy_price DOUBLE PRECISION, ADD COLUMN target_sell_price DOUBLE PRECISION;`
 
+### Commodity Signal Engine Integration (2026-03-29)
+Removed standalone `gold_engine/` folder. All commodity functionality now lives within the main backend and frontend:
+- **`backend/app/api/gold.py`**: Existing router — `GET /gold/signals`, `POST /gold/analyze`, `GET /gold/risk-status`, `GET /gold/performance`. Registered in `main.py` with `/gold` prefix.
+- **`frontend/lib/api.ts`**: `goldApi` updated — removed `goldFetch` + `GOLD_ENGINE_URL` + `health()`. Now calls main backend `/gold/*` using authenticated `get`/`post` helpers (Bearer token). Health check removed (main backend health via `/healthz`).
+- **`frontend/app/gold/page.tsx`**: Overview page — removed standalone health-check polling (`checkHealth` useEffect), updated offline banner to reference main backend. Added sub-page quick-nav links.
+- **`frontend/app/gold/signals/page.tsx`** (NEW): Full signals page — symbol input, timeframe filter (15min/1h/4h/1d), status filter, "Run Analysis" button, paginated table with all signal fields (strategy, direction, entry/SL/TP, R:R, confidence bar, position size, volatility, reasoning).
+- **`frontend/app/gold/performance/page.tsx`** (NEW): Performance analytics — day-range selector (7/14/30/60/90d), strategy ranking table (by expectancy), summary KPI cards, per-strategy detail cards with win rate bar.
+- **`frontend/app/gold/risk/page.tsx`** (NEW): Risk management — multi-symbol risk cards (auto-refreshes every 30s), daily loss cap progress bar, consecutive loss dot tracker, kill switch indicator, risk rules reference panel.
+- **`frontend/components/layout/Sidebar.tsx`**: Added `children` field to `NavLink` interface. "Commodities" entry now expands to sub-menu: Overview, Signals, Performance, Risk. Sub-menu auto-expands when on any `/gold/*` route. Uses `ChevronDown` toggle. Added `ChevronDown`, `BarChart2`, `ShieldAlert` imports.
+- **`gold_engine/`**: Delete manually if still locked (`rm -rf gold_engine/` after stopping any Python process from that folder).
+
 ### Git Status
-All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25. Webull-style dashboard timeline (bottom period bar + intraday time axis fix) added 2026-03-26. Supabase Auth migration + Dev Login + mobile improvements added 2026-03-26. Sovereign Terminal redesign + sidebar layout fix added 2026-03-27. Portfolio localStorage + E2E auth system fix + auto-buy execution scheduling added 2026-03-27 — uncommitted.
+All V1 + V2 + V3 code committed and pushed to `main` (commit `86dfa5c`, 2026-03-24). 766 files, 110K+ insertions. README.md rewritten for portfolio. Additional features (BB Squeeze, cross-origin auth, mobile responsive, FVG fix, auto-buy password UI) added 2026-03-25. Webull-style dashboard timeline (bottom period bar + intraday time axis fix) added 2026-03-26. Supabase Auth migration + Dev Login + mobile improvements added 2026-03-26. Sovereign Terminal redesign + sidebar layout fix added 2026-03-27. Portfolio localStorage + E2E auth system fix + auto-buy execution scheduling added 2026-03-27. Commodity signal engine integrated (gold sub-menu, 3 new frontend sub-pages, goldApi to main backend) added 2026-03-29 — uncommitted.
 
 ### Known E2E Test Failures (as of 2026-03-27, see `test_results.md`)
 Previous auth system mismatch (~325 failures) resolved. Remaining open items:

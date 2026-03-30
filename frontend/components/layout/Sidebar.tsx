@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,7 +15,6 @@ import {
   ClipboardList,
   GraduationCap,
   HelpCircle,
-  User,
   LogOut,
   Crosshair,
   Lightbulb,
@@ -23,9 +23,13 @@ import {
   Pin,
   PinOff,
   ChevronRight,
+  ChevronDown,
   Wallet,
   LayoutGrid,
   Activity,
+  Gem,
+  ShieldAlert,
+  BarChart2,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -40,6 +44,7 @@ interface NavLink {
   label: string;
   icon: LucideIcon;
   badge?: "scanner";
+  children?: { href: string; label: string; icon: LucideIcon }[];
 }
 
 interface NavGroup {
@@ -63,6 +68,17 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/screener", label: "Markets", icon: BarChart4 },
       { href: "/opportunities", label: "Watchlist", icon: Crosshair, badge: "scanner" },
       { href: "/multi-chart", label: "Multi-Chart", icon: LayoutGrid },
+      {
+        href: "/gold",
+        label: "Commodities",
+        icon: Gem,
+        children: [
+          { href: "/gold", label: "Overview", icon: LayoutDashboard },
+          { href: "/gold/signals", label: "Signals", icon: TrendingUp },
+          { href: "/gold/performance", label: "Performance", icon: BarChart2 },
+          { href: "/gold/risk", label: "Risk", icon: ShieldAlert },
+        ],
+      },
       { href: "/ideas", label: "Ideas", icon: Lightbulb },
       { href: "/alerts", label: "Alerts", icon: Bell },
     ],
@@ -125,8 +141,25 @@ function ScannerStatusDot() {
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-
   const { pinned, toggle: togglePin } = useSidebarPinned();
+
+  // Track which nav items with children are expanded
+  const [expanded, setExpanded] = React.useState<Record<string, boolean>>(() => {
+    // Auto-expand if current path is under a parent's sub-menu
+    const init: Record<string, boolean> = {};
+    NAV_GROUPS.forEach((g) =>
+      g.links.forEach((l) => {
+        if (l.children?.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))) {
+          init[l.href] = true;
+        }
+      })
+    );
+    return init;
+  });
+
+  const toggleExpanded = (href: string) => {
+    setExpanded((prev) => ({ ...prev, [href]: !prev[href] }));
+  };
 
   const initials = user?.email
     ? user.email.slice(0, 2).toUpperCase()
@@ -195,36 +228,94 @@ export function Sidebar() {
 
             {/* Links */}
             {group.links.map((link) => {
-              const isActive =
-                pathname === link.href || pathname.startsWith(link.href + "/");
+              const hasChildren = !!link.children?.length;
+              const isChildActive = hasChildren
+                ? link.children!.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))
+                : false;
+              const isActive = !hasChildren && (pathname === link.href || pathname.startsWith(link.href + "/"));
+              const isOpen = hasChildren && (expanded[link.href] ?? isChildActive);
 
               return (
-                <Link key={link.href} href={link.href} title={link.label}>
-                  <span
-                    className={cn(
-                      "relative flex items-center h-9 px-3 text-[11px] font-semibold uppercase tracking-widest transition-all duration-150 overflow-hidden",
-                      isActive
-                        ? "text-primary bg-surface-mid border-l-[3px] border-primary"
-                        : "text-muted-foreground hover:bg-surface-mid/50 hover:text-foreground hover:translate-x-0.5 border-l-[3px] border-transparent"
-                    )}
-                  >
-                    <link.icon className="h-[18px] w-[18px] shrink-0" />
-                    <span className={cn(
-                      "ml-3 whitespace-nowrap transition-opacity duration-200 flex items-center gap-1",
-                      pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    )}>
-                      {link.label}
-                      {link.badge === "scanner" && <ScannerStatusDot />}
-                    </span>
-
-                    {isActive && (
-                      <ChevronRight className={cn(
-                        "h-3 w-3 ml-auto shrink-0 text-primary transition-opacity duration-200",
+                <div key={link.href}>
+                  {/* Parent link / toggle */}
+                  {hasChildren ? (
+                    <button
+                      onClick={() => toggleExpanded(link.href)}
+                      title={link.label}
+                      className={cn(
+                        "relative flex items-center h-9 w-full px-3 text-[11px] font-semibold uppercase tracking-widest transition-all duration-150 overflow-hidden border-l-[3px]",
+                        isChildActive
+                          ? "text-primary bg-surface-mid border-primary"
+                          : "text-muted-foreground hover:bg-surface-mid/50 hover:text-foreground border-transparent"
+                      )}
+                    >
+                      <link.icon className="h-[18px] w-[18px] shrink-0" />
+                      <span className={cn(
+                        "ml-3 whitespace-nowrap transition-opacity duration-200 flex items-center gap-1 flex-1",
+                        pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )}>
+                        {link.label}
+                        {link.badge === "scanner" && <ScannerStatusDot />}
+                      </span>
+                      <ChevronDown className={cn(
+                        "h-3 w-3 shrink-0 transition-all duration-200",
+                        isOpen ? "rotate-0" : "-rotate-90",
                         pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                       )} />
-                    )}
-                  </span>
-                </Link>
+                    </button>
+                  ) : (
+                    <Link href={link.href} title={link.label}>
+                      <span
+                        className={cn(
+                          "relative flex items-center h-9 px-3 text-[11px] font-semibold uppercase tracking-widest transition-all duration-150 overflow-hidden",
+                          isActive
+                            ? "text-primary bg-surface-mid border-l-[3px] border-primary"
+                            : "text-muted-foreground hover:bg-surface-mid/50 hover:text-foreground hover:translate-x-0.5 border-l-[3px] border-transparent"
+                        )}
+                      >
+                        <link.icon className="h-[18px] w-[18px] shrink-0" />
+                        <span className={cn(
+                          "ml-3 whitespace-nowrap transition-opacity duration-200 flex items-center gap-1",
+                          pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                        )}>
+                          {link.label}
+                          {link.badge === "scanner" && <ScannerStatusDot />}
+                        </span>
+                        {isActive && (
+                          <ChevronRight className={cn(
+                            "h-3 w-3 ml-auto shrink-0 text-primary transition-opacity duration-200",
+                            pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                          )} />
+                        )}
+                      </span>
+                    </Link>
+                  )}
+
+                  {/* Sub-menu children */}
+                  {hasChildren && isOpen && (
+                    <div className={cn(
+                      "overflow-hidden transition-all duration-200",
+                      pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )}>
+                      {link.children!.map((child) => {
+                        const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                        return (
+                          <Link key={child.href} href={child.href} title={child.label}>
+                            <span className={cn(
+                              "flex items-center h-8 pl-9 pr-3 text-[10px] font-semibold uppercase tracking-widest transition-all duration-150 border-l-[3px]",
+                              childActive
+                                ? "text-primary bg-surface-mid/80 border-primary/60"
+                                : "text-muted-foreground/70 hover:bg-surface-mid/40 hover:text-foreground border-transparent"
+                            )}>
+                              <child.icon className="h-3.5 w-3.5 shrink-0 mr-2" />
+                              {child.label}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
