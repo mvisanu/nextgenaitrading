@@ -29,6 +29,7 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Pine Script v5 generation** — winning optimiser variants serialised to executable TradingView strategy code
 - **Sovereign Terminal UI** — Deep Titanium dark theme, emerald primary, 7-tier tonal surface hierarchy, Webull-style dual timeline, BB Squeeze overlay, FVG drawings, mobile-responsive across all pages
 - **Commodity signal engine** — XAUUSD/XAGUSD/multi-symbol signal engine integrated into the main backend with sidebar sub-menu (Overview, Signals, Performance, Risk)
+- **Real-time commodity alerts** — SMTP email + Twilio SMS fired when a commodity ticker meets all 4 technical conditions (EMA cross, trend, RSI, volume); per-user cooldown, confidence threshold, and symbol watchlist; scheduler checks every 15 min using live yfinance data; confirmed working end-to-end
 - **Portfolio ledger** — editable holdings and activity log persisted to localStorage with computed P&L, asset allocation donut, and CSV export
 
 ---
@@ -112,7 +113,8 @@ Screenshots coming soon. The platform includes the following main views:
 │                                                                  │
 │  scheduler/ — APScheduler: buy zone (4h), alerts (5min),        │
 │               auto-buy (5min), live scanner (5min),              │
-│               idea generator (60min, market hours only)          │
+│               idea generator (60min, market hours only),         │
+│               commodity alerts (15min, real yfinance signals)    │
 │                                                                  │
 │  broker/ — AbstractBrokerClient → AlpacaClient / RobinhoodStub  │
 └─────────────────────────┬────────────────────────────────────────┘
@@ -130,6 +132,7 @@ Screenshots coming soon. The platform includes the following main views:
 │           WatchlistIdea, WatchlistIdeaTicker,                    │
 │           PriceAlertRule, AutoBuySettings, AutoBuyDecisionLog    │
 │  V3 (3):  UserWatchlist, BuyNowSignal, GeneratedIdea             │
+│  Commodity (1): CommodityAlertPrefs (email+SMS per user)         │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -228,6 +231,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Feature | Description |
 |---|---|
 | Commodity signal engine | XAUUSD/XAGUSD/multi-symbol signal engine fully integrated into the main backend (`/gold/*` endpoints, Bearer auth); sidebar sub-menu with Overview, Signals, Performance, and Risk sub-pages |
+| Commodity buy-signal alerts | Real-time email (SMTP/TLS) + SMS (Twilio) when all 4 technical conditions pass on a watched symbol; per-user prefs stored in `commodity_alert_prefs` table; settings UI at `/gold`; APScheduler job every 15 min |
 | Portfolio ledger | Editable holdings table + activity log persisted to localStorage; computed total market value, day P&L, unrealized P&L; asset allocation + sector donut charts; CSV export |
 | Multi-Chart view | 2×3 chart grid with configurable symbols and watchlist sidebar |
 | Stock detail page | Per-ticker financial KPIs, analyst consensus gauge, earnings history |
@@ -336,6 +340,15 @@ npm run lint
 | `DEBUG` | No | `false` | Enables Swagger UI, `/test/token`, and `dev_token` cookie auth |
 | `ALPACA_BASE_URL` | No | `https://api.alpaca.markets` | Alpaca live trading API URL |
 | `ALPACA_PAPER_URL` | No | `https://paper-api.alpaca.markets` | Alpaca paper trading API URL |
+| `SMTP_HOST` | No | — | SMTP server for commodity alert emails (e.g. `smtp.gmail.com`) |
+| `SMTP_PORT` | No | `587` | SMTP port (587 = STARTTLS) |
+| `SMTP_USER` | No | — | SMTP login username (your email address) |
+| `SMTP_PASS` | No | — | SMTP password / Gmail App Password |
+| `SMTP_FROM` | No | `SMTP_USER` | From address in outgoing emails |
+| `TWILIO_ACCOUNT_SID` | No | — | Twilio Account SID for SMS alerts |
+| `TWILIO_AUTH_TOKEN` | No | — | Twilio Auth Token |
+| `TWILIO_FROM_NUMBER` | No | — | Twilio sender number in E.164 format (`+1XXXXXXXXXX`) |
+| `COMMODITY_ALERT_MINUTES` | No | `15` | How often (minutes) to check commodity signals and fire alerts |
 
 ### Frontend environment variables
 
@@ -391,6 +404,12 @@ No secrets belong in the frontend environment. The Supabase anon key is designed
 | `user_watchlist` | Lightweight user → ticker association for the Opportunities scanner |
 | `buy_now_signals` | Full 10-condition audit trail for every scanner evaluation (pass and fail) |
 | `generated_ideas` | Auto-generated idea cards from news/theme/technical sources; expire after 24h |
+
+### Commodity — 1 table
+
+| Table | Purpose |
+|---|---|
+| `commodity_alert_prefs` | Per-user notification prefs: alert_email, alert_phone (E.164), symbols (JSON), min_confidence, cooldown_minutes, last_alerted_at. UNIQUE on user_id. |
 
 ---
 
@@ -459,6 +478,13 @@ Authentication is handled entirely by Supabase on the frontend (magic link login
 | `GET` | `/gold/risk-status` | Current risk engine state (kill switch, daily loss, consecutive losses) |
 | `GET` | `/gold/performance` | Per-strategy performance metrics over a date window |
 
+### Commodity alert preferences
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/commodity-alerts/prefs` | Get current user's alert prefs (auto-creates defaults on first call) |
+| `PATCH` | `/commodity-alerts/prefs` | Update email, phone, symbols, confidence threshold, cooldown |
+
 ---
 
 ## Project structure
@@ -493,8 +519,9 @@ NextgenAiTrading/
 │   │   ├── backtesting/engine.py         # 60/20/20 split, cooldown, trailing stop
 │   │   ├── artifacts/
 │   │   │   └── pine_script_generator.py  # Pine Script v5 output
-│   │   ├── scheduler/                    # APScheduler jobs (V2 + V3)
-│   │   │   └── tasks/                    # run_live_scanner, run_news_scanner, run_idea_generator
+│   │   ├── scheduler/                    # APScheduler jobs (V2 + V3 + commodity)
+│   │   │   └── tasks/                    # run_live_scanner, run_news_scanner, run_idea_generator,
+│   │   │                                 # run_commodity_alerts
 │   │   └── utils/market_hours.py         # ET market hours check for scheduler gates
 │   ├── alembic/                          # Migration scripts: V1 + V2 + V3
 │   ├── tests/                            # 167 unit tests (V2 + V3 services)
@@ -699,3 +726,4 @@ Supported timeframes: `1d`, `1h`, `4h` (resampled from 1h internally), `1wk`.
 - **LLM-generated thesis copy** — natural-language idea summaries via an LLM provider
 - **Live earnings calendar** — near_earnings flag driven by live API rather than manual flag
 - **Subscription tiers** — usage quotas per tier; Stripe billing integration
+- **SMS commodity alerts** — Twilio integration wired; pending Twilio account credentials in `.env`

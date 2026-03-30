@@ -50,3 +50,6 @@ pytz>=2024.1
 
 # V3 — RSS feed parsing for news scanner
 feedparser>=6.0.10
+
+# Commodity alert notifications (email via smtplib is stdlib; SMS via Twilio)
+twilio>=9.0.0

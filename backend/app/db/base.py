@@ -28,4 +28,6 @@ from app.models import (  # noqa: F401, E402
     user_watchlist,
     buy_signal,
     generated_idea,
+    # commodity alert prefs
+    commodity_alert_prefs,
 )

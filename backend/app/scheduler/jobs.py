@@ -25,6 +25,7 @@ from app.scheduler.tasks.evaluate_auto_buy import evaluate_auto_buy
 from app.scheduler.tasks.prune_old_signals import prune_old_signals
 from app.scheduler.tasks.refresh_buy_zones import refresh_buy_zones
 from app.scheduler.tasks.refresh_theme_scores import refresh_theme_scores
+from app.scheduler.tasks.run_commodity_alerts import run_commodity_alerts
 from app.scheduler.tasks.run_idea_generator import run_idea_generator_job
 from app.scheduler.tasks.run_live_scanner import run_live_scanner
 from app.scheduler.tasks.run_news_scanner import run_news_scanner
@@ -118,9 +119,19 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
+    # ── Commodity alerts ──────────────────────────────────────────────────────
+    scheduler.add_job(
+        run_commodity_alerts,
+        "interval",
+        minutes=settings.commodity_alert_minutes,
+        id="run_commodity_alerts",
+        coalesce=True,
+        max_instances=1,
+    )
+
     logger.info(
         "Scheduler jobs registered: buy_zone=%dm theme=%dm alerts=%dm auto_buy=%dm "
-        "scan=%dm live_scanner=%dm idea_gen=%dm prune_signals=daily",
+        "scan=%dm live_scanner=%dm idea_gen=%dm prune_signals=daily commodity_alerts=%dm",
         settings.buy_zone_refresh_minutes,
         settings.theme_score_refresh_minutes,
         settings.alert_eval_minutes,
@@ -128,4 +139,5 @@ def register_jobs() -> None:
         settings.watchlist_scan_minutes,
         settings.live_scanner_minutes,
         settings.idea_generator_minutes,
+        settings.commodity_alert_minutes,
     )

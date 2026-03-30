@@ -77,6 +77,21 @@ class Settings(BaseSettings):
     notification_webhook_enabled: bool = Field(default=False, description="Enable webhook notifications")
     notification_webhook_url: str = Field(default="", description="Webhook URL for notifications")
 
+    # ── SMTP (commodity alert emails) ──────────────────────────────────────────
+    smtp_host: str = Field(default="", description="SMTP server host (e.g. smtp.gmail.com)")
+    smtp_port: int = Field(default=587, description="SMTP server port")
+    smtp_user: str = Field(default="", description="SMTP login username")
+    smtp_pass: str = Field(default="", description="SMTP login password / app password")
+    smtp_from: str = Field(default="", description="From address (defaults to smtp_user)")
+
+    # ── Twilio (commodity alert SMS) ───────────────────────────────────────────
+    twilio_account_sid: str = Field(default="", description="Twilio Account SID")
+    twilio_auth_token: str = Field(default="", description="Twilio Auth Token")
+    twilio_from_number: str = Field(default="", description="Twilio sender number in E.164 (+1...)")
+
+    # ── Commodity alerts scheduler ─────────────────────────────────────────────
+    commodity_alert_minutes: int = Field(default=15, description="Interval for commodity signal check (minutes)")
+
     # ── V3 scanner settings ────────────────────────────────────────────────────
     live_scanner_minutes: int = Field(default=5, description="V3 live scanner interval (minutes)")
     idea_generator_minutes: int = Field(default=60, description="V3 idea generator interval (minutes)")

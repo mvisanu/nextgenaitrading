@@ -601,3 +601,35 @@ export const goldApi = {
     return get<GoldPerformanceResponse>(`/gold/performance?${qs.toString()}`);
   },
 };
+
+// ── Commodity Alert Preferences ───────────────────────────────────────────────
+
+export interface CommodityAlertPrefs {
+  email_enabled: boolean;
+  alert_email: string | null;
+  sms_enabled: boolean;
+  alert_phone: string | null;
+  symbols: string[];
+  min_confidence: number;
+  cooldown_minutes: number;
+  last_alerted_at: string | null;
+  updated_at: string;
+}
+
+export interface UpdateCommodityAlertPrefs {
+  email_enabled?: boolean;
+  alert_email?: string | null;
+  sms_enabled?: boolean;
+  alert_phone?: string | null;
+  symbols?: string[];
+  min_confidence?: number;
+  cooldown_minutes?: number;
+}
+
+export const commodityAlertApi = {
+  getPrefs: (): Promise<CommodityAlertPrefs> =>
+    get<CommodityAlertPrefs>("/commodity-alerts/prefs"),
+
+  updatePrefs: (body: UpdateCommodityAlertPrefs): Promise<CommodityAlertPrefs> =>
+    patch<CommodityAlertPrefs>("/commodity-alerts/prefs", body),
+};

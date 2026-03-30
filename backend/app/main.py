@@ -221,6 +221,7 @@ from app.api.generated_ideas import router as generated_ideas_router
 from app.api.news_feed import router as news_feed_router
 # commodity signal engine
 from app.api.gold import router as gold_router
+from app.api.commodity_alert_prefs import router as commodity_alert_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -242,6 +243,7 @@ app.include_router(generated_ideas_router)
 app.include_router(news_feed_router)
 # commodity signal engine
 app.include_router(gold_router)
+app.include_router(commodity_alert_router)
 
 # Test-only utilities (only mounted in debug mode)
 if settings.debug:

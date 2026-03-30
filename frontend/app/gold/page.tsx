@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   goldApi,
+  commodityAlertApi,
   type GoldSignal,
   type GoldRiskStatus,
   type GoldPerformanceResponse,
   type GoldStrategyPerformance,
+  type CommodityAlertPrefs,
 } from "@/lib/api";
 import {
   TrendingUp,
@@ -24,6 +26,11 @@ import {
   Clock,
   WifiOff,
   LayoutDashboard,
+  Bell,
+  BellOff,
+  Mail,
+  MessageSquare,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -365,6 +372,264 @@ function PerformanceCard({ strategy }: { strategy: GoldStrategyPerformance }) {
       <div className="text-[10px] text-muted-foreground/40 uppercase tracking-widest">
         {strategy.total_signals} signals
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Notification preferences panel
+// ---------------------------------------------------------------------------
+
+function NotificationPrefsPanel() {
+  const [prefs, setPrefs] = React.useState<CommodityAlertPrefs | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Local form state
+  const [emailEnabled, setEmailEnabled] = React.useState(false);
+  const [alertEmail, setAlertEmail] = React.useState("");
+  const [smsEnabled, setSmsEnabled] = React.useState(false);
+  const [alertPhone, setAlertPhone] = React.useState("");
+  const [symbolsInput, setSymbolsInput] = React.useState("XAUUSD");
+  const [minConfidence, setMinConfidence] = React.useState(70);
+  const [cooldown, setCooldown] = React.useState(60);
+
+  React.useEffect(() => {
+    commodityAlertApi.getPrefs()
+      .then((p) => {
+        setPrefs(p);
+        setEmailEnabled(p.email_enabled);
+        setAlertEmail(p.alert_email ?? "");
+        setSmsEnabled(p.sms_enabled);
+        setAlertPhone(p.alert_phone ?? "");
+        setSymbolsInput((p.symbols ?? ["XAUUSD"]).join(", "));
+        setMinConfidence(p.min_confidence);
+        setCooldown(p.cooldown_minutes);
+      })
+      .catch(() => setError("Could not load notification settings"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const symbols = symbolsInput
+        .split(/[,\s]+/)
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+
+      const updated = await commodityAlertApi.updatePrefs({
+        email_enabled: emailEnabled,
+        alert_email: alertEmail || null,
+        sms_enabled: smsEnabled,
+        alert_phone: alertPhone || null,
+        symbols,
+        min_confidence: minConfidence,
+        cooldown_minutes: cooldown,
+      });
+      setPrefs(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Save failed";
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-48 rounded bg-surface-2 border border-border/10 animate-pulse" />
+    );
+  }
+
+  const lastAlerted = prefs?.last_alerted_at
+    ? new Date(prefs.last_alerted_at).toLocaleString([], {
+        month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      })
+    : null;
+
+  return (
+    <div className="rounded bg-surface-2 border border-border/10 p-4 space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <Bell className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[11px] font-black uppercase tracking-widest text-foreground/80">
+          Buy Signal Alerts
+        </span>
+        {(emailEnabled || smsEnabled) && (
+          <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Active
+          </span>
+        )}
+        {!emailEnabled && !smsEnabled && (
+          <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+            <BellOff className="h-3 w-3" />
+            Off
+          </span>
+        )}
+      </div>
+
+      {/* Last alert */}
+      {lastAlerted && (
+        <p className="text-[10px] text-muted-foreground/40 uppercase tracking-widest">
+          Last alert: {lastAlerted}
+        </p>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-2 rounded border border-red-400/20 bg-red-400/5 px-2 py-1.5 text-[11px] text-red-300">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Email toggle */}
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={emailEnabled}
+            onChange={(e) => setEmailEnabled(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          <Mail className="h-3.5 w-3.5 text-muted-foreground/60" />
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+            Email Alerts
+          </span>
+        </label>
+        {emailEnabled && (
+          <input
+            type="email"
+            value={alertEmail}
+            onChange={(e) => setAlertEmail(e.target.value)}
+            placeholder="you@example.com"
+            className={cn(
+              "w-full h-8 rounded border border-border/20 bg-surface-lowest px-3",
+              "text-[12px] text-foreground placeholder:text-muted-foreground/30",
+              "focus:outline-none focus:border-primary/60 transition-colors"
+            )}
+          />
+        )}
+      </div>
+
+      {/* SMS toggle */}
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={smsEnabled}
+            onChange={(e) => setSmsEnabled(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground/60" />
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/80">
+            SMS Alerts
+          </span>
+        </label>
+        {smsEnabled && (
+          <input
+            type="tel"
+            value={alertPhone}
+            onChange={(e) => setAlertPhone(e.target.value)}
+            placeholder="8509241429"
+            className={cn(
+              "w-full h-8 rounded border border-border/20 bg-surface-lowest px-3",
+              "text-[12px] text-foreground placeholder:text-muted-foreground/30",
+              "focus:outline-none focus:border-primary/60 transition-colors"
+            )}
+          />
+        )}
+      </div>
+
+      {/* Symbols */}
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/60">
+          Symbols (comma-separated)
+        </label>
+        <input
+          type="text"
+          value={symbolsInput}
+          onChange={(e) => setSymbolsInput(e.target.value.toUpperCase())}
+          placeholder="XAUUSD, XAGUSD, BTCUSD"
+          className={cn(
+            "w-full h-8 rounded border border-border/20 bg-surface-lowest px-3",
+            "text-[12px] text-foreground font-bold tracking-widest placeholder:text-muted-foreground/30",
+            "focus:outline-none focus:border-primary/60 transition-colors"
+          )}
+        />
+      </div>
+
+      {/* Min confidence + cooldown */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/60">
+            Min Confidence %
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={minConfidence}
+            onChange={(e) => setMinConfidence(Number(e.target.value))}
+            className={cn(
+              "w-full h-8 rounded border border-border/20 bg-surface-lowest px-3",
+              "text-[12px] text-foreground font-bold tabular-nums",
+              "focus:outline-none focus:border-primary/60 transition-colors"
+            )}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground/60">
+            Cooldown (min)
+          </label>
+          <input
+            type="number"
+            min={5}
+            max={1440}
+            value={cooldown}
+            onChange={(e) => setCooldown(Number(e.target.value))}
+            className={cn(
+              "w-full h-8 rounded border border-border/20 bg-surface-lowest px-3",
+              "text-[12px] text-foreground font-bold tabular-nums",
+              "focus:outline-none focus:border-primary/60 transition-colors"
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Save button */}
+      <Button
+        onClick={handleSave}
+        disabled={saving}
+        size="sm"
+        className={cn(
+          "w-full h-8 text-[11px] font-black uppercase tracking-widest gap-1.5",
+          saved && "bg-emerald-600 hover:bg-emerald-600"
+        )}
+      >
+        {saving ? (
+          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+        ) : saved ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : (
+          <Bell className="h-3.5 w-3.5" />
+        )}
+        {saving ? "Saving..." : saved ? "Saved!" : "Save Alert Settings"}
+      </Button>
+
+      <p className="text-[10px] text-muted-foreground/30 leading-relaxed">
+        Alerts fire when ALL 4 technical conditions pass (EMA cross, trend, RSI, volume).
+        Signals checked every 15 min using live market data.
+      </p>
     </div>
   );
 }
@@ -813,6 +1078,11 @@ export default function GoldPage() {
               Historically favorable entry zones only.
               Not financial advice. Past performance does not guarantee future results.
             </p>
+
+            {/* Notification preferences */}
+            <div>
+              <NotificationPrefsPanel />
+            </div>
 
             {/* Strategy performance cards */}
             <div>
