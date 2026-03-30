@@ -162,6 +162,7 @@ COMMODITY_ALERT_MINUTES=15
 - **DELETE endpoints:** Return `Response(status_code=204)` — don't put `status_code=204` in decorator (FastAPI 0.115+).
 - **Intraday chart times:** `df_to_candles()` outputs Unix int timestamps for intraday intervals; ISO strings for daily+.
 - **Router prefix:** Never double-prefix routes. `app.include_router()` must not add `/api` if router already has it.
+- **Commodity symbol normalisation:** `market_data.normalize_symbol()` translates display symbols (XAU-USD, XAUUSD, XAU/USD) to yfinance tickers (GC=F) before any `load_ohlcv*` call. Always call via `load_ohlcv_for_strategy()` — never pass raw commodity symbols to yfinance directly.
 
 ## Implementation Status
 
@@ -177,7 +178,7 @@ COMMODITY_ALERT_MINUTES=15
 | Supabase Auth (magic link, Bearer token, auto-provisioning, dev login) | Complete |
 | BB Squeeze strategy (backend + frontend chart overlay) | Complete |
 | Commodity signal engine (gold API + 4 sub-pages + sidebar sub-menu) | Complete |
-| Mobile responsiveness (all pages) | Complete |
+| Mobile responsiveness (all pages) | Complete — deep audit + fixes 2026-03-30 |
 | E2E tests (v1: 263, v2: 159, v3: 34, supabase-auth: 90) | Written; auth system fixed 2026-03-27 |
 
 ## Known Spec Deviations
@@ -218,6 +219,14 @@ Real buy-signal alerts for commodities (gold, silver, oil, crypto, forex) via em
 - MACD, RSI, MA computed client-side from real candles
 - **Not** tick-by-tick streaming — polling at ~15-30 second granularity
 - KPI cards and watchlist come from local DB / localStorage (not live feeds)
+
+## Branding
+- **App name:** "NextGen Trading" (display title in sidebar, login, register, profile)
+- **Tagline:** "Play Smart" (sidebar subtitle, `text-3xs tracking-widest uppercase`)
+- **Auth pages tagline:** "Work Hard, Play Hard" (login + register pages use this variant)
+- **Sidebar expanded width:** `w-[190px]` (sized to fit title + pin button)
+- **Sidebar collapsed width:** `w-12` (icons only)
+- Files: `frontend/components/layout/Sidebar.tsx`, `frontend/app/(auth)/login/page.tsx`, `frontend/app/(auth)/register/page.tsx`, `frontend/app/profile/page.tsx`
 
 ## Ideas Page — Scan Universe Themes
 Theme chips: AI, Energy, Defense, Space, Semiconductors, Longevity, Robotics, Bitcoin, Healthcare, Medicine (~50 tickers total including mega-cap tech, financials, energy, defense, semis, space, biotech, bitcoin/crypto-adjacent).

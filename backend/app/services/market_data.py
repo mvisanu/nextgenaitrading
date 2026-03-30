@@ -5,6 +5,7 @@ Symbol and interval are always passed as parameters, never hardcoded.
 from __future__ import annotations
 
 import logging
+import re
 
 import pandas as pd
 import yfinance as yf
@@ -34,10 +35,53 @@ _SYMBOL_MAP: dict[str, str] = {
 }
 
 
+# Futures contract month codes (CME/NYMEX standard)
+_FUTURES_CONTRACT_RE = re.compile(r'^([A-Z]{2,3})[FGHJKMNQUVXZ]\d{2}$')
+
+# Exchange suffix required by yfinance for specific contract-month tickers.
+# Roots not listed here fall back to =F (may not work for all).
+_FUTURES_EXCHANGE: dict[str, str] = {
+    # COMEX metals
+    "GC": ".CMX",   # Gold
+    "MGC": ".CMX",  # Micro Gold
+    "SI": ".CMX",   # Silver
+    "SIL": ".CMX",  # Micro Silver
+    "HG": ".CMX",   # Copper
+    # NYMEX energy + platinum group
+    "CL": ".NYM",   # WTI Crude Oil
+    "QM": ".NYM",   # Mini Crude
+    "NG": ".NYM",   # Natural Gas
+    "RB": ".NYM",   # RBOB Gasoline
+    "HO": ".NYM",   # Heating Oil
+    "BZ": ".NYM",   # Brent Crude
+    "PL": ".NYM",   # Platinum
+    "PA": ".NYM",   # Palladium
+}
+
+
 def normalize_symbol(symbol: str) -> str:
-    """Translate display symbols (e.g. XAU-USD) to yfinance tickers (e.g. GC=F)."""
-    key = symbol.upper().replace("/", "").replace("-", "")
-    return _SYMBOL_MAP.get(key, symbol)
+    """Translate display symbols to yfinance tickers.
+
+    Handles three cases:
+    1. Named commodity/forex displays: XAU-USD / XAUUSD / XAU/USD → GC=F
+    2. Specific futures contracts:      GCM26 → GCM26.CMX, CLN26 → CLN26.NYM
+    3. Everything else passed through unchanged (stocks, crypto, ETFs, etc.)
+    """
+    upper = symbol.upper()
+    key = upper.replace("/", "").replace("-", "")
+
+    # Case 1: named map lookup
+    if key in _SYMBOL_MAP:
+        return _SYMBOL_MAP[key]
+
+    # Case 2: specific futures contract — append correct exchange suffix
+    m = _FUTURES_CONTRACT_RE.match(key)
+    if m and "." not in key and "=" not in key:
+        root = m.group(1)
+        suffix = _FUTURES_EXCHANGE.get(root, "=F")
+        return key + suffix
+
+    return symbol
 
 
 def load_ohlcv(
