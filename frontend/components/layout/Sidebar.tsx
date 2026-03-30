@@ -77,6 +77,7 @@ const NAV_GROUPS: NavGroup[] = [
           { href: "/gold/signals", label: "Signals", icon: TrendingUp },
           { href: "/gold/performance", label: "Performance", icon: BarChart2 },
           { href: "/gold/risk", label: "Risk", icon: ShieldAlert },
+          { href: "/commodities-guide", label: "Beginner Guide", icon: BookOpen },
         ],
       },
       { href: "/ideas", label: "Ideas", icon: Lightbulb },
