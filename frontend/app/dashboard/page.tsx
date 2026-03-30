@@ -491,14 +491,13 @@ function SymbolSearch({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const allSymbols = [
-    ...new Set([
-      ...POPULAR_SYMBOLS,
-      ...watchlistItems.map((i) => i.symbol),
-    ]),
-  ];
-
   const filtered = useMemo(() => {
+    const allSymbols = [
+      ...new Set([
+        ...POPULAR_SYMBOLS,
+        ...watchlistItems.map((i) => i.symbol),
+      ]),
+    ];
     if (!query.trim()) return POPULAR_SYMBOLS.slice(0, 12);
     const q = query.trim().toUpperCase();
     const matches = allSymbols.filter((s) =>
@@ -518,7 +517,7 @@ function SymbolSearch({
       matches.unshift(q);
     }
     return matches.slice(0, 12);
-  }, [query, allSymbols]);
+  }, [query, watchlistItems]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
