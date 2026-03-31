@@ -866,7 +866,7 @@ function DashboardContent() {
 
   const chartSymbol = symbol;
 
-  const { data: chartPayload, isLoading: chartLoading } = useQuery({
+  const { data: chartPayload } = useQuery({
     queryKey: ["live", "chart-data", chartSymbol, interval.value, showBollinger],
     queryFn: () => liveApi.chartData(chartSymbol, interval.value, showBollinger),
     refetchInterval: 30_000,
@@ -1253,7 +1253,7 @@ function DashboardContent() {
                   </span>
                 </span>
               )}
-              {chartLoading && (
+              {candles.length === 0 && (
                 <span className="text-3xs text-muted-foreground uppercase tracking-widest">Loading...</span>
               )}
             </div>
@@ -1274,7 +1274,7 @@ function DashboardContent() {
 
             {/* Chart fills remaining height */}
             <div className="flex-1 min-h-0 bg-surface-lowest" style={{ minHeight: 200 }}>
-              {chartLoading ? (
+              {candles.length === 0 ? (
                 <div className="flex h-full items-center justify-center">
                   <span className="text-3xs text-muted-foreground uppercase tracking-widest animate-pulse">Loading chart data...</span>
                 </div>
@@ -1329,12 +1329,12 @@ function DashboardContent() {
             </div>
 
             {/* MACD sub-chart */}
-            {showMACD && macdData.length > 0 && !chartLoading && (
+            {showMACD && macdData.length > 0 && candles.length > 0 && (
               <MACDChart data={macdData} height={100} theme={theme} />
             )}
 
             {/* RSI sub-chart */}
-            {showRSI && rsiData.length > 0 && !chartLoading && (
+            {showRSI && rsiData.length > 0 && candles.length > 0 && (
               <RSIChart data={rsiData} height={80} theme={theme} />
             )}
 
