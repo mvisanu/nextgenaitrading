@@ -160,7 +160,7 @@ COMMODITY_ALERT_MINUTES=15
 - **`SPEC.md` is authoritative** for all feature specs (V1/V2/V3/Screener/Bitcoin).
 - **V3 scanner alerts fire only when ALL 10 conditions pass.** No partial alerts. See `PRD.md` Part 3 §4.3.
 - **V3 wording:** Use "historically favorable", "high-probability entry zone", "confidence score" — never "guaranteed", "safe", "certain to go up".
-- **CORS never `["*"]`.** Use `settings.cors_origins_list`; error handlers validate origin before reflecting.
+- **CORS never `["*"]`.** Use `settings.cors_origins_list`; error handlers validate origin before reflecting. Default includes both `http://localhost:3000` and `https://nextgenaitrading.vercel.app`. Render env var: `CORS_ORIGINS=http://localhost:3000,https://nextgenaitrading.vercel.app`.
 - **List endpoints must have bounded `limit`:** `Query(default=50, ge=1, le=200)`.
 - **Credential errors:** Return generic message; log real error server-side.
 - **`dangerouslySetInnerHTML` requires DOMPurify sanitization.**
@@ -172,6 +172,7 @@ COMMODITY_ALERT_MINUTES=15
 - **Specific futures contracts:** `normalize_symbol("GCM26")` → `"GCM26.CMX"`. Pattern `^[A-Z]{2,3}[FGHJKMNQUVXZ]\d{2}$` triggers exchange suffix lookup: COMEX metals (GC,SI,HG,PL,PA,MGC,SIL) → `.CMX`; NYMEX energy+PGMs (CL,NG,RB,HO,BZ,PL,PA,QM) → `.NYM`. Unknown roots fall back to `=F`.
 - **`AppShell` requires `title` prop** — always pass `title="..."` or `title={tr("pageTitle", lang)}` for translated pages.
 - **`useMemo` with derived arrays:** Never declare arrays outside a `useMemo` and reference them in its deps — move the array construction inside the callback. See `dashboard/page.tsx` `allSymbols` pattern.
+- **SSR hydration for time/random values:** Initialize `useState` as `null` for any value derived from `Date.now()` or `Math.random()`. Set the real value only inside `useEffect`. Render an invisible placeholder when `null`. See `LiveClock` in `dashboard/page.tsx`.
 
 ## Implementation Status
 
@@ -195,6 +196,13 @@ COMMODITY_ALERT_MINUTES=15
 | Live Trading page — beginner UX (guide banner, Tip tooltips, signal plain-English, 8 bug fixes) | Complete — 2026-03-31 |
 | Auto-Buy UX redesign (beginner-friendly, Define Targets + Execution Timeframe) | Complete — 2026-03-31 |
 | Sidebar child-active bug fix (Overview link highlighted on all gold sub-pages) | Fixed — 2026-03-31 |
+| Vercel build fixes (ESLint react/no-unescaped-entities in 4 files) | Fixed — 2026-03-31 |
+| Options page dead-page fix (auth silent fail, stale closures, expiration selection) | Fixed — 2026-03-31 |
+| CORS fix: Vercel→Render cross-origin (added Vercel URL to cors_origins default) | Fixed — 2026-03-31 |
+| Dashboard chart anti-flicker (split PriceChart effects; stale-data guard on symbol change) | Fixed — 2026-03-31 |
+| Dashboard live terminal animations (LiveClock, price flash, countdown bar, watchlist arrows) | Complete — 2026-03-31 |
+| Dashboard live watchlist price polling (30s refetch; terminal refresh progress bar) | Complete — 2026-03-31 |
+| LiveClock SSR hydration fix (null init; set real Date only after mount) | Fixed — 2026-03-31 |
 
 ## Options Trading Engine (2026-03-30)
 
