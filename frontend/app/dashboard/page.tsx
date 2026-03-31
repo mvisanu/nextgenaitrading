@@ -194,6 +194,7 @@ function PriceChartFill({
   onChartClick,
   bollingerData,
   maOverlays,
+  scale,
 }: {
   data: CandleBar[];
   theme: "dark" | "light";
@@ -202,6 +203,7 @@ function PriceChartFill({
   onChartClick?: (point: ChartClickPoint) => void;
   bollingerData?: import("@/types").BollingerOverlayBar[];
   maOverlays?: MAOverlay[];
+  scale?: "linear" | "log";
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(400);
@@ -227,6 +229,7 @@ function PriceChartFill({
         onChartClick={onChartClick}
         bollingerData={bollingerData}
         maOverlays={maOverlays}
+        scale={scale}
       />
     </div>
   );
@@ -842,6 +845,7 @@ function KpiCardsPanel() {
 function DashboardContent() {
   const { theme, toggle } = useTheme();
   const { pinned: sidebarPinned } = useSidebarPinned();
+  const { user } = useAuth();
   const searchParams = useSearchParams();
 
   const initialTicker = searchParams.get("ticker")?.toUpperCase().trim() || "BTC-USD";
@@ -965,6 +969,7 @@ function DashboardContent() {
     queryFn: () => liveApi.chartData(chartSymbol, interval.value, showBollinger),
     refetchInterval: 30_000,
     staleTime: 15_000,
+    enabled: !!user,
   });
 
   const candles = useMemo(() => chartPayload?.candles ?? [], [chartPayload]);
@@ -1502,6 +1507,7 @@ function DashboardContent() {
                   onChartClick={handleChartClick}
                   bollingerData={showBollinger ? (chartPayload?.bollinger ?? undefined) : undefined}
                   maOverlays={showMA ? maOverlays : undefined}
+                  scale={chartScale}
                 />
               )}
             </div>
@@ -1602,7 +1608,7 @@ function DashboardContent() {
               style={{ width: 320 }}
             >
               {/* Quote panel — selected symbol large price */}
-              <QuotePanel item={selectedItem} lastCandle={lastCandle} />
+              {selectedItem && <QuotePanel item={selectedItem} lastCandle={lastCandle} />}
 
               {/* Watchlist header */}
               <div className="flex items-center px-3 h-8 shrink-0 border-b border-border/10 bg-surface-lowest/60">
@@ -1744,7 +1750,7 @@ function DashboardContent() {
                 </tbody>
               </table>
             </div>
-            <QuotePanel item={selectedItem} lastCandle={lastCandle} />
+            {selectedItem && <QuotePanel item={selectedItem} lastCandle={lastCandle} />}
           </div>
         </SheetContent>
       </Sheet>

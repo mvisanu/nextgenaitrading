@@ -166,7 +166,9 @@ def load_ohlcv_for_strategy(symbol: str, timeframe: str) -> pd.DataFrame:
     interval_map = {
         "1m": "1m",
         "2m": "2m",
+        "3m": "5m",   # yfinance has no 3m; use 5m as nearest supported
         "5m": "5m",
+        "10m": "15m", # yfinance has no 10m; use 15m as nearest supported
         "15m": "15m",
         "30m": "30m",
         "1h": "1h",
@@ -188,7 +190,7 @@ def load_ohlcv_for_strategy(symbol: str, timeframe: str) -> pd.DataFrame:
     #   1mo       → max   (~300+ bars depending on ticker history)
     if timeframe == "1m":
         period = "7d"
-    elif timeframe in ("2m", "5m", "15m", "30m"):
+    elif timeframe in ("2m", "3m", "5m", "10m", "15m", "30m"):
         period = "60d"
     elif timeframe in ("1h", "2h", "3h", "4h"):
         period = "60d"
