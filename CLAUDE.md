@@ -44,6 +44,8 @@ backend/app/
                                           # commodity: gold, commodity_alert_prefs
   models/, schemas/                       # ORM + Pydantic DTOs (v1+v2+v3+commodity)
   services/                               # business logic (see BACKEND.md)
+                                          #   alpaca_data.py — Alpaca StockHistoricalDataClient; primary source for stocks/ETFs
+                                          #   market_data.py — routes load_ohlcv(): Alpaca→yfinance fallback; yfinance-only for commodities/forex/crypto
   strategies/                             # conservative, aggressive, bollinger_squeeze
   optimizers/                             # ai_pick, buy_low_sell_high
   scheduler/tasks/                        # APScheduler: buy-zone, alerts, auto-buy, live-scanner, idea-gen, commodity-alerts
@@ -114,6 +116,9 @@ CORS_ORIGINS=http://localhost:3000
 DEBUG=true
 ALPACA_BASE_URL=https://api.alpaca.markets
 ALPACA_PAPER_URL=https://paper-api.alpaca.markets
+# Alpaca market data — same key pair used for trading; enables Alpaca as primary OHLCV source for stocks/ETFs
+ALPACA_API_KEY=your-alpaca-api-key
+ALPACA_SECRET_KEY=your-alpaca-secret-key
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_JWT_SECRET=your-jwt-secret
@@ -162,6 +167,7 @@ COMMODITY_ALERT_MINUTES=15
 - **DELETE endpoints:** Return `Response(status_code=204)` — don't put `status_code=204` in decorator (FastAPI 0.115+).
 - **Intraday chart times:** `df_to_candles()` outputs Unix int timestamps for intraday intervals; ISO strings for daily+.
 - **Router prefix:** Never double-prefix routes. `app.include_router()` must not add `/api` if router already has it.
+- **Market data routing:** `load_ohlcv()` in `market_data.py` tries Alpaca (`alpaca_data.py`) first for plain US stock/ETF symbols (1-5 uppercase letters), falls back to yfinance on failure or when keys absent. Commodities (`=F`), forex (`=X`), and crypto (`-USD`) always go to yfinance. Never call `load_ohlcv_alpaca()` directly — always use `load_ohlcv()` or `load_ohlcv_for_strategy()`.
 - **Commodity symbol normalisation:** `market_data.normalize_symbol()` translates display symbols (XAU-USD, XAUUSD, XAU/USD) to yfinance tickers (GC=F) before any `load_ohlcv*` call. Always call via `load_ohlcv_for_strategy()` — never pass raw commodity symbols to yfinance directly.
 - **Specific futures contracts:** `normalize_symbol("GCM26")` → `"GCM26.CMX"`. Pattern `^[A-Z]{2,3}[FGHJKMNQUVXZ]\d{2}$` triggers exchange suffix lookup: COMEX metals (GC,SI,HG,PL,PA,MGC,SIL) → `.CMX`; NYMEX energy+PGMs (CL,NG,RB,HO,BZ,PL,PA,QM) → `.NYM`. Unknown roots fall back to `=F`.
 - **`AppShell` requires `title` prop** — always pass `title="..."` or `title={tr("pageTitle", lang)}` for translated pages.
@@ -185,6 +191,10 @@ COMMODITY_ALERT_MINUTES=15
 | Commodities Guide page (`/commodities-guide`) | Complete — EN/Thai bilingual, 2026-03-30 |
 | E2E tests (v1: 263, v2: 159, v3: 34, supabase-auth: 90) | Written; auth system fixed 2026-03-27 |
 | Options Trading Engine (v4 backend + frontend dashboard) | Complete — 2026-03-30 |
+| Alpaca Market Data integration (stocks/ETFs primary source, yfinance fallback) | Complete — 2026-03-31 |
+| Live Trading page — beginner UX (guide banner, Tip tooltips, signal plain-English, 8 bug fixes) | Complete — 2026-03-31 |
+| Auto-Buy UX redesign (beginner-friendly, Define Targets + Execution Timeframe) | Complete — 2026-03-31 |
+| Sidebar child-active bug fix (Overview link highlighted on all gold sub-pages) | Fixed — 2026-03-31 |
 
 ## Options Trading Engine (2026-03-30)
 
@@ -296,3 +306,24 @@ Beginner-friendly reference page. Linked from sidebar under **Commodities → Be
 
 ## Ideas Page — Scan Universe Themes
 Theme chips: AI, Energy, Defense, Space, Semiconductors, Longevity, Robotics, Bitcoin, Healthcare, Medicine (~50 tickers total including mega-cap tech, financials, energy, defense, semis, space, biotech, bitcoin/crypto-adjacent).
+
+## Auto-Buy Page UX (2026-03-31)
+
+Redesigned for beginner accessibility while retaining all existing backend bindings.
+
+**Define Targets section** (`TargetFields` component):
+- 2×2 grid: Symbol Search + Max Order Size (row 1) | Target Buy Price + Target Sell Price (row 2)
+- Target buy/sell price fields **moved here** from Execution Timeframe section (logical grouping)
+- Beginner hint banner explains each field in plain English
+- `DEFAULT_SETTINGS` fallback: sections always render even before API responds (fixes blank-section bug during auth-loading window when `!!user` is still false)
+
+**Execution Timeframe section** (`ExecutionSettings` component):
+- 5-button pill selector replaces 8-option dropdown: **Live (~1 min) | 15 min | 30 min | 1 hr | 2 hrs**
+- "Live" pill: distinct emerald color, "live" badge, beginner caution message on select
+- `EXEC_TIMEFRAMES` constant: `value` + `label` + `sublabel` + `desc` + optional `live: true` flag
+- "Max Drawdown Limit" → "Max Loss Limit" with plain description
+- "Earnings Blackout" → "Avoid Earnings Days" with beginner explanation
+
+**Sidebar childActive fix (`frontend/components/layout/Sidebar.tsx`):**
+- Sub-menu child active state now uses exact `pathname === child.href` (not `startsWith`)
+- Fixes Overview link incorrectly highlighted on all `/gold/*` sub-pages

@@ -30,7 +30,9 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Sovereign Terminal UI** — Deep Titanium dark theme, emerald primary, 7-tier tonal surface hierarchy, Webull-style dual timeline, BB Squeeze overlay, FVG drawings, mobile-responsive across all pages
 - **Commodity signal engine** — XAUUSD/XAGUSD/multi-symbol signal engine integrated into the main backend with sidebar sub-menu (Overview, Signals, Performance, Risk)
 - **Real-time commodity alerts** — SMTP email + Twilio SMS fired when a commodity ticker meets all 4 technical conditions (EMA cross, trend, RSI, volume); per-user cooldown, confidence threshold, and symbol watchlist; scheduler checks every 15 min using live yfinance data; confirmed working end-to-end
+- **Alpaca market data integration** — `alpaca_data.py` wraps `StockHistoricalDataClient`; `load_ohlcv()` routes US stocks/ETFs through Alpaca automatically when `ALPACA_API_KEY` is set, falls back to yfinance; commodities/forex/crypto always use yfinance
 - **Portfolio ledger** — editable holdings and activity log persisted to localStorage with computed P&L, asset allocation donut, and CSV export
+- **Beginner-friendly Auto-Buy UI** — Define Targets panel (symbol, max order size, buy/sell price targets in a clear 2×2 grid) + Execution Timeframe pill selector (Live / 15 min / 30 min / 1 hr / 2 hrs) with plain-English labels; `DEFAULT_SETTINGS` fallback ensures the form always renders without a prior API call
 
 ---
 
@@ -108,6 +110,8 @@ Screenshots coming soon. The platform includes the following main views:
 │  │  idea_generator_service — 3-source merge + scoring      │     │
 │  │  moat_scoring_service   — competitive moat heuristic    │     │
 │  │  financial_quality_svc  — yfinance revenue/margin data  │     │
+│  │  alpaca_data            — Alpaca StockHistoricalDataClient│    │
+│  │  market_data            — Alpaca→yfinance routing + norm │     │
 │  │  bollinger_squeeze_svc  — squeeze detection + breakout  │     │
 │  └─────────────────────────────────────────────────────────┘     │
 │                                                                  │
@@ -164,7 +168,8 @@ Screenshots coming soon. The platform includes the following main views:
 | Auth | Supabase Auth (@supabase/ssr) | Passwordless magic links; JWT managed by Supabase |
 | JWT verification | PyJWT (HS256) | Backend verifies Supabase-issued tokens |
 | Credential encryption | cryptography (Fernet) | Symmetric authenticated encryption for broker API keys |
-| Market data | yfinance + pandas | Wide ticker coverage; 4h resampled from 1h |
+| Market data — stocks/ETFs | alpaca-py (`StockHistoricalDataClient`) | Official Alpaca feed; split/dividend-adjusted; falls back to yfinance automatically |
+| Market data — commodities/forex/crypto | yfinance + pandas | Sole source for futures (`=F`), forex (`=X`), crypto (`-USD`); wide ticker coverage |
 | HMM regime detection | hmmlearn (GaussianHMM) | 2-state bull/bear regime fitted on 730 days of log-returns, ATR, volume ratio |
 | Technical indicators | ta | MACD, RSI, EMA, Bollinger Bands |
 | Scheduler | APScheduler 3.x | Cron-style background jobs without a separate worker process |
@@ -190,7 +195,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Buy Low/Sell High optimiser | 8-variant RSI/Bollinger/cycle grid; dip entry + cycle exit logic |
 | Backtesting engine | 60/20/20 train/validate/test split, cooldown, trailing stop simulation |
 | Pine Script v5 generation | Winning variant serialised to executable TradingView strategy code |
-| Live trading | Signal check with per-indicator breakdown, BUY/SELL/HOLD banner, notional USD order entry, dry-run default |
+| Live trading | Signal check with per-indicator breakdown, BUY/SELL/HOLD banner, notional USD order entry, dry-run default; beginner guide banner, Tip tooltips on all jargon, plain-English signal interpretation |
 | Broker abstraction | `AbstractBrokerClient` → `AlpacaClient` (full) / `RobinhoodClient` (stub) |
 | Fernet encryption | Broker API keys encrypted at rest; never returned in responses |
 | Webull-style dashboard | Bottom period bar (1D/5D/1M/3M/6M/YTD/1Y/5Y/Max), intraday time axis, drawing tools (FVG, trend lines) |
@@ -226,10 +231,24 @@ Screenshots coming soon. The platform includes the following main views:
 | Manual scan trigger | `POST /api/scanner/run-now` and `POST /api/ideas/generated/run-now` for on-demand execution |
 | Scan universe themes | AI, Energy, Defense, Space, Semiconductors, Longevity, Robotics, Bitcoin, Healthcare, Medicine (~50 tickers) |
 
+### V4 — Options trading engine
+
+| Feature | Description |
+|---|---|
+| Options chain scanner | Filters contracts by delta, OI, IV rank, strategy bias; excludes illiquid (spread > 10%); 10 configurable symbols |
+| Greeks dashboard | Net Δ/Γ/Θ/ν KPI cards; per-position table; theta decay chart (Recharts) |
+| P&L modelling | 41-point payoff curve ±20% from current price; breakeven/max profit/max loss markers; POP calculation |
+| Signal feed | 5-gate evaluation: earnings block → IV rank → strategy matrix → contract selection → confidence; approve/skip/view-chain |
+| Strategy matrix | Bullish/bearish/neutral × IV rank > 50 / < 30 → cash_secured_put, covered_call, iron_condor, bull_call_debit, bear_put_debit, long_straddle |
+| IV rank & percentile | 52-week IV history in `iv_history` table; rank + percentile calculated on every chain fetch |
+| Options execution | Dry-run default; live requires explicit opt-in; all executions logged to `options_executions` |
+| Risk gate | Max single-trade loss ($500 default), min POP (60% default), earnings blackout (5-day default) |
+
 ### Additional features
 
 | Feature | Description |
 |---|---|
+| Alpaca market data | `alpaca_data.py` wraps `StockHistoricalDataClient`; `load_ohlcv()` routes US stocks/ETFs through Alpaca when `ALPACA_API_KEY` set, falls back to yfinance; commodities/forex/crypto always use yfinance |
 | Commodity signal engine | XAUUSD/XAGUSD/multi-symbol signal engine fully integrated into the main backend (`/gold/*` endpoints, Bearer auth); sidebar sub-menu with Overview, Signals, Performance, and Risk sub-pages |
 | Commodity buy-signal alerts | Real-time email (SMTP/TLS) + SMS (Twilio) when all 4 technical conditions pass on a watched symbol; per-user prefs stored in `commodity_alert_prefs` table; settings UI at `/gold`; APScheduler job every 15 min |
 | Portfolio ledger | Editable holdings table + activity log persisted to localStorage; computed total market value, day P&L, unrealized P&L; asset allocation + sector donut charts; CSV export |
