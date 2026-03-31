@@ -13,8 +13,6 @@ interface OptionsChainTableProps {
   onSelectContract?: (contract: OptionContractOut) => void;
 }
 
-type SortKey = "strike" | "volume" | "open_interest" | "implied_volatility" | "delta";
-
 function formatNum(n: number, decimals = 2) {
   return n.toFixed(decimals);
 }
@@ -26,8 +24,6 @@ export function OptionsChainTable({
   ivPercentile,
   onSelectContract,
 }: OptionsChainTableProps) {
-  const [sortKey, setSortKey] = useState<SortKey>("strike");
-  const [sortAsc, setSortAsc] = useState(true);
   const [filterMinDelta, setFilterMinDelta] = useState("");
   const [filterMaxDelta, setFilterMaxDelta] = useState("");
   const [filterMinOI, setFilterMinOI] = useState("");
@@ -40,16 +36,21 @@ export function OptionsChainTable({
     return Array.from(s).sort((a, b) => a - b);
   }, [calls, puts]);
 
-  function applyDeltaFilter(c: OptionContractOut) {
+  const filteredCalls = useMemo(() => calls.filter((c) => {
     const d = Math.abs(c.delta);
     if (filterMinDelta && d < parseFloat(filterMinDelta)) return false;
     if (filterMaxDelta && d > parseFloat(filterMaxDelta)) return false;
     if (filterMinOI && c.open_interest < parseInt(filterMinOI)) return false;
     return true;
-  }
+  }), [calls, filterMinDelta, filterMaxDelta, filterMinOI]);
 
-  const filteredCalls = useMemo(() => calls.filter(applyDeltaFilter), [calls, filterMinDelta, filterMaxDelta, filterMinOI]);
-  const filteredPuts = useMemo(() => puts.filter(applyDeltaFilter), [puts, filterMinDelta, filterMaxDelta, filterMinOI]);
+  const filteredPuts = useMemo(() => puts.filter((c) => {
+    const d = Math.abs(c.delta);
+    if (filterMinDelta && d < parseFloat(filterMinDelta)) return false;
+    if (filterMaxDelta && d > parseFloat(filterMaxDelta)) return false;
+    if (filterMinOI && c.open_interest < parseInt(filterMinOI)) return false;
+    return true;
+  }), [puts, filterMinDelta, filterMaxDelta, filterMinOI]);
 
   const callsByStrike = useMemo(
     () => Object.fromEntries(filteredCalls.map((c) => [c.strike, c])),

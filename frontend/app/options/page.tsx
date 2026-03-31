@@ -112,7 +112,7 @@ export default function OptionsPage() {
     if (expirations && expirations.expirations.length > 0 && !selectedExpiration) {
       setSelectedExpiration(expirations.expirations[0]);
     }
-  }, [expirations]);
+  }, [expirations, selectedExpiration]);
 
   const { data: chain, isLoading: loadingChain } = useQuery({
     queryKey: ["options-chain", symbol, selectedExpiration, underlyingPrice],

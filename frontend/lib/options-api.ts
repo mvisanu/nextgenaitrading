@@ -5,6 +5,8 @@
  * Mirrors the pattern from lib/api.ts — uses apiFetch() with Bearer token.
  */
 
+import { getSupabaseBrowserClient } from "./supabase";
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -151,7 +153,6 @@ export interface PortfolioGreeksOut {
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
-    const { getSupabaseBrowserClient } = await import("./supabase");
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
       const { data: { session } } = await supabase.auth.getSession();
@@ -159,7 +160,9 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
         return { Authorization: `Bearer ${session.access_token}` };
       }
     }
-  } catch {}
+  } catch {
+    // Supabase session unavailable — fall through to dev-token check
+  }
   if (typeof document !== "undefined") {
     const match = document.cookie.match(/(?:^|;\s*)dev_token=([^;]+)/);
     if (match) return { Authorization: `Bearer ${decodeURIComponent(match[1])}` };
