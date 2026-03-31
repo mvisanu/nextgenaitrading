@@ -460,7 +460,7 @@ export default function AutoBuyPage() {
                   Live Execution Warning
                 </p>
                 <p className="text-3xs text-muted-foreground leading-relaxed mt-1">
-                  <strong className="text-foreground/70">New to this?</strong> Keep <em>Dry Run Mode ON</em> — the engine will show you what it would buy without using real money. Only turn it off when you're comfortable and have tested it.
+                  <strong className="text-foreground/70">New to this?</strong> Keep <em>Dry Run Mode ON</em> — the engine will show you what it would buy without using real money. Only turn it off when you&apos;re comfortable and have tested it.
                 </p>
               </div>
             </div>
@@ -879,7 +879,7 @@ function TargetFields({
         <label className="text-2xs font-bold text-muted-foreground uppercase mb-1 block">
           Max Order Size
         </label>
-        <p className="text-3xs text-muted-foreground mb-1">Most you'll spend per trade</p>
+        <p className="text-3xs text-muted-foreground mb-1">Most you&apos;ll spend per trade</p>
         <div className="relative">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
             $

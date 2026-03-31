@@ -291,9 +291,9 @@ export default function OptionsPage() {
             <div className="flex items-center gap-3 rounded-xl border border-amber-800/30 bg-amber-900/10 px-4 py-3">
               <FlaskConical className="w-4 h-4 text-amber-400 shrink-0" />
               <div>
-                <p className="text-sm text-amber-300 font-medium">You're in Paper Trading mode</p>
+                <p className="text-sm text-amber-300 font-medium">You&apos;re in Paper Trading mode</p>
                 <p className="text-xs text-amber-600 mt-0.5">
-                  All trades are simulated — no real money at risk. Switch to Live when you're ready.
+                  All trades are simulated — no real money at risk. Switch to Live when you&apos;re ready.
                 </p>
               </div>
             </div>

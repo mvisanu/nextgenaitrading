@@ -454,7 +454,7 @@ export default function LiveTradingPage() {
                 <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-bold flex items-center justify-center text-3xs shrink-0 mt-0.5">2</span>
                 <div>
                   <p className="font-semibold text-foreground/80 mb-0.5">Analyze Signal</p>
-                  <p>Click <strong className="text-foreground/70">"Run Signal Check"</strong> to let the AI evaluate 8 indicators. The result tells you whether conditions look favorable to buy or hold.</p>
+                  <p>Click <strong className="text-foreground/70">&quot;Run Signal Check&quot;</strong> to let the AI evaluate 8 indicators. The result tells you whether conditions look favorable to buy or hold.</p>
                 </div>
               </div>
               <div className="flex gap-2">

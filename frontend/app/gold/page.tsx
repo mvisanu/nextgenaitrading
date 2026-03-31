@@ -311,7 +311,7 @@ function RiskTrafficLight({ risk }: { risk: GoldRiskStatus }) {
         <div className="flex items-center justify-between">
           <p className="text-[11px] text-muted-foreground/60">
             <Tip text="How much of today's maximum allowed loss has been used. If it reaches 100%, trading halts automatically.">
-              Today's loss limit used
+              Today&apos;s loss limit used
             </Tip>
           </p>
           <p className="text-[12px] font-bold tabular-nums text-foreground/70">
@@ -1095,7 +1095,7 @@ export default function GoldPage() {
                   <Zap className="h-8 w-8 text-muted-foreground/20" />
                   <p className="text-sm font-bold text-foreground/70">No signals yet</p>
                   <p className="text-[12px] text-muted-foreground/50">
-                    Click "Run Analysis" to generate signals for {committedSymbol}.
+                    Click &quot;Run Analysis&quot; to generate signals for {committedSymbol}.
                   </p>
                 </div>
               )}
