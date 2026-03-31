@@ -52,6 +52,8 @@ interface PriceChartProps {
   bollingerData?: BollingerOverlayBar[];
   /** Moving average overlays */
   maOverlays?: MAOverlay[];
+  /** Price scale mode: "linear" (default) or "log" */
+  scale?: "linear" | "log";
 }
 
 // Theme-dependent chart colours — refined for readability
@@ -102,6 +104,7 @@ export function PriceChart({
   onChartClick,
   bollingerData,
   maOverlays,
+  scale = "linear",
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -298,6 +301,13 @@ export function PriceChart({
       maSeriesRef.current = [];
     };
   }, [theme, height, drawings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Effect: Price scale mode (linear / log) ──────────────────────────────
+  useEffect(() => {
+    if (!chartRef.current) return;
+    // PriceScaleMode: 0 = Normal, 1 = Logarithmic
+    chartRef.current.priceScale("right").applyOptions({ mode: scale === "log" ? 1 : 0 });
+  }, [scale]);
 
   // ── Effect 2: Data update ────────────────────────────────────────────────
   // Runs whenever chart data changes (polling refetch every 30s).
