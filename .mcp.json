@@ -2,14 +2,7 @@
   "mcpServers": {
     "claude-flow": {
       "command": "cmd",
-      "args": [
-        "/c",
-        "npx",
-        "-y",
-        "@claude-flow/cli@latest",
-        "mcp",
-        "start"
-      ],
+      "args": ["/c", "npx", "-y", "@claude-flow/cli@latest", "mcp", "start"],
       "env": {
         "npm_config_update_notifier": "false",
         "CLAUDE_FLOW_MODE": "v3",
@@ -19,6 +12,12 @@
         "CLAUDE_FLOW_MEMORY_BACKEND": "hybrid"
       },
       "autoStart": false
+    },
+    "render": {
+      "url": "https://mcp.render.com/mcp",
+      "headers": {
+        "Authorization": "Bearer rnd_1G9cTH78sk5YbZXeevvs6c9vBy4N"
+      }
     }
   }
 }
