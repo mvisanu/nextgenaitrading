@@ -45,6 +45,7 @@ backend/app/
   models/, schemas/                       # ORM + Pydantic DTOs (v1+v2+v3+commodity)
   services/                               # business logic (see BACKEND.md)
                                           #   alpaca_data.py — Alpaca StockHistoricalDataClient; primary source for stocks/ETFs
+                                          #   alpaca_stream.py — AlpacaStreamManager singleton; WebSocket→SSE fan-out; max 20 symbols; bounded queues
                                           #   market_data.py — routes load_ohlcv(): Alpaca→yfinance fallback; yfinance-only for commodities/forex/crypto
   strategies/                             # conservative, aggressive, bollinger_squeeze
   optimizers/                             # ai_pick, buy_low_sell_high
@@ -64,6 +65,7 @@ frontend/
   lib/api.ts                              # typed fetch wrappers, Bearer token auth
   lib/auth.ts, lib/supabase.ts            # Supabase session helpers
   lib/watchlist.ts                        # shared useWatchlist hook (localStorage)
+  lib/market-stream.ts                    # useMarketStream hook — fetch-based SSE, exponential backoff, QuoteData type
   app/auth/callback/                      # magic link code exchange
   middleware.ts                           # route protection (Supabase SSR)
 ```
@@ -117,8 +119,10 @@ DEBUG=true
 ALPACA_BASE_URL=https://api.alpaca.markets
 ALPACA_PAPER_URL=https://paper-api.alpaca.markets
 # Alpaca market data — same key pair used for trading; enables Alpaca as primary OHLCV source for stocks/ETFs
+# Also starts the real-time WebSocket stream (bid/ask quotes) on backend startup
 ALPACA_API_KEY=your-alpaca-api-key
 ALPACA_SECRET_KEY=your-alpaca-secret-key
+# ALPACA_FEED=iex     # iex = free/delayed (default), sip = paid/real-time
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_JWT_SECRET=your-jwt-secret
@@ -177,7 +181,8 @@ COMMODITY_ALERT_MINUTES=15
 - **Intraday chart times:** `df_to_candles()` outputs Unix int timestamps for intraday intervals; ISO strings for daily+.
 - **Router prefix:** Never double-prefix routes. `app.include_router()` must not add `/api` if router already has it.
 - **Market data routing:** `load_ohlcv()` in `market_data.py` tries Alpaca (`alpaca_data.py`) first for plain US stock/ETF symbols (1-5 uppercase letters), falls back to yfinance on failure or when keys absent. Commodities (`=F`), forex (`=X`), and crypto (`-USD`) always go to yfinance. Never call `load_ohlcv_alpaca()` directly — always use `load_ohlcv()` or `load_ohlcv_for_strategy()`.
-- **Commodity symbol normalisation:** `market_data.normalize_symbol()` translates display symbols (XAU-USD, XAUUSD, XAU/USD) to yfinance tickers (GC=F) before any `load_ohlcv*` call. Always call via `load_ohlcv_for_strategy()` — never pass raw commodity symbols to yfinance directly.
+- **Alpaca stream manager:** `AlpacaStreamManager` in `alpaca_stream.py` is a module-level singleton. It maintains ONE WebSocket connection to Alpaca's data stream and fans updates to SSE clients. Max 20 symbols subscribed. Each SSE client queue is bounded to 50 entries. Stale quotes dropped after 90s. Started in `lifespan()` only when `ALPACA_API_KEY`/`ALPACA_SECRET_KEY` are present. Dashboard uses `useMarketStream()` hook (`lib/market-stream.ts`) for live watchlist prices + bid/ask; falls back silently to 30s REST polling when stream is unavailable. SSE endpoint: `GET /api/v1/stream/quotes?symbols=...` — requires JWT auth; streams `status`, `snapshot`, and `quote` events.
+- **Commodity symbol normalisation:** `market_data.normalize_symbol()` translates display symbols (XAU-USD, XAUUSD, XAU/USD) to yfinance tickers (GC=F) and index display names (SPX→^GSPC, NDQ→^NDX, DJI→^DJI, VIX→^VIX, DXY→DX-Y.NYB, RUT→^RUT) before any `load_ohlcv*` call. Always call via `load_ohlcv_for_strategy()` — never pass raw commodity or index symbols to yfinance directly.
 - **Specific futures contracts:** `normalize_symbol("GCM26")` → `"GCM26.CMX"`. Pattern `^[A-Z]{2,3}[FGHJKMNQUVXZ]\d{2}$` triggers exchange suffix lookup: COMEX metals (GC,SI,HG,PL,PA,MGC,SIL) → `.CMX`; NYMEX energy+PGMs (CL,NG,RB,HO,BZ,PL,PA,QM) → `.NYM`. Unknown roots fall back to `=F`.
 - **`PriceChart` has 3 effects — do not merge them:** Effect 1 (`[theme, height]`) creates the chart structure; Effect 2 (`[data, signals, bollingerData, maOverlays, theme]`) updates series data; Effect 3 (`[drawings]`) attaches/detaches drawing primitives. `drawings` must NOT be in Effect 1's deps — FVG auto-detection recalculates on every candle poll and would destroy/recreate the chart on every 30s refresh. `fitContent()` is gated by `fittedSymbolRef` so it only fires on the first load per symbol, never on polling refreshes.
 - **`AppShell` requires `title` prop** — always pass `title="..."` or `title={tr("pageTitle", lang)}` for translated pages.
@@ -205,6 +210,7 @@ COMMODITY_ALERT_MINUTES=15
 | E2E tests (v1: 263, v2: 159, v3: 34, supabase-auth: 90) | Written; auth system fixed 2026-03-27 |
 | Options Trading Engine (v4 backend + frontend dashboard) | Complete — 2026-03-30 |
 | Alpaca Market Data integration (stocks/ETFs primary source, yfinance fallback) | Complete — 2026-03-31 |
+| Alpaca real-time streaming (WebSocket→SSE, bid/ask, connection badge, bounded caches) | Complete — 2026-03-31 |
 | Live Trading page — beginner UX (guide banner, Tip tooltips, signal plain-English, 8 bug fixes) | Complete — 2026-03-31 |
 | Auto-Buy UX redesign (beginner-friendly, Define Targets + Execution Timeframe) | Complete — 2026-03-31 |
 | Sidebar child-active bug fix (Overview link highlighted on all gold sub-pages) | Fixed — 2026-03-31 |
@@ -228,6 +234,34 @@ COMMODITY_ALERT_MINUTES=15
 | Dashboard E2E tests DASH-07/08/09: flawed assertions (email removed from sidebar, `/500/` regex too broad, SPA nav) | Fixed — 2026-03-31 |
 | PriceChart chart snap-back on poll: `fitContent()` fired on every 30s refresh; now only fires on initial load per symbol | Fixed — 2026-03-31 |
 | PriceChart chart recreated on every poll: `drawings` in Effect 1 deps caused teardown when autoFVGs recalculated; moved drawing attachment to Effect 3 | Fixed — 2026-03-31 |
+| npm audit: 3 vulnerabilities (brace-expansion/handlebars/picomatch in jest/eslint dev deps) | Fixed — 2026-03-31 |
+| Index symbol 422s: DJI/SPX/NDQ/VIX/DXY not in normalize_symbol map → yfinance returned no data; added 9 index mappings to _SYMBOL_MAP | Fixed — 2026-03-31 |
+
+## Alpaca Real-Time Streaming (2026-03-31)
+
+Live bid/ask/trade data streamed from Alpaca WebSocket → SSE → frontend dashboard.
+
+**Backend (`backend/app/services/alpaca_stream.py`, `backend/app/api/v1/stream.py`):**
+- `AlpacaStreamManager` — module-level singleton; one WebSocket to Alpaca; reconnects with exponential backoff (1s→60s)
+- Supports IEX (free, 15-min delayed) and SIP (paid, real-time) feeds via `ALPACA_FEED` env var
+- Hard limit: 20 symbols subscribed; per-client queue bounded to 50 entries; stale quotes evicted after 90s
+- SSE endpoint: `GET /api/v1/stream/quotes?symbols=AAPL,MSFT` — requires JWT auth; 3 event types:
+  - `event: status` — stream connection state (`live`, `connecting`, `reconnecting`, `unconfigured`, etc.)
+  - `event: snapshot` — full current quote map on first connect
+  - `event: quote` — incremental update per symbol as data arrives
+- `GET /api/v1/stream/status` — diagnostics (no auth): connected, symbol count, client count, queue depths
+- Stream starts in `lifespan()` only when `ALPACA_API_KEY`+`ALPACA_SECRET_KEY` present; no-op otherwise
+- Alpaca credentials never leave the backend
+
+**Frontend (`frontend/lib/market-stream.ts`):**
+- `useMarketStream(symbols: string[])` — fetch-based SSE (not `EventSource`) so `Authorization` header can be sent
+- Exponential backoff reconnect (1s→30s); stable `symbols` key avoids reconnects on every render
+- Returns `{ quotes: Record<string, QuoteData>, status: StreamStatus }`
+- Falls back silently when unconfigured — dashboard reverts to 30s REST polling
+- Cleanup on unmount: aborts fetch, clears reconnect timer
+
+**Activate:** Set `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` in backend `.env`. No migration needed.
+**Optional:** Set `ALPACA_FEED=sip` for real-time (requires paid Alpaca plan); default `iex` = free/delayed.
 
 ## Options Trading Engine (2026-03-30)
 

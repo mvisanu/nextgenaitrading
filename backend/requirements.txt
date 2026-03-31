@@ -37,8 +37,9 @@ ta>=0.11.0
 hmmlearn>=0.3.2
 scikit-learn>=1.5.0
 
-# Broker SDK
+# Broker SDK + real-time stream
 alpaca-py>=0.30.0
+websockets>=12.0
 
 # Scheduler
 apscheduler>=3.10.0

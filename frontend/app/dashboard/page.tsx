@@ -21,6 +21,7 @@ import { useSidebarPinned } from "@/lib/sidebar";
 import { useWatchlist, flattenWatchlist, type WatchlistItem, type WatchlistCategory } from "@/lib/watchlist";
 import { cn } from "@/lib/utils";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { useMarketStream, getSpread } from "@/lib/market-stream";
 import type { CandleBar } from "@/types";
 
 // Watchlist data now comes from shared hook (lib/watchlist.ts)
@@ -1065,22 +1066,39 @@ function DashboardContent() {
     enabled: watchlistSymbols.length > 0,
   });
 
+  // ── Real-time quote streaming (Alpaca WebSocket → SSE) ──────────────────
+  // Only subscribes to plain US equity/ETF symbols (Alpaca-supported).
+  // Falls back silently to the 30s polling data when stream is unavailable.
+  const streamSymbols = useMemo(
+    () => watchlistSymbols.filter((s) => /^[A-Z]{1,5}$/.test(s)).slice(0, 10),
+    [watchlistSymbols]
+  );
+  const { quotes: streamQuotes, status: streamStatus } = useMarketStream(
+    user ? streamSymbols : []
+  );
+
   // Merge live prices into watchlist items for display (does not touch localStorage)
+  // Stream data (bid/ask/last) takes priority over REST polling close price.
   const allItems = useMemo(() => {
     const base = flattenWatchlist(watchlist);
-    if (!liveWatchlistPrices) return base;
+    if (!liveWatchlistPrices && !Object.keys(streamQuotes).length) return base;
     return base.map((item) => {
-      const live = liveWatchlistPrices[item.symbol];
-      if (!live) return item;
+      const stream = streamQuotes[item.symbol];
+      const poll = liveWatchlistPrices?.[item.symbol];
+      // Prefer streaming last price, fall back to polling close
+      const price = stream?.last ?? poll?.close ?? item.price;
+      const change = poll?.change ?? item.change;
+      const changePct = poll?.changePct ?? item.changePct;
+      if (!stream && !poll) return item;
       return {
         ...item,
-        price: live.close,
-        change: live.change,
-        changePct: live.changePct,
-        color: live.change >= 0 ? "#26a69a" : "#ef5350",
+        price,
+        change,
+        changePct,
+        color: (change ?? 0) >= 0 ? "#26a69a" : "#ef5350",
       };
     });
-  }, [watchlist, liveWatchlistPrices]);
+  }, [watchlist, liveWatchlistPrices, streamQuotes]);
 
   const selectedItem = allItems.find((i) => i.symbol === symbol) ?? allItems[0];
 
@@ -1473,6 +1491,29 @@ function DashboardContent() {
                   </span>
                 </span>
               )}
+              {/* Bid / Ask from stream (Alpaca supported symbols only) */}
+              {streamStatus === "live" && streamQuotes[chartSymbol] && (
+                <span className="hidden sm:contents text-3xs">
+                  <span className="text-muted-foreground uppercase tracking-widest">
+                    B&nbsp;<span className="text-[#26a69a] tabular-nums">
+                      {streamQuotes[chartSymbol]?.bid?.toFixed(2) ?? "—"}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground uppercase tracking-widest">
+                    A&nbsp;<span className="text-[#ef5350] tabular-nums">
+                      {streamQuotes[chartSymbol]?.ask?.toFixed(2) ?? "—"}
+                    </span>
+                  </span>
+                  {(() => {
+                    const spread = getSpread(streamQuotes[chartSymbol]);
+                    return spread != null ? (
+                      <span className="text-muted-foreground uppercase tracking-widest">
+                        Spd&nbsp;<span className="text-foreground/70 tabular-nums">{spread.toFixed(2)}</span>
+                      </span>
+                    ) : null;
+                  })()}
+                </span>
+              )}
               {candles.length === 0 && (
                 <span className="text-3xs text-muted-foreground uppercase tracking-widest">Loading...</span>
               )}
@@ -1613,6 +1654,30 @@ function DashboardContent() {
               {/* Watchlist header */}
               <div className="flex items-center px-3 h-8 shrink-0 border-b border-border/10 bg-surface-lowest/60">
                 <span className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground flex-1">Watchlist</span>
+                {/* Stream connection status badge */}
+                <span
+                  title={`Stream: ${streamStatus}`}
+                  className={cn(
+                    "text-[9px] font-bold uppercase tracking-widest mr-2 px-1.5 py-0.5 rounded-sm",
+                    streamStatus === "live"
+                      ? "text-[#44DFA3] bg-[#44DFA3]/10"
+                      : streamStatus === "connecting" || streamStatus === "reconnecting"
+                      ? "text-yellow-400 bg-yellow-400/10 animate-pulse"
+                      : streamStatus === "unconfigured"
+                      ? "hidden"
+                      : "text-muted-foreground bg-surface-mid"
+                  )}
+                >
+                  {streamStatus === "live"
+                    ? "● LIVE"
+                    : streamStatus === "connecting"
+                    ? "○ connecting"
+                    : streamStatus === "reconnecting"
+                    ? "○ reconnecting"
+                    : streamStatus === "error"
+                    ? "○ error"
+                    : null}
+                </span>
                 <button
                   onClick={() => setIsEditingWatchlist((v) => !v)}
                   className={cn(

@@ -31,6 +31,7 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Commodity signal engine** — XAUUSD/XAGUSD/multi-symbol signal engine integrated into the main backend with sidebar sub-menu (Overview, Signals, Performance, Risk)
 - **Real-time commodity alerts** — SMTP email + Twilio SMS fired when a commodity ticker meets all 4 technical conditions (EMA cross, trend, RSI, volume); per-user cooldown, confidence threshold, and symbol watchlist; scheduler checks every 15 min using live yfinance data; confirmed working end-to-end
 - **Alpaca market data integration** — `alpaca_data.py` wraps `StockHistoricalDataClient`; `load_ohlcv()` routes US stocks/ETFs through Alpaca automatically when `ALPACA_API_KEY` is set, falls back to yfinance; commodities/forex/crypto always use yfinance
+- **Real-time WebSocket streaming** — `AlpacaStreamManager` singleton maintains one persistent Alpaca WebSocket connection, fans out quote/trade events to all connected clients via SSE (`GET /api/v1/stream/quotes`); dashboard shows live bid/ask/spread and a connection status badge (● LIVE / ○ connecting / ○ error); gracefully falls back to 30s polling when streaming is unavailable or unconfigured; memory-safe: max 20 symbols, bounded per-client queues (50), stale eviction after 90s
 - **Portfolio ledger** — editable holdings and activity log persisted to localStorage with computed P&L, asset allocation donut, and CSV export
 - **Beginner-friendly Auto-Buy UI** — Define Targets panel (symbol, max order size, buy/sell price targets in a clear 2×2 grid) + Execution Timeframe pill selector (Live / 15 min / 30 min / 1 hr / 2 hrs) with plain-English labels; `DEFAULT_SETTINGS` fallback ensures the form always renders without a prior API call
 
@@ -111,6 +112,7 @@ Screenshots coming soon. The platform includes the following main views:
 │  │  moat_scoring_service   — competitive moat heuristic    │     │
 │  │  financial_quality_svc  — yfinance revenue/margin data  │     │
 │  │  alpaca_data            — Alpaca StockHistoricalDataClient│    │
+│  │  alpaca_stream          — WebSocket→SSE stream manager   │     │
 │  │  market_data            — Alpaca→yfinance routing + norm │     │
 │  │  bollinger_squeeze_svc  — squeeze detection + breakout  │     │
 │  └─────────────────────────────────────────────────────────┘     │
@@ -169,6 +171,7 @@ Screenshots coming soon. The platform includes the following main views:
 | JWT verification | PyJWT (HS256) | Backend verifies Supabase-issued tokens |
 | Credential encryption | cryptography (Fernet) | Symmetric authenticated encryption for broker API keys |
 | Market data — stocks/ETFs | alpaca-py (`StockHistoricalDataClient`) | Official Alpaca feed; split/dividend-adjusted; falls back to yfinance automatically |
+| Real-time quotes | alpaca-py + websockets + SSE | Single Alpaca WebSocket connection; SSE fan-out to frontend; bid/ask + last trade; memory-bounded |
 | Market data — commodities/forex/crypto | yfinance + pandas | Sole source for futures (`=F`), forex (`=X`), crypto (`-USD`); wide ticker coverage |
 | HMM regime detection | hmmlearn (GaussianHMM) | 2-state bull/bear regime fitted on 730 days of log-returns, ATR, volume ratio |
 | Technical indicators | ta | MACD, RSI, EMA, Bollinger Bands |
@@ -249,6 +252,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Feature | Description |
 |---|---|
 | Alpaca market data | `alpaca_data.py` wraps `StockHistoricalDataClient`; `load_ohlcv()` routes US stocks/ETFs through Alpaca when `ALPACA_API_KEY` set, falls back to yfinance; commodities/forex/crypto always use yfinance |
+| Alpaca real-time stream | `AlpacaStreamManager` singleton connects to Alpaca WebSocket (IEX free / SIP paid via `ALPACA_FEED`); fans out bid/ask/trade events to frontend via SSE (`GET /api/v1/stream/quotes`); dashboard shows live bid/ask/spread + connection badge; bounded to 20 symbols / 50-entry queues; falls back to 30s polling when unconfigured |
 | Commodity signal engine | XAUUSD/XAGUSD/multi-symbol signal engine fully integrated into the main backend (`/gold/*` endpoints, Bearer auth); sidebar sub-menu with Overview, Signals, Performance, and Risk sub-pages |
 | Commodity buy-signal alerts | Real-time email (SMTP/TLS) + SMS (Twilio) when all 4 technical conditions pass on a watched symbol; per-user prefs stored in `commodity_alert_prefs` table; settings UI at `/gold`; APScheduler job every 15 min |
 | Portfolio ledger | Editable holdings table + activity log persisted to localStorage; computed total market value, day P&L, unrealized P&L; asset allocation + sector donut charts; CSV export |
@@ -357,6 +361,9 @@ npm run lint
 | `JWT_ALGORITHM` | No | `HS256` | JWT signing algorithm |
 | `CORS_ORIGINS` | No | `http://localhost:3000` | Comma-separated allowed CORS origins |
 | `DEBUG` | No | `false` | Enables Swagger UI, `/test/token`, and `dev_token` cookie auth |
+| `ALPACA_API_KEY` | No | — | Alpaca API key — enables Alpaca as primary OHLCV source AND starts the real-time WebSocket stream |
+| `ALPACA_SECRET_KEY` | No | — | Alpaca secret key (paired with `ALPACA_API_KEY`) |
+| `ALPACA_FEED` | No | `iex` | Alpaca data feed for streaming: `iex` (free, 15-min delayed) or `sip` (paid, real-time) |
 | `ALPACA_BASE_URL` | No | `https://api.alpaca.markets` | Alpaca live trading API URL |
 | `ALPACA_PAPER_URL` | No | `https://paper-api.alpaca.markets` | Alpaca paper trading API URL |
 | `SMTP_HOST` | No | — | SMTP server for commodity alert emails (e.g. `smtp.gmail.com`) |
@@ -503,6 +510,23 @@ Authentication is handled entirely by Supabase on the frontend (magic link login
 |---|---|---|
 | `GET` | `/commodity-alerts/prefs` | Get current user's alert prefs (auto-creates defaults on first call) |
 | `PATCH` | `/commodity-alerts/prefs` | Update email, phone, symbols, confidence threshold, cooldown |
+
+### Real-time market data (SSE proxy)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/stream/quotes?symbols=AAPL,MSFT` | Bearer | SSE stream of live bid/ask/trade events; up to 10 symbols per client |
+| `GET` | `/api/v1/stream/status` | None | Stream diagnostics: connected, subscribed symbols, client count, queue depths |
+
+Event types emitted by `/api/v1/stream/quotes`:
+
+| Event | Payload | Description |
+|---|---|---|
+| `status` | `{"status": "live"\|"connecting"\|"reconnecting"\|"unconfigured"}` | Stream connection state |
+| `snapshot` | `{AAPL: {bid, ask, last, ...}, ...}` | Full quote map on first connect |
+| `quote` | `{symbol, bid, ask, bid_size, ask_size, last, last_size, timestamp, stale}` | Incremental update per symbol |
+
+Alpaca credentials stay server-side only. Frontend receives a filtered SSE stream — no raw WebSocket or API keys ever reach the browser.
 
 ---
 

@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     from app.db.session import get_engine
     from app.scheduler.jobs import register_jobs, scheduler
+    from app.services.alpaca_stream import stream_manager
 
     logger.info("NextGenStock backend starting — pool initialising")
 
@@ -64,6 +65,14 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Scheduler disabled (SCHEDULER_ENABLE=false)")
 
+    # Start Alpaca real-time stream (if keys configured)
+    _key = (settings.alpaca_data_key or settings.alpaca_api_key).strip()
+    _secret = (settings.alpaca_data_secret or settings.alpaca_secret_key).strip()
+    _feed = getattr(settings, "alpaca_feed", "iex") or "iex"
+    if _key and _secret:
+        stream_manager.configure(_key, _secret, feed=_feed)
+        await stream_manager.start()
+
     # pool_pre_ping=True handles reconnect; no explicit warm-up needed
     yield
 
@@ -71,6 +80,9 @@ async def lifespan(app: FastAPI):
     if settings.scheduler_enable and scheduler.running:
         scheduler.shutdown(wait=False)
         logger.info("APScheduler stopped")
+
+    # Stop Alpaca stream
+    await stream_manager.stop()
 
     logger.info("NextGenStock backend shutting down — disposing engine")
     engine = get_engine()
@@ -224,6 +236,8 @@ from app.api.gold import router as gold_router
 from app.api.commodity_alert_prefs import router as commodity_alert_router
 # v4 options engine
 from app.api.v4.options import router as options_router
+# real-time stream (SSE proxy for Alpaca WebSocket)
+from app.api.v1.stream import router as stream_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -248,6 +262,8 @@ app.include_router(gold_router)
 app.include_router(commodity_alert_router)
 # v4 options engine
 app.include_router(options_router, prefix="/api/v4/options", tags=["options"])
+# real-time stream
+app.include_router(stream_router)
 
 # Test-only utilities (only mounted in debug mode)
 if settings.debug:

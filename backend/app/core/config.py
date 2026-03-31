@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     alpaca_secret_key: str = Field(default="", description="Alpaca secret key (trading + data)")
     alpaca_data_key: str = Field(default="", description="Override key for Alpaca market data only")
     alpaca_data_secret: str = Field(default="", description="Override secret for Alpaca market data only")
+    alpaca_feed: str = Field(default="iex", description="Alpaca data feed: iex (free/delayed) or sip (paid/real-time)")
 
     # ── Scheduler ──────────────────────────────────────────────────────────────
     scheduler_enable: bool = Field(default=True, description="Enable APScheduler background jobs")
