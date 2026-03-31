@@ -33,11 +33,16 @@ def _get_session_factory() -> async_sessionmaker[AsyncSession]:
             pool_pre_ping=True,
             pool_size=settings.pool_size,
             max_overflow=settings.max_overflow,
-            pool_recycle=3600,    # recycle connections older than 1 h — prevents stale-socket hangs
+            pool_recycle=300,     # recycle connections every 5 min — handles Render idle spin-down
             pool_timeout=30,      # raise after 30 s if no connection is available
+            pool_reset_on_return="rollback",  # clean up transactions on connection return
             # Disable asyncpg prepared statement cache — required when Supabase
             # routes connections through pgbouncer (transaction/statement mode).
-            connect_args={"statement_cache_size": 0},
+            # Also disable server-side JIT to avoid pgbouncer plan cache issues.
+            connect_args={
+                "statement_cache_size": 0,
+                "server_settings": {"jit": "off"},
+            },
         )
         _session_factory = async_sessionmaker(
             bind=_async_engine,
@@ -71,13 +76,28 @@ def get_engine():
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an AsyncSession and guarantees cleanup.
+    Retries once on asyncpg interface/connection errors (handles Render
+    spin-down where pooled connections become stale before pool_pre_ping
+    can detect them).
     Use as: db: AsyncSession = Depends(get_db)
     """
-    async with _get_session_factory()() as session:
+    import asyncpg  # only needed at call time, not import time
+
+    for attempt in range(2):
+        session = _get_session_factory()()
         try:
-            yield session
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+            async with session:
+                try:
+                    yield session
+                    return
+                except Exception:
+                    await session.rollback()
+                    raise
+        except (asyncpg.InterfaceError, asyncpg.TooManyConnectionsError, OSError) as exc:
+            if attempt == 0:
+                # First failure — likely a stale pooled connection.
+                # Dispose the pool to force fresh connections, then retry.
+                if _async_engine is not None:
+                    await _async_engine.dispose()
+                continue
+            raise  # Re-raise on second attempt
