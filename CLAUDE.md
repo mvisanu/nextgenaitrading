@@ -182,6 +182,8 @@ COMMODITY_ALERT_MINUTES=15
 - **`AppShell` requires `title` prop** — always pass `title="..."` or `title={tr("pageTitle", lang)}` for translated pages.
 - **`useMemo` with derived arrays:** Never declare arrays outside a `useMemo` and reference them in its deps — move the array construction inside the callback. See `dashboard/page.tsx` `allSymbols` pattern.
 - **SSR hydration for time/random values:** Initialize `useState` as `null` for any value derived from `Date.now()` or `Math.random()`. Set the real value only inside `useEffect`. Render an invisible placeholder when `null`. See `LiveClock` in `dashboard/page.tsx`.
+- **Alembic on Render:** `backend/Dockerfile` CMD runs `alembic upgrade head && uvicorn ...` — migrations auto-apply on every deploy. Never add new ORM columns without a corresponding migration or the scheduler/API will crash with `UndefinedColumnError`.
+- **yfinance row cap:** `_load_ohlcv_yfinance` caps output at 750 rows (most-recent) to prevent Render OOM. Periods for `1wk`/`1mo` are capped at `1825d` (5 years). Do not increase without memory testing on Render Starter.
 
 ## Implementation Status
 
