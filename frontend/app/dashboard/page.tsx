@@ -104,6 +104,59 @@ const POPULAR_SYMBOLS = [
   "^GSPC", "^IXIC", "^DJI", "^VIX",
 ];
 
+// ─── Animation styles ─────────────────────────────────────────────────────────
+
+const TERMINAL_ANIM_STYLES = `
+@keyframes flash-green {
+  0%   { background-color: rgba(68,223,163,0.35); }
+  60%  { background-color: rgba(68,223,163,0.15); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-red {
+  0%   { background-color: rgba(239,68,68,0.35); }
+  60%  { background-color: rgba(239,68,68,0.15); }
+  100% { background-color: transparent; }
+}
+@keyframes tick-up {
+  0%   { transform: translateY(6px); opacity: 0; }
+  100% { transform: translateY(0);   opacity: 1; }
+}
+@keyframes tick-down {
+  0%   { transform: translateY(-6px); opacity: 0; }
+  100% { transform: translateY(0);    opacity: 1; }
+}
+@keyframes arrow-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+.price-flash-green { animation: flash-green 1.2s ease-out forwards; }
+.price-flash-red   { animation: flash-red   1.2s ease-out forwards; }
+.price-tick-up     { animation: tick-up   0.25s ease-out forwards; }
+.price-tick-down   { animation: tick-down 0.25s ease-out forwards; }
+.arrow-pulse       { animation: arrow-pulse 1s ease-in-out 3; }
+`;
+
+// ─── LiveClock ────────────────────────────────────────────────────────────────
+
+function LiveClock() {
+  const [time, setTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setTime(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const hh = time.getHours().toString().padStart(2, "0");
+  const mm = time.getMinutes().toString().padStart(2, "0");
+  const ss = time.getSeconds().toString().padStart(2, "0");
+
+  return (
+    <span className="font-mono text-[11px] text-primary tabular-nums shrink-0 select-none">
+      {hh}:{mm}:{ss}
+    </span>
+  );
+}
+
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function formatPrice(price: number, symbol: string): string {
@@ -184,6 +237,23 @@ function WatchlistRow({
   onRemove: () => void;
 }) {
   const positive = item.change >= 0;
+  const prevPriceRef = useRef<number>(item.price);
+  const [arrowClass, setArrowClass] = useState<"up" | "down" | null>(null);
+  const arrowTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const prev = prevPriceRef.current;
+    if (prev !== item.price) {
+      // Clear any running timer
+      if (arrowTimerRef.current) window.clearTimeout(arrowTimerRef.current);
+      setArrowClass(item.price > prev ? "up" : "down");
+      arrowTimerRef.current = window.setTimeout(() => setArrowClass(null), 2000);
+      prevPriceRef.current = item.price;
+    }
+    return () => {
+      if (arrowTimerRef.current) window.clearTimeout(arrowTimerRef.current);
+    };
+  }, [item.price]);
 
   return (
     <tr
@@ -213,7 +283,19 @@ function WatchlistRow({
         </div>
       </td>
       <td className="p-2 text-right">
-        <div className="text-xs tabular-nums text-foreground font-medium">{formatPrice(item.price, item.symbol)}</div>
+        <div className="flex items-center justify-end gap-1">
+          {arrowClass && (
+            <span
+              className={cn(
+                "text-[10px] leading-none arrow-pulse",
+                arrowClass === "up" ? "text-primary" : "text-destructive"
+              )}
+            >
+              {arrowClass === "up" ? "↑" : "↓"}
+            </span>
+          )}
+          <span className="text-xs tabular-nums text-foreground font-medium">{formatPrice(item.price, item.symbol)}</span>
+        </div>
         <div className={cn("text-3xs tabular-nums font-medium", positive ? "text-primary" : "text-destructive")}>
           {positive ? "+" : ""}{item.changePct.toFixed(2)}%
         </div>
@@ -935,10 +1017,55 @@ function DashboardContent() {
     setSymbol(s);
   }, []);
 
+  // ── Price flash ─────────────────────────────────────────────────────────
+  const prevPriceRef = useRef<number | null>(null);
+  const [priceFlash, setPriceFlash] = useState<"green" | "red" | null>(null);
+  const flashTimerRef = useRef<number | null>(null);
+  // Key to force CSS animation restart on each data refresh
+  const [priceTickKey, setPriceTickKey] = useState(0);
+
+  useEffect(() => {
+    if (!lastCandle) return;
+    const current = lastCandle.close;
+    const prev = prevPriceRef.current;
+    if (prev !== null && prev !== current) {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      setPriceFlash(current > prev ? "green" : "red");
+      setPriceTickKey((k) => k + 1);
+      flashTimerRef.current = window.setTimeout(() => setPriceFlash(null), 1400);
+    }
+    prevPriceRef.current = current;
+    return () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+    };
+  }, [lastCandle]);
+
+  // ── Countdown to next chart refresh ─────────────────────────────────────
+  const [countdown, setCountdown] = useState(30);
+  const countdownStartRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    // Reset countdown each time chart data arrives
+    countdownStartRef.current = Date.now();
+    setCountdown(30);
+  }, [chartPayload]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - countdownStartRef.current) / 1000);
+      const remaining = Math.max(0, 30 - elapsed);
+      setCountdown(remaining);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // ─── JSX ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-lowest">
+      {/* Terminal animation keyframes */}
+      <style dangerouslySetInnerHTML={{ __html: TERMINAL_ANIM_STYLES }} />
+
       {/* Page title — 1px visible for Playwright */}
       <h1
         data-testid="page-title"
@@ -1166,6 +1293,12 @@ function DashboardContent() {
           {/* Spacer */}
           <div className="flex-1" />
 
+          {/* Live clock */}
+          <LiveClock />
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-border/10 mx-0.5 shrink-0" />
+
           {/* Theme toggle */}
           <button
             onClick={toggle}
@@ -1216,13 +1349,29 @@ function DashboardContent() {
           <div className="relative flex flex-col flex-1 min-w-0 border-r border-border/10">
 
             {/* Price ticker + OHLCV header bar */}
-            <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 h-8 shrink-0 border-b border-border/10 bg-surface-low text-[11px] font-mono overflow-x-auto">
+            <div
+              className={cn(
+                "flex items-center gap-2 sm:gap-3 px-2 sm:px-3 h-8 shrink-0 border-b border-border/10 bg-surface-low text-[11px] font-mono overflow-x-auto",
+                priceFlash === "green" && "price-flash-green",
+                priceFlash === "red"   && "price-flash-red"
+              )}
+            >
+              {/* Blinking LIVE indicator */}
+              <span className="flex items-center gap-1 shrink-0">
+                <span className="text-primary animate-pulse text-[10px] leading-none">●</span>
+                <span className="text-3xs text-primary/70 font-bold uppercase tracking-widest">LIVE</span>
+              </span>
+
               <span className="text-primary font-bold text-sm sm:text-[13px] shrink-0 tracking-tight">
                 {chartSymbol}
               </span>
               {lastCandle && (
                 <span
-                  className="font-bold text-base sm:text-[13px] tabular-nums shrink-0"
+                  key={priceTickKey}
+                  className={cn(
+                    "font-bold text-base sm:text-[13px] tabular-nums shrink-0",
+                    priceFlash === "green" ? "price-tick-up" : priceFlash === "red" ? "price-tick-down" : ""
+                  )}
                   style={{ color: isPositive ? "hsl(var(--primary))" : "hsl(var(--destructive))" }}
                 >
                   {formatPrice(lastCandle.close, chartSymbol)}
@@ -1326,6 +1475,13 @@ function DashboardContent() {
                 </button>
                 <span className="px-1.5 py-0.5 text-muted-foreground/40 cursor-default text-3xs uppercase tracking-widest">Auto</span>
               </div>
+            </div>
+
+            {/* Countdown to next chart refresh */}
+            <div className="flex items-center px-3 h-5 shrink-0 bg-surface-lowest border-t border-border/5">
+              <span className="text-3xs font-mono text-muted-foreground/60 uppercase tracking-widest">
+                NEXT UPDATE IN {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, "0")}
+              </span>
             </div>
 
             {/* MACD sub-chart */}
