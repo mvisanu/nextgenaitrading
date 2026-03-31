@@ -43,9 +43,15 @@ class Settings(BaseSettings):
     encryption_key: str = Field(description="Base64-URL Fernet key for broker creds")
 
     # ── CORS ───────────────────────────────────────────────────────────────────
+    # On Render, set CORS_ORIGINS to:
+    #   http://localhost:3000,https://nextgenaitrading.vercel.app
+    # Never use "*" — credentials require an explicit origin.
     cors_origins: str = Field(
-        default="http://localhost:3000",
-        description="Comma-separated list of allowed CORS origins",
+        default="http://localhost:3000,https://nextgenaitrading.vercel.app",
+        description=(
+            "Comma-separated list of allowed CORS origins. "
+            "Production Render env var must include https://nextgenaitrading.vercel.app"
+        ),
     )
 
     # ── Cookies ────────────────────────────────────────────────────────────────
