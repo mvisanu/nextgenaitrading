@@ -129,11 +129,16 @@ const TERMINAL_ANIM_STYLES = `
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.2; }
 }
+@keyframes refresh-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
 .price-flash-green { animation: flash-green 1.2s ease-out forwards; }
 .price-flash-red   { animation: flash-red   1.2s ease-out forwards; }
 .price-tick-up     { animation: tick-up   0.25s ease-out forwards; }
 .price-tick-down   { animation: tick-down 0.25s ease-out forwards; }
 .arrow-pulse       { animation: arrow-pulse 1s ease-in-out 3; }
+.refresh-pulse     { animation: refresh-pulse 0.6s ease-in-out infinite; }
 `;
 
 // ─── LiveClock ────────────────────────────────────────────────────────────────
@@ -1010,7 +1015,61 @@ function DashboardContent() {
     return computeRSI(closesForIndicators);
   }, [showRSI, candles, closesForIndicators]);
 
-  const allItems = flattenWatchlist(watchlist);
+  // ── Live watchlist price polling (30s interval, same cycle as chart) ────
+  const watchlistSymbols = useMemo(
+    () => flattenWatchlist(watchlist).map((i) => i.symbol),
+    [watchlist]
+  );
+
+  const { data: liveWatchlistPrices } = useQuery({
+    queryKey: ["watchlist-live-prices", watchlistSymbols],
+    queryFn: async () => {
+      const results = await Promise.allSettled(
+        watchlistSymbols.map((sym) => liveApi.chartData(sym, "1d"))
+      );
+      const prices: Record<string, { close: number; change: number; changePct: number }> = {};
+      results.forEach((result, idx) => {
+        if (result.status === "fulfilled") {
+          const sym = watchlistSymbols[idx];
+          const bars = result.value?.candles ?? [];
+          if (bars.length >= 2) {
+            const last = bars[bars.length - 1];
+            const prev = bars[bars.length - 2];
+            const change = last.close - prev.close;
+            prices[sym] = {
+              close: last.close,
+              change,
+              changePct: prev.close !== 0 ? (change / prev.close) * 100 : 0,
+            };
+          } else if (bars.length === 1) {
+            prices[sym] = { close: bars[0].close, change: 0, changePct: 0 };
+          }
+        }
+      });
+      return prices;
+    },
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+    enabled: watchlistSymbols.length > 0,
+  });
+
+  // Merge live prices into watchlist items for display (does not touch localStorage)
+  const allItems = useMemo(() => {
+    const base = flattenWatchlist(watchlist);
+    if (!liveWatchlistPrices) return base;
+    return base.map((item) => {
+      const live = liveWatchlistPrices[item.symbol];
+      if (!live) return item;
+      return {
+        ...item,
+        price: live.close,
+        change: live.change,
+        changePct: live.changePct,
+        color: live.change >= 0 ? "#26a69a" : "#ef5350",
+      };
+    });
+  }, [watchlist, liveWatchlistPrices]);
+
   const selectedItem = allItems.find((i) => i.symbol === symbol) ?? allItems[0];
 
   const handleSelectSymbol = useCallback((s: string) => {
@@ -1477,11 +1536,36 @@ function DashboardContent() {
               </div>
             </div>
 
-            {/* Countdown to next chart refresh */}
-            <div className="flex items-center px-3 h-5 shrink-0 bg-surface-lowest border-t border-border/5">
-              <span className="text-3xs font-mono text-muted-foreground/60 uppercase tracking-widest">
-                NEXT UPDATE IN {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, "0")}
-              </span>
+            {/* ── Terminal refresh status bar ────────────────────────── */}
+            <div className="shrink-0 bg-surface-lowest border-t border-border/5">
+              {/* Label row */}
+              <div className="flex items-center justify-between px-3 pt-1 pb-0.5">
+                <span className="text-2xs font-mono uppercase tracking-widest text-muted-foreground">
+                  NEXT REFRESH
+                </span>
+                <span
+                  className={cn(
+                    "text-sm font-black font-mono tabular-nums leading-none",
+                    countdown <= 3 ? "text-amber-400 refresh-pulse" : "text-primary"
+                  )}
+                >
+                  {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, "0")}
+                </span>
+              </div>
+              {/* Animated progress bar */}
+              <div className="h-[3px] w-full bg-surface-mid relative overflow-hidden">
+                <div
+                  className="absolute left-0 top-0 h-full"
+                  style={{
+                    width: `${(countdown / 30) * 100}%`,
+                    backgroundColor: countdown <= 3 ? "#f59e0b" : "#44DFA3",
+                    boxShadow: countdown <= 3
+                      ? "0 0 8px #f59e0baa"
+                      : "0 0 8px #44DFA3aa",
+                    transition: "width 1s linear, background-color 0.3s ease, box-shadow 0.3s ease",
+                  }}
+                />
+              </div>
             </div>
 
             {/* MACD sub-chart */}
