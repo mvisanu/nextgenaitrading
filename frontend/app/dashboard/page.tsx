@@ -144,12 +144,19 @@ const TERMINAL_ANIM_STYLES = `
 // ─── LiveClock ────────────────────────────────────────────────────────────────
 
 function LiveClock() {
-  const [time, setTime] = useState(() => new Date());
+  const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {
+    setTime(new Date());
     const id = window.setInterval(() => setTime(new Date()), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  if (!time) return (
+    <span className="font-mono text-[11px] text-primary tabular-nums shrink-0 select-none opacity-0">
+      00:00:00
+    </span>
+  );
 
   const hh = time.getHours().toString().padStart(2, "0");
   const mm = time.getMinutes().toString().padStart(2, "0");
