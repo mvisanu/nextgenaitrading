@@ -14,14 +14,20 @@ from .broker.base import OptionContract
 
 logger = logging.getLogger(__name__)
 
-# Attempt to import py_vollib_vectorized; fall back gracefully
+# Attempt to import py_vollib_vectorized; fall back gracefully.
+# RuntimeError is caught in addition to ImportError because numba (a transitive
+# dependency) tries to cache JIT-compiled functions to the site-packages directory
+# at import time, which fails on Render's read-only container filesystem with:
+#   RuntimeError: cannot cache function '_is_zero': no locator available for ...
 try:
     import py_vollib_vectorized as pv  # type: ignore
 
     _HAS_VOLLIB = True
-except ImportError:
+except Exception:
     _HAS_VOLLIB = False
-    logger.warning("py_vollib_vectorized not installed — Greeks will use Black-Scholes fallback")
+    logger.warning(
+        "py_vollib_vectorized unavailable (import failed) — Greeks will use Black-Scholes fallback"
+    )
 
 
 # ─── Black-Scholes fallback ───────────────────────────────────────────────────
