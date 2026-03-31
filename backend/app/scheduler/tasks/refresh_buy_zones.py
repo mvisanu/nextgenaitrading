@@ -7,6 +7,7 @@ Snapshots newer than the refresh interval are skipped (idempotent).
 """
 from __future__ import annotations
 
+import gc
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -69,3 +70,5 @@ async def refresh_buy_zones() -> None:
             )
     except Exception as exc:
         logger.exception("refresh_buy_zones job failed: %s", exc)
+    finally:
+        gc.collect()  # Release DataFrames from yfinance downloads

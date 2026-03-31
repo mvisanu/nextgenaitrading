@@ -22,9 +22,9 @@ class Settings(BaseSettings):
     database_url: str = Field(
         description="Async PostgreSQL URL (postgresql+asyncpg://...)"
     )
-    pool_size: int = Field(default=5, description="SQLAlchemy connection pool size")
+    pool_size: int = Field(default=2, description="SQLAlchemy connection pool size")
     max_overflow: int = Field(
-        default=10, description="SQLAlchemy connection pool max overflow"
+        default=4, description="SQLAlchemy connection pool max overflow"
     )
 
     # ── JWT ────────────────────────────────────────────────────────────────────
@@ -80,11 +80,11 @@ class Settings(BaseSettings):
 
     # ── Scheduler ──────────────────────────────────────────────────────────────
     scheduler_enable: bool = Field(default=True, description="Enable APScheduler background jobs")
-    buy_zone_refresh_minutes: int = Field(default=60, description="Interval for buy zone snapshot refresh")
-    theme_score_refresh_minutes: int = Field(default=360, description="Interval for theme score refresh")
-    alert_eval_minutes: int = Field(default=5, description="Interval for alert evaluation")
-    auto_buy_eval_minutes: int = Field(default=5, description="Interval for auto-buy evaluation")
-    watchlist_scan_minutes: int = Field(default=15, description="Interval for watchlist scanner job (market hours only)")
+    buy_zone_refresh_minutes: int = Field(default=120, description="Interval for buy zone snapshot refresh")
+    theme_score_refresh_minutes: int = Field(default=720, description="Interval for theme score refresh")
+    alert_eval_minutes: int = Field(default=10, description="Interval for alert evaluation")
+    auto_buy_eval_minutes: int = Field(default=10, description="Interval for auto-buy evaluation")
+    watchlist_scan_minutes: int = Field(default=30, description="Interval for watchlist scanner job (market hours only)")
 
     # ── Notifications ──────────────────────────────────────────────────────────
     notification_email_enabled: bool = Field(default=False, description="Enable email notifications")
@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     twilio_from_number: str = Field(default="", description="Twilio sender number in E.164 (+1...)")
 
     # ── Commodity alerts scheduler ─────────────────────────────────────────────
-    commodity_alert_minutes: int = Field(default=15, description="Interval for commodity signal check (minutes)")
+    commodity_alert_minutes: int = Field(default=30, description="Interval for commodity signal check (minutes)")
 
     # ── Options engine ────────────────────────────────────────────────────────
     risk_free_rate: float = Field(default=0.05, description="Risk-free rate for Black-Scholes Greeks")
@@ -116,8 +116,8 @@ class Settings(BaseSettings):
     options_active_broker: str = Field(default="alpaca", description="Active options broker name")
 
     # ── V3 scanner settings ────────────────────────────────────────────────────
-    live_scanner_minutes: int = Field(default=5, description="V3 live scanner interval (minutes)")
-    idea_generator_minutes: int = Field(default=60, description="V3 idea generator interval (minutes)")
+    live_scanner_minutes: int = Field(default=15, description="V3 live scanner interval (minutes)")
+    idea_generator_minutes: int = Field(default=120, description="V3 idea generator interval (minutes)")
     signal_prune_days: int = Field(default=30, description="Days to retain buy_now_signals rows")
 
     @field_validator("cors_origins", mode="before")

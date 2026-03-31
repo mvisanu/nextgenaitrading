@@ -52,4 +52,6 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
 # Single worker — APScheduler is an in-process singleton.
 # Scale via Render instance count, not --workers.
 # Run migrations on every deploy so schema is always up to date before traffic hits.
-CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+# --limit-concurrency caps simultaneous in-flight requests to prevent memory spikes
+# when many watchlist polling requests arrive at once.
+CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --limit-concurrency 20 --backlog 64

@@ -9,6 +9,7 @@ Market hours guard: skips outside 9:30–16:00 ET weekdays.
 """
 from __future__ import annotations
 
+import gc
 import logging
 from datetime import datetime, timezone
 
@@ -53,3 +54,5 @@ async def run_idea_generator_job() -> None:
 
     except Exception as exc:
         logger.exception("run_idea_generator_job: job failed: %s", exc)
+    finally:
+        gc.collect()  # Release large DataFrames from yfinance downloads

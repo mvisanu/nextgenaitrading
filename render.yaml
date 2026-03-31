@@ -37,12 +37,13 @@ services:
       - key: DATABASE_URL
         sync: false
 
-      # Connection pool — Supabase free tier allows 60 total connections.
-      # 1 Render instance × (5 pool + 5 overflow) = 10 max. Safe.
+      # Connection pool — kept small to stay under Render Starter 512 MB RAM limit.
+      # 1 Render instance × (2 pool + 3 overflow) = 5 max connections; each asyncpg
+      # connection uses ~3-5 MB of memory.
       - key: POOL_SIZE
-        value: "5"
+        value: "2"
       - key: MAX_OVERFLOW
-        value: "5"
+        value: "3"
 
       # ── Authentication ────────────────────────────────────────────────────
       # Generate: python -c "import secrets; print(secrets.token_hex(64))"
@@ -90,8 +91,25 @@ services:
       # ── Scheduler ─────────────────────────────────────────────────────────
       # APScheduler runs in-process. Keep Render instance count at 1 to
       # avoid duplicate job execution across instances.
+      # Intervals are tuned to reduce concurrent memory pressure on 512 MB RAM.
       - key: SCHEDULER_ENABLE
         value: "true"
+      - key: BUY_ZONE_REFRESH_MINUTES
+        value: "120"
+      - key: THEME_SCORE_REFRESH_MINUTES
+        value: "720"
+      - key: ALERT_EVAL_MINUTES
+        value: "10"
+      - key: AUTO_BUY_EVAL_MINUTES
+        value: "10"
+      - key: WATCHLIST_SCAN_MINUTES
+        value: "30"
+      - key: LIVE_SCANNER_MINUTES
+        value: "15"
+      - key: IDEA_GENERATOR_MINUTES
+        value: "120"
+      - key: COMMODITY_ALERT_MINUTES
+        value: "30"
 
       # ── Notifications ─────────────────────────────────────────────────────
       # Enable only after configuring SMTP / webhook credentials.

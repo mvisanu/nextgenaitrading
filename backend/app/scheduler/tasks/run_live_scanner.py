@@ -13,6 +13,7 @@ duplicate STRONG_BUY notifications across multiple consecutive 5-minute runs.
 """
 from __future__ import annotations
 
+import gc
 import logging
 
 from sqlalchemy import select
@@ -74,3 +75,5 @@ async def run_live_scanner() -> None:
 
     except Exception as exc:
         logger.exception("run_live_scanner: job failed: %s", exc)
+    finally:
+        gc.collect()

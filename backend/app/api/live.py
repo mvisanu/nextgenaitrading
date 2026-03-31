@@ -198,7 +198,6 @@ async def get_live_status(
 async def get_live_chart_data(
     symbol: str,
     current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
     interval: str = "1d",
     bollinger: bool = False,
 ) -> LiveChartResponse:

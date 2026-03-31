@@ -13,6 +13,7 @@ generator in api/gold.py.
 """
 from __future__ import annotations
 
+import gc
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -160,3 +161,5 @@ async def run_commodity_alerts() -> None:
 
     except Exception as exc:
         logger.exception("run_commodity_alerts: job failed: %s", exc)
+    finally:
+        gc.collect()

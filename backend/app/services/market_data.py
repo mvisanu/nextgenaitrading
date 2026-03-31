@@ -139,6 +139,10 @@ def _load_ohlcv_yfinance(
 
     df = df[list(REQUIRED_COLUMNS)].copy()
     df.dropna(inplace=True)
+    # Cap at 750 rows — enough for all indicators (EMA-200 needs 200+ bars) while
+    # keeping memory bounded. Keeps the most recent rows.
+    if len(df) > 750:
+        df = df.iloc[-750:].copy()
     return df
 
 
@@ -196,12 +200,13 @@ def load_ohlcv_for_strategy(symbol: str, timeframe: str) -> pd.DataFrame:
         period = "60d"
     elif timeframe == "1wk":
         # 730d (~104 bars) leaves only ~54 bars after EMA-50 warmup — below the 60-bar
-        # minimum required by the strategy. Fetch 10 years to get ~500 weekly bars.
-        period = "3650d"
+        # minimum required by the strategy. 5 years (~260 weekly bars) is sufficient
+        # and uses far less memory than the previous 10-year fetch.
+        period = "1825d"
     elif timeframe == "1mo":
-        # 730d yields only ~24 monthly bars — far too few. Fetch the maximum available
-        # history so we have enough bars after indicator warmup (EMA-50 needs 50+).
-        period = "max"
+        # 5 years (~60 monthly bars) is sufficient after EMA-50 warmup (needs 50+).
+        # Avoids loading the entire ticker history which can be 20+ years of data.
+        period = "1825d"
     else:
         period = "730d"
 
