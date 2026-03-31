@@ -155,6 +155,28 @@ function tagColor(tag: string) {
   }
 }
 
+// ─── Default settings (used as fallback while query is loading or user is unauthenticated) ───
+
+const DEFAULT_SETTINGS: AutoBuySettings = {
+  id: 0,
+  user_id: 0,
+  enabled: false,
+  paper_mode: true,
+  confidence_threshold: 0.65,
+  max_trade_amount: 500,
+  max_position_percent: 0.05,
+  max_expected_drawdown: -0.05,
+  allow_near_earnings: false,
+  allowed_account_ids_json: [],
+  execution_timeframe: "1h",
+  start_date: null,
+  end_date: null,
+  target_buy_price: null,
+  target_sell_price: null,
+  created_at: "",
+  updated_at: "",
+};
+
 // ─── Section header ────────────────────────────────────────────────────────────
 
 function SectionHeader({ icon: Icon, title }: { icon: typeof Shield; title: string }) {
@@ -438,8 +460,7 @@ export default function AutoBuyPage() {
                   Live Execution Warning
                 </p>
                 <p className="text-3xs text-muted-foreground leading-relaxed mt-1">
-                  Activating the engine may bypass manual approvals. Past entry zone
-                  performance does not guarantee future results. Start with Dry Run Mode.
+                  <strong className="text-foreground/70">New to this?</strong> Keep <em>Dry Run Mode ON</em> — the engine will show you what it would buy without using real money. Only turn it off when you're comfortable and have tested it.
                 </p>
               </div>
             </div>
@@ -534,9 +555,9 @@ export default function AutoBuyPage() {
               <Skeleton className="h-12" />
               <Skeleton className="h-12" />
             </div>
-          ) : settings ? (
+          ) : (
             <TargetFields
-              settings={settings}
+              settings={settings ?? DEFAULT_SETTINGS}
               dryRunTicker={dryRunTicker}
               setDryRunTicker={setDryRunTicker}
               isSaving={isSaving}
@@ -545,7 +566,7 @@ export default function AutoBuyPage() {
               isDryRunning={isDryRunning}
               dryRunResult={dryRunResult}
             />
-          ) : null}
+          )}
         </section>
 
         {/* Section 4: Execution Timeframe (7 cols) */}
@@ -558,14 +579,14 @@ export default function AutoBuyPage() {
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
-          ) : settings ? (
+          ) : (
             <ExecutionSettings
-              settings={settings}
+              settings={settings ?? DEFAULT_SETTINGS}
               brokerCredentials={brokerCredentials}
               isSaving={isSaving}
               onUpdate={(partial) => updateSettings(partial)}
             />
-          ) : null}
+          )}
         </section>
 
         {/* Section 5: Real-time Decision Log (full width) */}
@@ -801,16 +822,29 @@ function TargetFields({
 }) {
   const [maxAmount, setMaxAmount] = useState(String(settings.max_trade_amount));
   const [confidence, setConfidence] = useState(settings.confidence_threshold);
+  const [targetBuy, setTargetBuy] = useState(settings.target_buy_price != null ? String(settings.target_buy_price) : "");
+  const [targetSell, setTargetSell] = useState(settings.target_sell_price != null ? String(settings.target_sell_price) : "");
 
   function saveNumericFields() {
     onUpdate({
       max_trade_amount: parseFloat(maxAmount) || settings.max_trade_amount,
       confidence_threshold: confidence,
+      target_buy_price: targetBuy ? parseFloat(targetBuy) : null,
+      target_sell_price: targetSell ? parseFloat(targetSell) : null,
     });
   }
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+    <div className="space-y-4">
+      {/* Beginner hint */}
+      <div className="flex items-start gap-2 rounded bg-primary/5 border border-primary/10 px-3 py-2">
+        <Target className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+        <p className="text-3xs text-muted-foreground leading-relaxed">
+          Enter the stock symbol you want to trade, the maximum dollar amount per order, and the price levels to buy and sell at.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
       {/* Symbol search — maps to dry-run ticker */}
       <div className="col-span-2 sm:col-span-1">
         <label className="text-2xs font-bold text-muted-foreground uppercase mb-1 block">
@@ -821,7 +855,7 @@ function TargetFields({
             data-testid="dry-run-ticker"
             value={dryRunTicker}
             onChange={(e) => setDryRunTicker(e.target.value.toUpperCase())}
-            placeholder="AAPL"
+            placeholder="e.g. AAPL, TSLA, BTC"
             className="bg-surface-lowest border-none text-xs placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary h-9 pr-8"
           />
           <button
@@ -829,7 +863,7 @@ function TargetFields({
             onClick={onDryRun}
             disabled={isDryRunning || !dryRunTicker.trim()}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
-            title="Run dry run"
+            title="Test this symbol with a dry run (no real money)"
           >
             <Play className="h-3.5 w-3.5" />
           </button>
@@ -837,6 +871,7 @@ function TargetFields({
         {isDryRunning && (
           <p className="text-3xs text-primary mt-1 animate-pulse">Running simulation...</p>
         )}
+        <p className="text-3xs text-muted-foreground mt-0.5">Tap ▷ to test without real money</p>
       </div>
 
       {/* Max order size */}
@@ -844,6 +879,7 @@ function TargetFields({
         <label className="text-2xs font-bold text-muted-foreground uppercase mb-1 block">
           Max Order Size
         </label>
+        <p className="text-3xs text-muted-foreground mb-1">Most you'll spend per trade</p>
         <div className="relative">
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
             $
@@ -861,11 +897,57 @@ function TargetFields({
         </div>
       </div>
 
+      {/* Target Buy Price */}
+      <div className="col-span-2 sm:col-span-1">
+        <label className="text-2xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1">
+          <DollarSign className="h-3 w-3 text-emerald-400" /> Target Buy Price
+        </label>
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+          <Input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={targetBuy}
+            onChange={(e) => setTargetBuy(e.target.value)}
+            onBlur={saveNumericFields}
+            placeholder="e.g. 28,450.00"
+            className="bg-surface-lowest border-none text-xs pl-6 tabular-nums h-9 focus-visible:ring-1 focus-visible:ring-primary"
+          />
+        </div>
+        <p className="text-3xs text-muted-foreground mt-0.5">Buy when price drops to this level</p>
+      </div>
+
+      {/* Target Sell Price */}
+      <div className="col-span-2 sm:col-span-1">
+        <label className="text-2xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1">
+          <DollarSign className="h-3 w-3 text-red-400" /> Target Sell Price
+        </label>
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+          <Input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={targetSell}
+            onChange={(e) => setTargetSell(e.target.value)}
+            onBlur={saveNumericFields}
+            placeholder="e.g. 29,120.00"
+            className="bg-surface-lowest border-none text-xs pl-6 tabular-nums h-9 focus-visible:ring-1 focus-visible:ring-primary"
+          />
+        </div>
+        <p className="text-3xs text-muted-foreground mt-0.5">Sell when price rises to this level</p>
+      </div>
+
+      {targetBuy && targetSell && parseFloat(targetSell) <= parseFloat(targetBuy) && (
+        <p className="col-span-2 text-3xs text-destructive -mt-2">Sell price should be higher than buy price</p>
+      )}
+
       {/* Min confidence — maps to confidence_threshold */}
       <div className="col-span-2">
         <div className="flex items-center justify-between mb-1">
           <label className="text-2xs font-bold text-muted-foreground uppercase">
-            Min Confidence Threshold
+            Signal Confidence
           </label>
           <span className="text-xs font-bold text-primary tabular-nums">
             {Math.round(confidence * 100)}%
@@ -888,13 +970,24 @@ function TargetFields({
           </span>
         </div>
         <div className="flex justify-between text-3xs text-muted-foreground mt-0.5">
-          <span>30% lenient</span>
-          <span>95% strict</span>
+          <span>30% — more signals</span>
+          <span>95% — only strongest signals</span>
         </div>
+      </div>
       </div>
     </div>
   );
 }
+
+// ─── Execution timeframe button pills ────────────────────────────────────────
+
+const EXEC_TIMEFRAMES: { value: string; label: string; sublabel: string; desc: string; live?: boolean }[] = [
+  { value: "1m",  label: "Live",   sublabel: "~1 min",  desc: "Near real-time — checks every minute. Best for active markets.", live: true },
+  { value: "15m", label: "15",     sublabel: "min",     desc: "Every 15 minutes — good balance of speed and stability." },
+  { value: "30m", label: "30",     sublabel: "min",     desc: "Every 30 minutes — moderate frequency, less noise." },
+  { value: "1h",  label: "1",      sublabel: "hr",      desc: "Every hour — relaxed pace, suits swing trading." },
+  { value: "2h",  label: "2",      sublabel: "hrs",     desc: "Every 2 hours — low frequency, for patient strategies." },
+];
 
 // ─── Execution Settings (Section 4 content) ───────────────────────────────────
 
@@ -910,56 +1003,73 @@ function ExecutionSettings({
   onUpdate: (partial: UpdateAutoBuySettingsRequest) => void;
 }) {
   const [drawdown, setDrawdown] = useState(Math.abs(settings.max_expected_drawdown));
-  const [execTimeframe, setExecTimeframe] = useState(settings.execution_timeframe ?? "1d");
+  const [execTimeframe, setExecTimeframe] = useState(() => {
+    // Normalize stored value to one of our 5 options
+    const stored = settings.execution_timeframe ?? "1h";
+    return ["1m", "15m", "30m", "1h", "2h"].includes(stored) ? stored : "1h";
+  });
   const [startDate, setStartDate] = useState(settings.start_date ?? "");
   const [endDate, setEndDate] = useState(settings.end_date ?? "");
-  const [targetBuy, setTargetBuy] = useState(settings.target_buy_price != null ? String(settings.target_buy_price) : "");
-  const [targetSell, setTargetSell] = useState(settings.target_sell_price != null ? String(settings.target_sell_price) : "");
 
   function saveDrawdown() {
     onUpdate({ max_expected_drawdown: -Math.abs(drawdown) });
   }
 
-  function saveTimeframeFields() {
+  function saveDateFields() {
     onUpdate({
-      execution_timeframe: execTimeframe,
       start_date: startDate || null,
       end_date: endDate || null,
-      target_buy_price: targetBuy ? parseFloat(targetBuy) : null,
-      target_sell_price: targetSell ? parseFloat(targetSell) : null,
     });
   }
 
   return (
     <div className="space-y-4">
-      {/* Execution timeframe select */}
+      {/* Execution timeframe — 4 button pills */}
       <div>
         <label className="text-2xs font-bold text-muted-foreground uppercase mb-1 block">
-          Execution Timeframe
+          Check Interval
         </label>
-        <Select
-          value={execTimeframe}
-          onValueChange={(v) => {
-            setExecTimeframe(v);
-            onUpdate({ execution_timeframe: v });
-          }}
-        >
-          <SelectTrigger className="bg-surface-lowest border-none text-xs h-9 focus:ring-1 focus:ring-primary">
-            <SelectValue placeholder="Select timeframe" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1m">Every 1 minute</SelectItem>
-            <SelectItem value="5m">Every 5 minutes</SelectItem>
-            <SelectItem value="15m">Every 15 minutes</SelectItem>
-            <SelectItem value="30m">Every 30 minutes</SelectItem>
-            <SelectItem value="1h">Every 1 hour</SelectItem>
-            <SelectItem value="4h">Every 4 hours</SelectItem>
-            <SelectItem value="1d">Daily</SelectItem>
-            <SelectItem value="1wk">Weekly</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-3xs text-muted-foreground mt-0.5">
-          How often the engine re-evaluates and executes the strategy
+        <p className="text-3xs text-muted-foreground mb-2">
+          How often the engine checks the market and can place orders
+        </p>
+        <div className="grid grid-cols-5 gap-1.5">
+          {EXEC_TIMEFRAMES.map((tf) => (
+            <button
+              key={tf.value}
+              onClick={() => {
+                setExecTimeframe(tf.value);
+                onUpdate({ execution_timeframe: tf.value });
+              }}
+              className={cn(
+                "relative flex flex-col items-center py-2.5 px-1 rounded border transition-all",
+                tf.live && execTimeframe === tf.value
+                  ? "bg-emerald-500/15 border-emerald-400/50 text-emerald-400"
+                  : tf.live
+                  ? "bg-surface-lowest border-emerald-500/20 text-emerald-400/60 hover:border-emerald-400/40 hover:text-emerald-400/90"
+                  : execTimeframe === tf.value
+                  ? "bg-primary/15 border-primary/40 text-primary"
+                  : "bg-surface-lowest border-transparent text-muted-foreground hover:border-primary/20 hover:text-foreground"
+              )}
+            >
+              {tf.live && (
+                <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 px-1 py-0 rounded-full text-[8px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 leading-3 tracking-wider whitespace-nowrap">
+                  live
+                </span>
+              )}
+              <span className={cn("font-black leading-none tabular-nums", tf.live ? "text-[12px]" : "text-[13px]")}>
+                {tf.label}
+              </span>
+              <span className="text-[9px] uppercase tracking-wider mt-1 opacity-70">
+                {tf.sublabel}
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="text-3xs text-muted-foreground mt-1.5">
+          {EXEC_TIMEFRAMES.find(t => t.value === execTimeframe)?.desc ?? ""}
+          {execTimeframe === "1m" && (
+            <span className="ml-1 text-amber-400/80">⚠ Not recommended for beginners — use 15 or 30 min first.</span>
+          )}
         </p>
       </div>
 
@@ -973,7 +1083,7 @@ function ExecutionSettings({
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            onBlur={saveTimeframeFields}
+            onBlur={saveDateFields}
             className="bg-surface-lowest border-none text-xs h-9 focus-visible:ring-1 focus-visible:ring-primary"
           />
         </div>
@@ -985,7 +1095,7 @@ function ExecutionSettings({
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            onBlur={saveTimeframeFields}
+            onBlur={saveDateFields}
             min={startDate || undefined}
             className="bg-surface-lowest border-none text-xs h-9 focus-visible:ring-1 focus-visible:ring-primary"
           />
@@ -995,59 +1105,17 @@ function ExecutionSettings({
         <p className="text-3xs text-destructive -mt-2">End date must be after start date</p>
       )}
 
-      {/* Target buy / sell prices */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-2xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1">
-            <DollarSign className="h-3 w-3 text-green-400" /> Target Buy Price
-          </label>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
-            <Input
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={targetBuy}
-              onChange={(e) => setTargetBuy(e.target.value)}
-              onBlur={saveTimeframeFields}
-              placeholder="0.00"
-              className="bg-surface-lowest border-none text-xs pl-6 tabular-nums h-9 focus-visible:ring-1 focus-visible:ring-primary"
-            />
-          </div>
-          <p className="text-3xs text-muted-foreground mt-0.5">Buy when price reaches this level</p>
-        </div>
-        <div>
-          <label className="text-2xs font-bold text-muted-foreground uppercase mb-1 flex items-center gap-1">
-            <DollarSign className="h-3 w-3 text-red-400" /> Target Sell Price
-          </label>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
-            <Input
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={targetSell}
-              onChange={(e) => setTargetSell(e.target.value)}
-              onBlur={saveTimeframeFields}
-              placeholder="0.00"
-              className="bg-surface-lowest border-none text-xs pl-6 tabular-nums h-9 focus-visible:ring-1 focus-visible:ring-primary"
-            />
-          </div>
-          <p className="text-3xs text-muted-foreground mt-0.5">Sell when price reaches this level</p>
-        </div>
-      </div>
-      {targetBuy && targetSell && parseFloat(targetSell) <= parseFloat(targetBuy) && (
-        <p className="text-3xs text-destructive -mt-2">Target sell price should be higher than buy price</p>
-      )}
-
       <Separator className="bg-border/20" />
 
       {/* Max drawdown slider */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="text-2xs font-bold text-muted-foreground uppercase">
-            Max Drawdown Limit
-          </label>
+          <div>
+            <label className="text-2xs font-bold text-muted-foreground uppercase">
+              Max Loss Limit
+            </label>
+            <p className="text-3xs text-muted-foreground mt-0.5">Stop trading if portfolio drops more than this</p>
+          </div>
           <span className="text-2xs font-bold text-destructive tabular-nums">
             -{Math.round(drawdown * 100)}%
           </span>
@@ -1069,8 +1137,8 @@ function ExecutionSettings({
           </span>
         </div>
         <div className="flex justify-between text-3xs text-muted-foreground mt-0.5">
-          <span>3% tight</span>
-          <span>30% loose</span>
+          <span>3% — very cautious</span>
+          <span>30% — more risk tolerance</span>
         </div>
       </div>
 
@@ -1078,10 +1146,10 @@ function ExecutionSettings({
       <div className="flex items-center justify-between p-3 bg-surface-lowest">
         <div>
           <p className="text-2xs font-bold text-foreground uppercase tracking-wider">
-            Earnings Blackout
+            Avoid Earnings Days
           </p>
           <p className="text-3xs text-muted-foreground mt-0.5">
-            Block if earnings within 5 days
+            Skip trades when a company reports earnings within 5 days (recommended for beginners)
           </p>
         </div>
         <Switch

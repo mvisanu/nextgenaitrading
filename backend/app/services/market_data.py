@@ -1,5 +1,6 @@
 """
-Market data loader — wraps yfinance with consistent column normalisation.
+Market data loader — primary source is Alpaca (stocks/ETFs when keys configured),
+falling back to yfinance for everything else (commodities, forex, crypto, futures).
 Symbol and interval are always passed as parameters, never hardcoded.
 """
 from __future__ import annotations
@@ -10,6 +11,8 @@ import re
 import pandas as pd
 import yfinance as yf
 from fastapi import HTTPException, status
+
+from app.services.alpaca_data import is_alpaca_supported, load_ohlcv_alpaca
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +88,29 @@ def normalize_symbol(symbol: str) -> str:
 
 
 def load_ohlcv(
+    symbol: str, interval: str = "1d", period: str = "730d"
+) -> pd.DataFrame:
+    """
+    Fetch OHLCV data.  For plain US stocks/ETFs, tries Alpaca first when keys
+    are configured (more reliable, official feed).  Falls back to yfinance for
+    all other symbols (commodities, forex, crypto, futures) and whenever the
+    Alpaca call fails.
+    """
+    if is_alpaca_supported(symbol):
+        try:
+            df = load_ohlcv_alpaca(symbol, interval=interval, period=period)
+            logger.debug("Alpaca data: %s rows for %s [%s]", len(df), symbol, interval)
+            return df
+        except Exception as exc:
+            logger.warning(
+                "Alpaca data fetch failed for '%s' (%s), falling back to yfinance: %s",
+                symbol, interval, exc,
+            )
+
+    return _load_ohlcv_yfinance(symbol, interval=interval, period=period)
+
+
+def _load_ohlcv_yfinance(
     symbol: str, interval: str = "1d", period: str = "730d"
 ) -> pd.DataFrame:
     """

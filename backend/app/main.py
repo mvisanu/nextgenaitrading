@@ -222,6 +222,8 @@ from app.api.news_feed import router as news_feed_router
 # commodity signal engine
 from app.api.gold import router as gold_router
 from app.api.commodity_alert_prefs import router as commodity_alert_router
+# v4 options engine
+from app.api.v4.options import router as options_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -244,6 +246,8 @@ app.include_router(news_feed_router)
 # commodity signal engine
 app.include_router(gold_router)
 app.include_router(commodity_alert_router)
+# v4 options engine
+app.include_router(options_router, prefix="/api/v4/options", tags=["options"])
 
 # Test-only utilities (only mounted in debug mode)
 if settings.debug:

@@ -163,6 +163,9 @@ COMMODITY_ALERT_MINUTES=15
 - **Intraday chart times:** `df_to_candles()` outputs Unix int timestamps for intraday intervals; ISO strings for daily+.
 - **Router prefix:** Never double-prefix routes. `app.include_router()` must not add `/api` if router already has it.
 - **Commodity symbol normalisation:** `market_data.normalize_symbol()` translates display symbols (XAU-USD, XAUUSD, XAU/USD) to yfinance tickers (GC=F) before any `load_ohlcv*` call. Always call via `load_ohlcv_for_strategy()` — never pass raw commodity symbols to yfinance directly.
+- **Specific futures contracts:** `normalize_symbol("GCM26")` → `"GCM26.CMX"`. Pattern `^[A-Z]{2,3}[FGHJKMNQUVXZ]\d{2}$` triggers exchange suffix lookup: COMEX metals (GC,SI,HG,PL,PA,MGC,SIL) → `.CMX`; NYMEX energy+PGMs (CL,NG,RB,HO,BZ,PL,PA,QM) → `.NYM`. Unknown roots fall back to `=F`.
+- **`AppShell` requires `title` prop** — always pass `title="..."` or `title={tr("pageTitle", lang)}` for translated pages.
+- **`useMemo` with derived arrays:** Never declare arrays outside a `useMemo` and reference them in its deps — move the array construction inside the callback. See `dashboard/page.tsx` `allSymbols` pattern.
 
 ## Implementation Status
 
@@ -179,7 +182,63 @@ COMMODITY_ALERT_MINUTES=15
 | BB Squeeze strategy (backend + frontend chart overlay) | Complete |
 | Commodity signal engine (gold API + 4 sub-pages + sidebar sub-menu) | Complete |
 | Mobile responsiveness (all pages) | Complete — deep audit + fixes 2026-03-30 |
+| Commodities Guide page (`/commodities-guide`) | Complete — EN/Thai bilingual, 2026-03-30 |
 | E2E tests (v1: 263, v2: 159, v3: 34, supabase-auth: 90) | Written; auth system fixed 2026-03-27 |
+| Options Trading Engine (v4 backend + frontend dashboard) | Complete — 2026-03-30 |
+
+## Options Trading Engine (2026-03-30)
+
+Full-stack options engine at `/options` with four integrated panels: chain scanner, Greeks dashboard, P&L modeling, signal feed.
+
+**Backend (`backend/app/options/`):**
+- `broker/base.py` — `OptionContract`, `OptionsOrderRequest`, `OptionsBrokerBase` ABC
+- `broker/alpaca.py` — Alpaca v2 options API via httpx async (`/v2/options/contracts`, `/v2/orders`)
+- `greeks.py` — Greeks via `py_vollib_vectorized`; analytic B-S fallback; illiquid flag (spread > 10%)
+- `iv.py` — IV rank + IV percentile from 52-week `iv_history` DB table
+- `scanner.py` — chain screener: delta / OI / IV rank / strategy-bias filters; excludes illiquid
+- `signals.py` — 5-gate evaluation: earnings → IV rank → strategy matrix → contract selection → confidence
+- `risk.py` — P&L at expiry (41 pts ±20%), max profit/loss, breakevens, POP, risk gate checks
+- `calendar.py` — `get_days_to_earnings()` via yfinance; 60-min in-process LRU cache
+- `executor.py` — dry-run default; live requires explicit `dry_run=False`; logs to `options_executions`
+
+**API (`backend/app/api/v4/options.py`):** 10 routes at `/api/v4/options/` — all scoped to `current_user.id`
+`GET /expirations` · `GET /chain` · `POST /scan` · `GET /signals` · `GET /positions` · `POST /execute` · `GET /risk` · `GET /greeks/portfolio` · `GET /iv/{symbol}` · `GET /executions`
+
+**Models:** `OptionsPosition`, `OptionsExecution`, `IVHistory` — migration `f5a6b1c2d3e4`
+
+**Frontend (`frontend/app/options/`, `frontend/components/options/`):**
+- `page.tsx` — 4-panel CSS Grid; symbol search + expiration picker + dry-run/live toggle
+- `OptionsChainTable.tsx` — calls ↔ puts side-by-side; ITM highlight; illiquid dimming; delta color coding
+- `GreeksDashboard.tsx` — net Δ/Γ/Θ/ν KPI cards; per-position table; theta decay Recharts chart
+- `PLChart.tsx` — Recharts payoff diagram; breakeven/max profit/max loss markers; risk summary stats
+- `SignalCard.tsx` — approve/skip/view-chain actions; dry-run vs live badge; mutation via TanStack
+- `StrategyBadge.tsx` / `IVRankBadge.tsx` — color-coded chips
+- `lib/options-api.ts` — typed wrappers for all 10 endpoints
+
+**Sidebar:** Options nav item added to Terminal group (after Auto-Buy), route `/options`
+
+**Strategy selection matrix:**
+| Trend | IV Rank | Strategy |
+|---|---|---|
+| bullish | >50 | cash_secured_put |
+| bearish | >50 | covered_call |
+| neutral | >50 | iron_condor |
+| bullish | <30 | bull_call_debit |
+| bearish | <30 | bear_put_debit |
+| neutral | <30 | long_straddle |
+
+**New env vars (backend `.env`):**
+```env
+RISK_FREE_RATE=0.05
+OPTIONS_EARNINGS_BLOCK_DAYS=5
+OPTIONS_MIN_IV_RANK=30
+OPTIONS_MAX_SINGLE_TRADE_LOSS=500
+OPTIONS_MIN_POP=0.60
+OPTIONS_SCANNER_SYMBOLS=AAPL,TSLA,NVDA,SPY,QQQ,AMZN,MSFT,META,GOOGL,AMD
+OPTIONS_ACTIVE_BROKER=alpaca
+```
+
+**Activate:** `pip install py_vollib_vectorized` + `alembic upgrade head`
 
 ## Known Spec Deviations
 - Auth: Supabase magic links (not password-based JWT)
@@ -222,11 +281,18 @@ Real buy-signal alerts for commodities (gold, silver, oil, crypto, forex) via em
 
 ## Branding
 - **App name:** "NextGen Trading" (display title in sidebar, login, register, profile)
-- **Tagline:** "Play Smart" (sidebar subtitle, `text-3xs tracking-widest uppercase`)
+- **Tagline:** "Play Smart" (sidebar subtitle only, `text-3xs tracking-widest uppercase`)
 - **Auth pages tagline:** "Work Hard, Play Hard" (login + register pages use this variant)
-- **Sidebar expanded width:** `w-[190px]` (sized to fit title + pin button)
-- **Sidebar collapsed width:** `w-12` (icons only)
+- **Sidebar expanded width:** `w-[190px]` (sized to fit title + pin button); collapsed: `w-12`
+- **No email shown in sidebar** — removed from profile section; only "AI Trader" label remains
 - Files: `frontend/components/layout/Sidebar.tsx`, `frontend/app/(auth)/login/page.tsx`, `frontend/app/(auth)/register/page.tsx`, `frontend/app/profile/page.tsx`
+
+## Commodities Guide (`/commodities-guide`)
+Beginner-friendly reference page. Linked from sidebar under **Commodities → Beginner Guide**.
+- **Bilingual:** EN / Thai toggle (`translations.ts` + `tr()` helper). Same pattern as FAQ/Learn pages.
+- **Sections:** What are Commodities, Key Terms (14 defs), How to Use (6 steps), Signal Engine (4-gate), Supported Symbols table, Risk Management, FAQ (9 Qs), Alert Setup (6 steps), Disclaimer
+- **Files:** `frontend/app/commodities-guide/page.tsx`, `frontend/app/commodities-guide/translations.ts`
+- **Language toggle pattern:** `useState<Lang>("en")` + `<LanguageToggle>` component top-right of header
 
 ## Ideas Page — Scan Universe Themes
 Theme chips: AI, Energy, Defense, Space, Semiconductors, Longevity, Robotics, Bitcoin, Healthcare, Medicine (~50 tickers total including mega-cap tech, financials, energy, defense, semis, space, biotech, bitcoin/crypto-adjacent).

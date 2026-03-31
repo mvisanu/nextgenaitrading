@@ -53,3 +53,6 @@ feedparser>=6.0.10
 
 # Commodity alert notifications (email via smtplib is stdlib; SMS via Twilio)
 twilio>=9.0.0
+
+# Options engine: Greeks computation
+py_vollib_vectorized>=0.1.1

@@ -60,6 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/live-trading", label: "Live Trading", icon: Radio },
       { href: "/portfolio", label: "Portfolio", icon: Wallet },
       { href: "/auto-buy", label: "Auto-Buy", icon: Zap },
+      { href: "/options", label: "Options", icon: BarChart2 },
     ],
   },
   {
@@ -299,7 +300,9 @@ export function Sidebar() {
                       pinned ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     )}>
                       {link.children!.map((child) => {
-                        const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                        // Use exact match to avoid parent paths (e.g. /gold) incorrectly
+                        // matching child paths (e.g. /gold/signals) via startsWith.
+                        const childActive = pathname === child.href;
                         return (
                           <Link key={child.href} href={child.href} title={child.label}>
                             <span className={cn(

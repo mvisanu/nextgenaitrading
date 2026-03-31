@@ -64,6 +64,14 @@ class Settings(BaseSettings):
     alpaca_paper_url: str = Field(default="https://paper-api.alpaca.markets")
     robinhood_base_url: str = Field(default="https://trading.robinhood.com")
 
+    # ── Alpaca Market Data (optional — enables Alpaca data feed for stocks/ETFs) ─
+    # Accepts ALPACA_API_KEY / ALPACA_SECRET_KEY (standard naming) or the more
+    # specific ALPACA_DATA_KEY / ALPACA_DATA_SECRET as overrides.
+    alpaca_api_key: str = Field(default="", description="Alpaca API key (trading + data)")
+    alpaca_secret_key: str = Field(default="", description="Alpaca secret key (trading + data)")
+    alpaca_data_key: str = Field(default="", description="Override key for Alpaca market data only")
+    alpaca_data_secret: str = Field(default="", description="Override secret for Alpaca market data only")
+
     # ── Scheduler ──────────────────────────────────────────────────────────────
     scheduler_enable: bool = Field(default=True, description="Enable APScheduler background jobs")
     buy_zone_refresh_minutes: int = Field(default=60, description="Interval for buy zone snapshot refresh")
@@ -91,6 +99,15 @@ class Settings(BaseSettings):
 
     # ── Commodity alerts scheduler ─────────────────────────────────────────────
     commodity_alert_minutes: int = Field(default=15, description="Interval for commodity signal check (minutes)")
+
+    # ── Options engine ────────────────────────────────────────────────────────
+    risk_free_rate: float = Field(default=0.05, description="Risk-free rate for Black-Scholes Greeks")
+    options_earnings_block_days: int = Field(default=5, description="Block new options entries within N days of earnings")
+    options_min_iv_rank: float = Field(default=30.0, description="Minimum IV rank to generate a signal")
+    options_max_single_trade_loss: float = Field(default=500.0, description="Max allowed loss per options trade ($)")
+    options_min_pop: float = Field(default=0.60, description="Minimum probability of profit")
+    options_scanner_symbols: str = Field(default="AAPL,TSLA,NVDA,SPY,QQQ,AMZN,MSFT,META,GOOGL,AMD", description="Comma-separated symbols for options scanner")
+    options_active_broker: str = Field(default="alpaca", description="Active options broker name")
 
     # ── V3 scanner settings ────────────────────────────────────────────────────
     live_scanner_minutes: int = Field(default=5, description="V3 live scanner interval (minutes)")

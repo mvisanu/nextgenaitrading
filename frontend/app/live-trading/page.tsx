@@ -74,11 +74,14 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Banknote,
+  BookOpen,
   CandlestickChart,
   Check,
   ChevronDown,
   ChevronRight,
+  CircleHelp,
   FlaskConical,
+  Info,
   LinkIcon,
   MinusCircle,
   RefreshCw,
@@ -88,6 +91,7 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  X,
   Zap,
 } from "lucide-react";
 
@@ -159,7 +163,7 @@ export default function LiveTradingPage() {
   });
 
   const { data: chartData } = useQuery({
-    queryKey: ["live", "chart-data", committedSymbol, timeframe, mode],
+    queryKey: ["live", "chart-data", committedSymbol, timeframe, mode === "squeeze"],
     queryFn: () => liveApi.chartData(committedSymbol, timeframe, mode === "squeeze"),
     enabled: committedSymbol.length >= 2 && /[A-Z]/.test(committedSymbol),
   });
@@ -188,6 +192,7 @@ export default function LiveTradingPage() {
     handleSubmit: handleExecuteSubmit,
     formState: { errors: executeErrors },
     setValue: setExecuteValue,
+    watch: watchExecute,
   } = useForm<ExecuteFormValues>({
     resolver: zodResolver(executeSchema),
     defaultValues: { side: "buy", amount: 0 },
@@ -252,8 +257,8 @@ export default function LiveTradingPage() {
         );
       } else {
         const label = order.dry_run ? "[DRY RUN] " : "";
-        const amt = order.notional_usd ? ` $${order.notional_usd}` : "";
-        toast.success(`${label}Order submitted: ${order.side?.toUpperCase()}${amt} ${symbol}`);
+        const amt = order.notional_usd != null ? ` $${Number(order.notional_usd).toFixed(2)}` : "";
+        toast.success(`${label}Order submitted: ${order.side?.toUpperCase()}${amt} ${committedSymbol}`);
       }
 
       // Log to trade log
@@ -324,6 +329,16 @@ export default function LiveTradingPage() {
   const brokerReady = !!selectedCredentialId;
   const signalReady = !!signalResult;
   const openPositionCount = positions.filter((p) => p.is_open).length;
+
+  // Beginner guide banner — dismissed after user clicks X (persisted in sessionStorage)
+  const [guideVisible, setGuideVisible] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return sessionStorage.getItem("liveGuideHidden") !== "1";
+  });
+  function dismissGuide() {
+    sessionStorage.setItem("liveGuideHidden", "1");
+    setGuideVisible(false);
+  }
 
 
   return (
@@ -408,6 +423,52 @@ export default function LiveTradingPage() {
         </div>
       )}
 
+      {/* ── Beginner Guide Banner ── */}
+      {guideVisible && (
+        <div className="relative mb-4 rounded-sm border border-amber-500/25 bg-amber-500/5 overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500/60" />
+          <div className="px-4 py-3 pl-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span className="text-xs font-bold text-amber-300 uppercase tracking-widest">How to use this page</span>
+              </div>
+              <button
+                type="button"
+                onClick={dismissGuide}
+                className="text-muted-foreground hover:text-foreground transition-colors shrink-0 mt-0.5"
+                aria-label="Dismiss guide"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-2xs text-muted-foreground">
+              <div className="flex gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-bold flex items-center justify-center text-3xs shrink-0 mt-0.5">1</span>
+                <div>
+                  <p className="font-semibold text-foreground/80 mb-0.5">Setup</p>
+                  <p>Pick a stock symbol (e.g. AAPL), choose <strong className="text-foreground/70">Conservative</strong> strategy, and leave mode as <strong className="text-foreground/70">Paper</strong> while learning.</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-bold flex items-center justify-center text-3xs shrink-0 mt-0.5">2</span>
+                <div>
+                  <p className="font-semibold text-foreground/80 mb-0.5">Analyze Signal</p>
+                  <p>Click <strong className="text-foreground/70">"Run Signal Check"</strong> to let the AI evaluate 8 indicators. The result tells you whether conditions look favorable to buy or hold.</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-bold flex items-center justify-center text-3xs shrink-0 mt-0.5">3</span>
+                <div>
+                  <p className="font-semibold text-foreground/80 mb-0.5">Execute Order</p>
+                  <p>Enter a dollar amount and click <strong className="text-foreground/70">Execute Paper Trade</strong>. Paper mode uses virtual money — no real risk while you learn.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Main 3-column terminal layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[18rem_1fr] xl:grid-cols-[20rem_1fr_16rem] gap-0 rounded-sm overflow-hidden border border-border/10">
 
@@ -432,8 +493,9 @@ export default function LiveTradingPage() {
               <div className="space-y-3">
                 {/* Broker Credential */}
                 <div>
-                  <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">
+                  <label className="flex items-center gap-1 text-3xs uppercase font-bold text-muted-foreground mb-1.5">
                     Broker Credential
+                    <Tip text="Your broker account connection (e.g. Alpaca). Required for Dry Run and Live modes. Paper mode works without one." />
                   </label>
                   {credsLoading ? (
                     <Skeleton className="h-9 w-full bg-surface-highest" />
@@ -469,7 +531,10 @@ export default function LiveTradingPage() {
                 {/* Symbol + Timeframe row */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">Symbol</label>
+                    <label className="flex items-center gap-1 text-3xs uppercase font-bold text-muted-foreground mb-1.5">
+                      Symbol
+                      <Tip text="The stock or ETF ticker. Examples: AAPL (Apple), TSLA (Tesla), SPY (S&P 500 ETF). Start with well-known stocks." />
+                    </label>
                     <Input
                       value={symbol}
                       onChange={(e) => setSymbol(e.target.value.toUpperCase())}
@@ -485,13 +550,16 @@ export default function LiveTradingPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">Timeframe</label>
+                    <label className="flex items-center gap-1 text-3xs uppercase font-bold text-muted-foreground mb-1.5">
+                      Timeframe
+                      <Tip text="How much time each candle on the chart represents. Daily (1d) is best for beginners — it's slower and less noisy than hourly." />
+                    </label>
                     <Select value={timeframe} onValueChange={(v) => setTimeframe(v as Timeframe)}>
                       <SelectTrigger className="h-9 text-xs bg-surface-highest border-none focus:ring-1 focus:ring-primary/50">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1d">Daily (1d)</SelectItem>
+                        <SelectItem value="1d">Daily (1d) — recommended</SelectItem>
                         <SelectItem value="1h">Hourly (1h)</SelectItem>
                         <SelectItem value="4h">4-Hour (4h)</SelectItem>
                         <SelectItem value="1wk">Weekly (1wk)</SelectItem>
@@ -502,43 +570,77 @@ export default function LiveTradingPage() {
 
                 {/* Strategy Mode */}
                 <div>
-                  <label className="block text-3xs uppercase font-bold text-muted-foreground mb-1.5">Strategy Profile</label>
+                  <label className="flex items-center gap-1 text-3xs uppercase font-bold text-muted-foreground mb-1.5">
+                    Strategy Profile
+                    <Tip text="The set of rules the AI uses to evaluate buy/sell signals. Conservative requires more confirmations before triggering — safer for beginners." />
+                  </label>
                   <Select value={mode} onValueChange={(v) => setMode(v as "conservative" | "aggressive" | "squeeze")}>
                     <SelectTrigger className="h-9 text-xs bg-surface-highest border-none focus:ring-1 focus:ring-primary/50">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="conservative">Conservative Growth</SelectItem>
-                      <SelectItem value="aggressive">Aggressive Scalp</SelectItem>
-                      <SelectItem value="squeeze">BB Squeeze</SelectItem>
+                      <SelectItem value="conservative">
+                        <div className="flex items-center gap-2">
+                          <span>Conservative Growth</span>
+                          <span className="text-3xs text-amber-400 font-bold">★ For beginners</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="aggressive">Aggressive Scalp — higher risk</SelectItem>
+                      <SelectItem value="squeeze">BB Squeeze — volatility breakouts</SelectItem>
                     </SelectContent>
                   </Select>
+                  {mode === "conservative" && (
+                    <p className="text-3xs text-muted-foreground mt-1.5 leading-relaxed">
+                      Requires 7/8 indicators to agree before signaling. Fewer trades, higher confidence per trade.
+                    </p>
+                  )}
+                  {mode === "aggressive" && (
+                    <p className="text-3xs text-amber-400/80 mt-1.5 leading-relaxed">
+                      Only needs 5/8 confirmations — more signals but higher false-positive rate. Not recommended for beginners.
+                    </p>
+                  )}
+                  {mode === "squeeze" && (
+                    <p className="text-3xs text-muted-foreground mt-1.5 leading-relaxed">
+                      Detects when volatility is compressing and a large price move is likely. Best for experienced traders.
+                    </p>
+                  )}
                 </div>
 
                 {/* Trading Mode Selector */}
-                <div className="p-1 bg-surface-highest rounded-sm flex">
-                  {TRADING_MODES.map((tm) => {
-                    const isActive = tradingMode === tm.value;
-                    return (
-                      <button
-                        key={tm.value}
-                        type="button"
-                        onClick={() => handleModeChange(tm.value)}
-                        className={cn(
-                          "flex-1 text-3xs font-bold py-1.5 rounded-sm transition-all",
-                          isActive
-                            ? tm.value === "live"
-                              ? "bg-destructive text-destructive-foreground"
-                              : tm.value === "paper"
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-surface-bright text-foreground"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        {tm.label}
-                      </button>
-                    );
-                  })}
+                <div>
+                  <label className="flex items-center gap-1 text-3xs uppercase font-bold text-muted-foreground mb-1.5">
+                    Trading Mode
+                    <Tip text="Paper = virtual $100K, no real money. Dry Run = simulates the broker call without placing it. Live = real money order. Always start with Paper." />
+                  </label>
+                  <div className="p-1 bg-surface-highest rounded-sm flex">
+                    {TRADING_MODES.map((tm) => {
+                      const isActive = tradingMode === tm.value;
+                      return (
+                        <button
+                          key={tm.value}
+                          type="button"
+                          onClick={() => handleModeChange(tm.value)}
+                          className={cn(
+                            "flex-1 text-3xs font-bold py-1.5 rounded-sm transition-all",
+                            isActive
+                              ? tm.value === "live"
+                                ? "bg-destructive text-destructive-foreground"
+                                : tm.value === "paper"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-surface-bright text-foreground"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {tm.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-3xs text-muted-foreground mt-1">
+                    {tradingMode === "paper" && "✓ Safe — virtual money only, no broker needed."}
+                    {tradingMode === "dry-run" && "Simulates order logic — broker credential required, no real order placed."}
+                    {tradingMode === "live" && <span className="text-destructive font-bold">⚠ Real money — use with caution.</span>}
+                  </p>
                 </div>
               </div>
             </div>
@@ -555,12 +657,13 @@ export default function LiveTradingPage() {
                   {signalReady ? <Check className="h-2.5 w-2.5" /> : "2"}
                 </span>
                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Analyze Signal</h3>
+                <Tip text="The AI checks 8 technical indicators (trend, momentum, volume, etc.) and counts how many agree. More agreements = higher confidence." />
               </div>
 
               <button
                 type="button"
                 onClick={() => runSignalCheck()}
-                disabled={isSignalChecking || (!isPaper && !brokerReady)}
+                disabled={isSignalChecking || !brokerReady}
                 className={cn(
                   "w-full py-3 bg-surface-bright hover:bg-surface-high text-foreground border border-primary/20 rounded-sm flex items-center justify-center gap-2 transition-all active:scale-95 group text-xs font-bold tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
@@ -569,7 +672,7 @@ export default function LiveTradingPage() {
                 {isSignalChecking ? "CHECKING..." : "RUN SIGNAL CHECK"}
               </button>
 
-              {!isPaper && !brokerReady && (
+              {!brokerReady && (
                 <p className="text-3xs text-muted-foreground text-center">
                   Select a broker credential in Setup first
                 </p>
@@ -601,6 +704,7 @@ export default function LiveTradingPage() {
                 <form onSubmit={handleExecuteSubmit((v) => executeOrder(v))} className="space-y-3">
                   {/* Buy / Sell toggle */}
                   <BuySellToggle
+                    value={watchExecute("side")}
                     onSelect={(side) => setExecuteValue("side", side)}
                   />
 
@@ -765,7 +869,7 @@ export default function LiveTradingPage() {
             {chartStats && (
               <div className="flex items-center gap-4">
                 <span className="text-3xs uppercase font-bold text-muted-foreground">
-                  24 Range{" "}
+                  {timeframe === "1d" ? "24-Day" : timeframe === "1wk" ? "24-Week" : "24-Bar"} Range{" "}
                   <span className="text-foreground font-mono tabular-nums">
                     {chartStats.low24.toFixed(2)} — {chartStats.high24.toFixed(2)}
                   </span>
@@ -774,7 +878,7 @@ export default function LiveTradingPage() {
             )}
             <div className="ml-auto flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              <span className="text-3xs font-bold text-foreground uppercase tracking-tighter">Live Market Data Stream</span>
+              <span className="text-3xs font-bold text-foreground uppercase tracking-tighter">Market Data · Alpaca / yFinance</span>
             </div>
           </div>
         </section>
@@ -782,7 +886,7 @@ export default function LiveTradingPage() {
         {/* ════ RIGHT — Market Pulse ════ */}
         <section className="bg-surface-low border-l border-border/10 hidden xl:flex flex-col" aria-label="Market Pulse">
           <div className="p-4 flex items-center justify-between border-b border-border/10">
-            <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Market Pulse</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Price Levels</h3>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -833,11 +937,15 @@ export default function LiveTradingPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-3xs text-muted-foreground uppercase">24H High</span>
+                    <span className="text-3xs text-muted-foreground uppercase">
+                      {timeframe === "1d" ? "24-Day" : timeframe === "1wk" ? "24-Wk" : "24-Bar"} High
+                    </span>
                     <span className="text-xs font-bold tabular-nums">{chartStats.high24.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-3xs text-muted-foreground uppercase">24H Low</span>
+                    <span className="text-3xs text-muted-foreground uppercase">
+                      {timeframe === "1d" ? "24-Day" : timeframe === "1wk" ? "24-Wk" : "24-Bar"} Low
+                    </span>
                     <span className="text-xs font-bold tabular-nums">{chartStats.low24.toFixed(2)}</span>
                   </div>
                   {chartStats.volume > 0 && (
@@ -1214,20 +1322,21 @@ export default function LiveTradingPage() {
 
 // ─── Buy / Sell Toggle ────────────────────────────────────────────────────────
 
-function BuySellToggle({ onSelect }: { onSelect: (side: "buy" | "sell") => void }) {
-  const [active, setActive] = useState<"buy" | "sell">("buy");
-  function select(side: "buy" | "sell") {
-    setActive(side);
-    onSelect(side);
-  }
+function BuySellToggle({
+  value,
+  onSelect,
+}: {
+  value: "buy" | "sell";
+  onSelect: (side: "buy" | "sell") => void;
+}) {
   return (
     <div className="flex gap-2">
       <button
         type="button"
-        onClick={() => select("buy")}
+        onClick={() => onSelect("buy")}
         className={cn(
           "flex-1 py-2 font-bold text-xs rounded-sm border transition-colors",
-          active === "buy"
+          value === "buy"
             ? "bg-primary/10 text-primary border-primary/30"
             : "bg-surface-highest text-muted-foreground border-transparent hover:text-foreground"
         )}
@@ -1236,10 +1345,10 @@ function BuySellToggle({ onSelect }: { onSelect: (side: "buy" | "sell") => void 
       </button>
       <button
         type="button"
-        onClick={() => select("sell")}
+        onClick={() => onSelect("sell")}
         className={cn(
           "flex-1 py-2 font-bold text-xs rounded-sm border transition-colors",
-          active === "sell"
+          value === "sell"
             ? "bg-destructive/10 text-destructive border-destructive/30"
             : "bg-surface-highest text-muted-foreground border-transparent hover:text-foreground"
         )}
@@ -1300,16 +1409,38 @@ function SignalResultPanel({ result }: { result: SignalCheckResult }) {
         </span>
       </div>
 
+      {/* Plain-English interpretation */}
+      <SignalPlainEnglish result={result} />
+
       {/* Confirmation progress bar */}
-      <div className="w-full bg-border/10 h-1 rounded-full overflow-hidden">
-        <div
-          className="bg-primary h-full transition-all"
-          style={{ width: `${((result.confirmation_count ?? 0) / 8) * 100}%` }}
-        />
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-3xs text-muted-foreground flex items-center gap-1">
+            Confirmations
+            <Tip text="Each confirmation is one indicator (e.g. RSI, MACD, EMA) agreeing with the signal. More confirmations = higher confidence." />
+          </span>
+          <span className="text-3xs font-bold tabular-nums text-foreground">
+            {result.confirmation_count ?? 0}/8
+          </span>
+        </div>
+        <div className="w-full bg-border/10 h-1.5 rounded-full overflow-hidden">
+          <div
+            className={cn(
+              "h-full transition-all rounded-full",
+              (result.confirmation_count ?? 0) >= 7
+                ? "bg-primary"
+                : (result.confirmation_count ?? 0) >= 5
+                  ? "bg-amber-400"
+                  : "bg-destructive/60"
+            )}
+            style={{ width: `${((result.confirmation_count ?? 0) / 8) * 100}%` }}
+          />
+        </div>
+        <p className="text-3xs text-muted-foreground italic mt-1">
+          Regime: <span className="font-semibold capitalize text-foreground/70">{result.regime ?? "—"}</span>
+          <Tip text="Regime = the current market trend detected by the AI. 'bull' means uptrend, 'bear' means downtrend, 'neutral' means sideways." />
+        </p>
       </div>
-      <p className="text-3xs text-muted-foreground italic">
-        Confirmations: {result.confirmation_count ?? 0}/8 · Regime: {result.regime ?? "—"}
-      </p>
 
       {/* Squeeze status card */}
       {sq && (
@@ -1573,5 +1704,70 @@ function CredentialBadge({ credential }: { credential: BrokerCredential }) {
     <Badge variant="robinhood" className="shrink-0 text-3xs">
       Robinhood
     </Badge>
+  );
+}
+
+// ─── Tip Tooltip ─────────────────────────────────────────────────────────────
+// Lightweight inline tooltip using CSS — no extra dependency.
+
+function Tip({ text }: { text: string }) {
+  return (
+    <span className="relative group inline-flex items-center cursor-help">
+      <CircleHelp className="h-3 w-3 text-muted-foreground/50 hover:text-amber-400 transition-colors" />
+      <span
+        className={cn(
+          "pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 z-50",
+          "w-52 rounded-sm bg-surface-highest border border-border/20",
+          "px-2.5 py-2 text-3xs text-muted-foreground leading-relaxed shadow-xl",
+          "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
+          "whitespace-normal"
+        )}
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
+// ─── Signal Plain-English Interpretation ──────────────────────────────────────
+
+function SignalPlainEnglish({ result }: { result: SignalCheckResult }) {
+  const count = result.confirmation_count ?? 0;
+  const signal = result.signal?.toLowerCase() ?? "hold";
+  const regime = result.regime?.toLowerCase() ?? "neutral";
+
+  // Build a plain-English summary
+  const strengthLabel =
+    count >= 7 ? "strong" : count >= 5 ? "moderate" : count >= 3 ? "weak" : "very weak";
+
+  const signalEmoji =
+    signal === "buy" ? "🟢" : signal === "sell" ? "🔴" : "🟡";
+
+  const regimeLabel =
+    regime === "bull" ? "uptrend" : regime === "bear" ? "downtrend" : "sideways market";
+
+  const recommendation =
+    signal === "buy" && count >= 7
+      ? "Conditions look favorable for an entry. Suitable for paper trading."
+      : signal === "buy" && count >= 5
+        ? "Mildly positive signal. Consider waiting for stronger confirmation."
+        : signal === "sell"
+          ? "The AI suggests reducing exposure or skipping a new entry."
+          : "No strong directional signal. Consider waiting for a clearer setup.";
+
+  return (
+    <div className="rounded-sm border border-amber-500/15 bg-amber-500/5 px-3 py-2.5 space-y-1">
+      <p className="text-3xs font-bold text-amber-300/80 uppercase tracking-widest">What this means</p>
+      <p className="text-2xs text-foreground/80 leading-relaxed">
+        {signalEmoji}{" "}
+        <span className="font-semibold capitalize">{signal === "hold" ? "Hold / Wait" : signal}</span>{" "}
+        signal with <span className="font-semibold">{strengthLabel} confidence</span> ({count}/8 indicators agree).{" "}
+        The AI detects a{" "}
+        <span className="font-semibold">{regimeLabel}</span>.
+      </p>
+      <p className="text-3xs text-muted-foreground leading-relaxed italic">
+        {recommendation}
+      </p>
+    </div>
   );
 }

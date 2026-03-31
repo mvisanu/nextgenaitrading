@@ -273,7 +273,9 @@ export interface LiveStatus {
   credential_id: number | null;
   provider: BrokerProvider | null;
   profile_name: string | null;
+  paper_trading: boolean;
   connected: boolean;
+  account_info: Record<string, unknown> | null;
 }
 
 // ─── Artifacts ────────────────────────────────────────────────────────────────
