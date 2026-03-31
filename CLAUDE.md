@@ -152,6 +152,15 @@ TWILIO_FROM_NUMBER=+1XXXXXXXXXX
 COMMODITY_ALERT_MINUTES=15
 ```
 
+## Render Memory Constraints (512 MB Starter Plan)
+
+- **DB pool:** `pool_size=2`, `max_overflow=3` (5 max connections). Never raise these on Render Starter — each asyncpg connection uses ~3-5 MB.
+- **uvicorn:** `--workers 1 --limit-concurrency 20 --backlog 64`. Single worker (APScheduler is in-process singleton).
+- **yfinance downloads:** Hard cap at 750 rows after download. Weekly/monthly intervals limited to `"1825d"` (5 years) — never use `"3650d"` or `"max"` for periodic intervals.
+- **Scheduler intervals (render.yaml):** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min. Do not lower these without memory testing.
+- **Scheduler gc:** Every scheduler task must have `gc.collect()` in its `finally` block to release DataFrames immediately.
+- **chart-data endpoint:** Never add `db: Depends(get_db)` unless actually used — dashboard fires 15+ concurrent polls per symbol, each acquiring a pool connection.
+
 ## Critical Constraints
 
 - **Multi-tenancy:** Every service method scopes queries to `user_id`. Use `assert_ownership(record, current_user)`.
@@ -203,6 +212,15 @@ COMMODITY_ALERT_MINUTES=15
 | Dashboard live terminal animations (LiveClock, price flash, countdown bar, watchlist arrows) | Complete — 2026-03-31 |
 | Dashboard live watchlist price polling (30s refetch; terminal refresh progress bar) | Complete — 2026-03-31 |
 | LiveClock SSR hydration fix (null init; set real Date only after mount) | Fixed — 2026-03-31 |
+| Dashboard bugs: selectedItem undefined guard + chartScale wired to PriceChart log/linear toggle | Fixed — 2026-03-31 |
+| Dashboard 500 fix: removed unused db=Depends(get_db) from chart-data endpoint (pool exhaustion) | Fixed — 2026-03-31 |
+| Render OOM fix: yfinance 750-row cap, 5yr max, scheduler intervals doubled, gc.collect(), pool_size=2 | Fixed — 2026-03-31 |
+| DB pool hardening: pool_recycle=300, jit=off, get_db retry on InterfaceError + engine.dispose() | Fixed — 2026-03-31 |
+| Missing auto_buy_settings migration: execution_timeframe/start_date/end_date/target_buy/sell added | Fixed — 2026-03-31 |
+| Dockerfile: CMD runs `alembic upgrade head && uvicorn` — auto-migrates on every Render deploy | Fixed — 2026-03-31 |
+| Dashboard chart query: added `enabled: !!user` guard to prevent pre-auth API calls | Fixed — 2026-03-31 |
+| market_data.py: 3m→5m, 10m→15m interval mapping; 750-row cap; 5yr period for 1wk/1mo | Fixed — 2026-03-31 |
+| PriceChart.tsx scale prop: was unstaged (not committed) — now committed; build fixed | Fixed — 2026-03-31 |
 
 ## Options Trading Engine (2026-03-30)
 
