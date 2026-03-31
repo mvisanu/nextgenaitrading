@@ -18,9 +18,10 @@ logger = logging.getLogger(__name__)
 
 REQUIRED_COLUMNS = {"Open", "High", "Low", "Close", "Volume"}
 
-# Maps common commodity/forex display symbols to their yfinance tickers.
+# Maps common commodity/forex/index display symbols to their yfinance tickers.
 # Matching strips "/" and "-" so XAU-USD, XAU/USD, XAUUSD all resolve.
 _SYMBOL_MAP: dict[str, str] = {
+    # Commodities
     "XAUUSD": "GC=F",
     "XAGUSD": "SI=F",
     "XPTUSD": "PL=F",
@@ -29,12 +30,24 @@ _SYMBOL_MAP: dict[str, str] = {
     "BRENTOIL": "BZ=F",
     "COPPER": "HG=F",
     "NATGAS": "NG=F",
+    # Crypto
     "BTCUSD": "BTC-USD",
     "ETHUSD": "ETH-USD",
     "SOLUSD": "SOL-USD",
+    # Forex
     "EURUSD": "EURUSD=X",
     "GBPUSD": "GBPUSD=X",
     "USDJPY": "USDJPY=X",
+    # Market indices (display → yfinance ticker)
+    "SPX": "^GSPC",    # S&P 500
+    "NDQ": "^NDX",     # NASDAQ-100
+    "DJI": "^DJI",     # Dow Jones Industrial Average
+    "VIX": "^VIX",     # CBOE Volatility Index
+    "DXY": "DX-Y.NYB", # US Dollar Index
+    "RUT": "^RUT",     # Russell 2000
+    "FTSE": "^FTSE",   # FTSE 100
+    "DAX": "^GDAXI",   # DAX
+    "NKY": "^N225",    # Nikkei 225
 }
 
 

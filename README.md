@@ -27,7 +27,7 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Fernet credential encryption** — broker API keys encrypted at rest, decrypted in-memory at execution time only, never returned in any API response
 - **APScheduler background jobs** — buy zone refresh (every 4h), alert evaluation (every 5min), auto-buy engine (every 5min), live watchlist scanner (every 5min), idea generator (every 60min)
 - **Pine Script v5 generation** — winning optimiser variants serialised to executable TradingView strategy code
-- **Sovereign Terminal UI** — Deep Titanium dark theme, emerald primary, 7-tier tonal surface hierarchy, Webull-style dual timeline, BB Squeeze overlay, FVG drawings, mobile-responsive across all pages
+- **Sovereign Terminal UI** — Deep Titanium dark theme, emerald primary, 7-tier tonal surface hierarchy, Webull-style dual timeline, BB Squeeze overlay, FVG drawings, mobile-responsive across all pages; chart viewport preserved across 30s live data refreshes (pan left to inspect history without snapping back)
 - **Commodity signal engine** — XAUUSD/XAGUSD/multi-symbol signal engine integrated into the main backend with sidebar sub-menu (Overview, Signals, Performance, Risk)
 - **Real-time commodity alerts** — SMTP email + Twilio SMS fired when a commodity ticker meets all 4 technical conditions (EMA cross, trend, RSI, volume); per-user cooldown, confidence threshold, and symbol watchlist; scheduler checks every 15 min using live yfinance data; confirmed working end-to-end
 - **Alpaca market data integration** — `alpaca_data.py` wraps `StockHistoricalDataClient`; `load_ohlcv()` routes US stocks/ETFs through Alpaca automatically when `ALPACA_API_KEY` is set, falls back to yfinance; commodities/forex/crypto always use yfinance
@@ -198,7 +198,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Live trading | Signal check with per-indicator breakdown, BUY/SELL/HOLD banner, notional USD order entry, dry-run default; beginner guide banner, Tip tooltips on all jargon, plain-English signal interpretation |
 | Broker abstraction | `AbstractBrokerClient` → `AlpacaClient` (full) / `RobinhoodClient` (stub) |
 | Fernet encryption | Broker API keys encrypted at rest; never returned in responses |
-| Webull-style dashboard | Bottom period bar (1D/5D/1M/3M/6M/YTD/1Y/5Y/Max), intraday time axis, drawing tools (FVG, trend lines) |
+| Webull-style dashboard | Bottom period bar (1D/5D/1M/3M/6M/YTD/1Y/5Y/Max), intraday time axis, drawing tools (FVG, trend lines); chart viewport pinned during live 30s polls — pan left freely without snapping back |
 
 ### V2 — Intelligence layer
 

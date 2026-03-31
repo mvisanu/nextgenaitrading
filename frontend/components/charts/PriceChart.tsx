@@ -110,6 +110,12 @@ export function PriceChart({
   const chartRef = useRef<IChartApi | null>(null);
   const drawingModeRef = useRef(drawingMode);
   const onChartClickRef = useRef(onChartClick);
+  // Track which symbol has had its initial fitContent() called.
+  // Resets when symbol changes so a new symbol always fits; polling refreshes do not snap back.
+  const fittedSymbolRef = useRef<string | null>(null);
+
+  // Tracks active drawing primitive instances so they can be detached before re-attaching.
+  const drawingPrimitivesRef = useRef<{ series: ISeriesApi<"Candlestick">; primitive: object }[]>([]);
 
   // Series refs — kept stable so data-only updates can call setData() without chart teardown
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -272,17 +278,6 @@ export function PriceChart({
       onChartClickRef.current?.({ time: timeStr, price });
     });
 
-    // Attach drawing primitives
-    for (const d of drawings) {
-      if (d.type === "trendline") {
-        const p = new TrendLinePrimitive(d as TrendLineData);
-        candleSeries.attachPrimitive(p as any);
-      } else if (d.type === "fvg") {
-        const p = new FVGBoxPrimitive(d as FVGData);
-        candleSeries.attachPrimitive(p as any);
-      }
-    }
-
     // Responsive resize
     const ro = new ResizeObserver(() => {
       if (containerRef.current) {
@@ -299,8 +294,12 @@ export function PriceChart({
       volumeSeriesRef.current = null;
       bbSeriesRef.current = [null, null, null, null, null];
       maSeriesRef.current = [];
+      fittedSymbolRef.current = null; // force fitContent() on next data load
+      drawingPrimitivesRef.current = [];
     };
-  }, [theme, height, drawings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [theme, height]); // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: `drawings` intentionally excluded — handled by Effect 3 below so that
+  // auto-FVG recalculation on every 30s poll does NOT destroy/recreate the chart.
 
   // ── Effect: Price scale mode (linear / log) ──────────────────────────────
   useEffect(() => {
@@ -308,6 +307,32 @@ export function PriceChart({
     // PriceScaleMode: 0 = Normal, 1 = Logarithmic
     chartRef.current.priceScale("right").applyOptions({ mode: scale === "log" ? 1 : 0 });
   }, [scale]);
+
+  // ── Effect 3: Drawing primitives ────────────────────────────────────────
+  // Detaches all previous primitives and re-attaches current drawings.
+  // Kept separate from Effect 1 so that FVG/trendline changes (which recalculate
+  // on every candle poll) do NOT destroy and recreate the chart.
+  useEffect(() => {
+    const candle = candleSeriesRef.current;
+    if (!candle) return;
+
+    // Detach previous primitives
+    for (const { series, primitive } of drawingPrimitivesRef.current) {
+      try { series.detachPrimitive(primitive as any); } catch { /* already detached */ }
+    }
+    drawingPrimitivesRef.current = [];
+
+    // Attach current drawings
+    for (const d of drawings) {
+      let primitive: object | null = null;
+      if (d.type === "trendline") primitive = new TrendLinePrimitive(d as TrendLineData);
+      else if (d.type === "fvg") primitive = new FVGBoxPrimitive(d as FVGData);
+      if (primitive) {
+        candle.attachPrimitive(primitive as any);
+        drawingPrimitivesRef.current.push({ series: candle, primitive });
+      }
+    }
+  }, [drawings]);
 
   // ── Effect 2: Data update ────────────────────────────────────────────────
   // Runs whenever chart data changes (polling refetch every 30s).
@@ -407,7 +432,14 @@ export function PriceChart({
       maSeries.forEach((s) => s?.setData([]));
     }
 
-    chartRef.current?.timeScale().fitContent();
+    // Only fit content on the first load for a given symbol.
+    // Subsequent polling refreshes (every 30s) skip this so the user's
+    // pan position is preserved — the chart no longer snaps back to the right.
+    const currentSymbol = symbol ?? "";
+    if (fittedSymbolRef.current !== currentSymbol) {
+      chartRef.current?.timeScale().fitContent();
+      fittedSymbolRef.current = currentSymbol;
+    }
   }, [data, signals, bollingerData, maOverlays, theme]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (data.length === 0) {

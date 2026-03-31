@@ -203,7 +203,7 @@ async def get_live_chart_data(
 ) -> LiveChartResponse:
     """Fetch OHLCV candles for the live trading price chart."""
     symbol = symbol.strip().upper()
-    if not re.fullmatch(r"[A-Z\^][A-Z0-9\-\.]{0,19}", symbol):
+    if not re.fullmatch(r"[A-Z\^][A-Z0-9\-\.=]{0,19}", symbol):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid symbol '{symbol}'. Must be 1–20 characters, letters/digits/hyphens, starting with a letter.",

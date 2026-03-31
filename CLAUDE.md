@@ -179,6 +179,7 @@ COMMODITY_ALERT_MINUTES=15
 - **Market data routing:** `load_ohlcv()` in `market_data.py` tries Alpaca (`alpaca_data.py`) first for plain US stock/ETF symbols (1-5 uppercase letters), falls back to yfinance on failure or when keys absent. Commodities (`=F`), forex (`=X`), and crypto (`-USD`) always go to yfinance. Never call `load_ohlcv_alpaca()` directly — always use `load_ohlcv()` or `load_ohlcv_for_strategy()`.
 - **Commodity symbol normalisation:** `market_data.normalize_symbol()` translates display symbols (XAU-USD, XAUUSD, XAU/USD) to yfinance tickers (GC=F) before any `load_ohlcv*` call. Always call via `load_ohlcv_for_strategy()` — never pass raw commodity symbols to yfinance directly.
 - **Specific futures contracts:** `normalize_symbol("GCM26")` → `"GCM26.CMX"`. Pattern `^[A-Z]{2,3}[FGHJKMNQUVXZ]\d{2}$` triggers exchange suffix lookup: COMEX metals (GC,SI,HG,PL,PA,MGC,SIL) → `.CMX`; NYMEX energy+PGMs (CL,NG,RB,HO,BZ,PL,PA,QM) → `.NYM`. Unknown roots fall back to `=F`.
+- **`PriceChart` has 3 effects — do not merge them:** Effect 1 (`[theme, height]`) creates the chart structure; Effect 2 (`[data, signals, bollingerData, maOverlays, theme]`) updates series data; Effect 3 (`[drawings]`) attaches/detaches drawing primitives. `drawings` must NOT be in Effect 1's deps — FVG auto-detection recalculates on every candle poll and would destroy/recreate the chart on every 30s refresh. `fitContent()` is gated by `fittedSymbolRef` so it only fires on the first load per symbol, never on polling refreshes.
 - **`AppShell` requires `title` prop** — always pass `title="..."` or `title={tr("pageTitle", lang)}` for translated pages.
 - **`useMemo` with derived arrays:** Never declare arrays outside a `useMemo` and reference them in its deps — move the array construction inside the callback. See `dashboard/page.tsx` `allSymbols` pattern.
 - **SSR hydration for time/random values:** Initialize `useState` as `null` for any value derived from `Date.now()` or `Math.random()`. Set the real value only inside `useEffect`. Render an invisible placeholder when `null`. See `LiveClock` in `dashboard/page.tsx`.
@@ -223,6 +224,10 @@ COMMODITY_ALERT_MINUTES=15
 | Dashboard chart query: added `enabled: !!user` guard to prevent pre-auth API calls | Fixed — 2026-03-31 |
 | market_data.py: 3m→5m, 10m→15m interval mapping; 750-row cap; 5yr period for 1wk/1mo | Fixed — 2026-03-31 |
 | PriceChart.tsx scale prop: was unstaged (not committed) — now committed; build fixed | Fixed — 2026-03-31 |
+| live.py chart-data symbol regex: blocked `=` char, preventing GC=F (gold) and EURUSD=X (forex) from chart endpoint | Fixed — 2026-03-31 |
+| Dashboard E2E tests DASH-07/08/09: flawed assertions (email removed from sidebar, `/500/` regex too broad, SPA nav) | Fixed — 2026-03-31 |
+| PriceChart chart snap-back on poll: `fitContent()` fired on every 30s refresh; now only fires on initial load per symbol | Fixed — 2026-03-31 |
+| PriceChart chart recreated on every poll: `drawings` in Effect 1 deps caused teardown when autoFVGs recalculated; moved drawing attachment to Effect 3 | Fixed — 2026-03-31 |
 
 ## Options Trading Engine (2026-03-30)
 
