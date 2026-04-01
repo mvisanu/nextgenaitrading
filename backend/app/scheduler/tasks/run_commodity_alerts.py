@@ -53,6 +53,9 @@ def _build_sms_body(symbol: str, price: float, confidence: int) -> str:
 async def run_commodity_alerts() -> None:
     """
     Evaluate commodity signals for all users with active alert prefs.
+
+    Uses a single AsyncSessionLocal for the entire function to avoid opening
+    N sessions against the 5-connection Render pool.
     """
     logger.info("run_commodity_alerts: starting")
 
@@ -66,99 +69,94 @@ async def run_commodity_alerts() -> None:
             )
             prefs_list: list[CommodityAlertPrefs] = list(result.scalars().all())
 
-        if not prefs_list:
-            logger.debug("run_commodity_alerts: no users with active alert prefs")
-            return
+            if not prefs_list:
+                logger.debug("run_commodity_alerts: no users with active alert prefs")
+                return
 
-        logger.info("run_commodity_alerts: checking %d user pref(s)", len(prefs_list))
+            logger.info("run_commodity_alerts: checking %d user pref(s)", len(prefs_list))
 
-        # Deduplicate symbols across all users to minimise yfinance calls
-        all_symbols: set[str] = set()
-        for prefs in prefs_list:
-            for sym in (prefs.symbols or ["XAUUSD"]):
-                all_symbols.add(sym.upper())
+            # Deduplicate symbols across all users to minimise yfinance calls
+            all_symbols: set[str] = set()
+            for prefs in prefs_list:
+                for sym in (prefs.symbols or ["XAUUSD"]):
+                    all_symbols.add(sym.upper())
 
-        # Fetch signals once per symbol
-        signal_cache: dict[str, object] = {}
-        for sym in all_symbols:
-            signal_cache[sym] = evaluate_signal(sym)
+            # Fetch signals once per symbol
+            signal_cache: dict[str, object] = {}
+            for sym in all_symbols:
+                signal_cache[sym] = evaluate_signal(sym)
 
-        now = datetime.now(timezone.utc)
-        alerts_sent = 0
+            now = datetime.now(timezone.utc)
+            alerts_sent = 0
 
-        for prefs in prefs_list:
-            symbols = [s.upper() for s in (prefs.symbols or ["XAUUSD"])]
+            for prefs in prefs_list:
+                symbols = [s.upper() for s in (prefs.symbols or ["XAUUSD"])]
 
-            # Cooldown check
-            if prefs.last_alerted_at:
-                elapsed = (now - prefs.last_alerted_at).total_seconds() / 60
-                if elapsed < prefs.cooldown_minutes:
-                    logger.debug(
-                        "run_commodity_alerts: user_id=%d in cooldown (%.1f/%d min)",
-                        prefs.user_id,
-                        elapsed,
-                        prefs.cooldown_minutes,
-                    )
-                    continue
-
-            for sym in symbols:
-                sig = signal_cache.get(sym)
-                if sig is None:
-                    logger.warning("run_commodity_alerts: no signal data for %s", sym)
-                    continue
-
-                if not sig.buy_signal:
-                    logger.debug("run_commodity_alerts: %s — no buy signal", sym)
-                    continue
-
-                if sig.confidence < prefs.min_confidence:
-                    logger.debug(
-                        "run_commodity_alerts: %s confidence %d < threshold %d",
-                        sym,
-                        sig.confidence,
-                        prefs.min_confidence,
-                    )
-                    continue
-
-                subject = f"BUY Signal: {sym} @ {sig.current_price:,.2f} ({sig.confidence}% confidence)"
-
-                if prefs.email_enabled and prefs.alert_email:
-                    send_email(
-                        to_address=prefs.alert_email,
-                        subject=subject,
-                        body_text=_build_email_body(
-                            sym, sig.current_price, sig.confidence, sig.reason
-                        ),
-                    )
-
-                if prefs.sms_enabled and prefs.alert_phone:
-                    send_sms(
-                        to_number=prefs.alert_phone,
-                        body=_build_sms_body(sym, sig.current_price, sig.confidence),
-                    )
-
-                alerts_sent += 1
-
-                # Update last_alerted_at after first symbol fires for this user
-                async with AsyncSessionLocal() as db:
-                    result = await db.execute(
-                        select(CommodityAlertPrefs).where(
-                            CommodityAlertPrefs.id == prefs.id
+                # Cooldown check
+                if prefs.last_alerted_at:
+                    elapsed = (now - prefs.last_alerted_at).total_seconds() / 60
+                    if elapsed < prefs.cooldown_minutes:
+                        logger.debug(
+                            "run_commodity_alerts: user_id=%d in cooldown (%.1f/%d min)",
+                            prefs.user_id,
+                            elapsed,
+                            prefs.cooldown_minutes,
                         )
-                    )
-                    row = result.scalar_one_or_none()
-                    if row:
-                        row.last_alerted_at = now
-                        await db.commit()
+                        continue
 
-                # Only alert once per user per run (first matching symbol wins)
-                break
+                for sym in symbols:
+                    sig = signal_cache.get(sym)
+                    if sig is None:
+                        logger.warning("run_commodity_alerts: no signal data for %s", sym)
+                        continue
 
-        logger.info(
-            "run_commodity_alerts: complete — users=%d alerts_sent=%d",
-            len(prefs_list),
-            alerts_sent,
-        )
+                    if not sig.buy_signal:
+                        logger.debug("run_commodity_alerts: %s — no buy signal", sym)
+                        continue
+
+                    if sig.confidence < prefs.min_confidence:
+                        logger.debug(
+                            "run_commodity_alerts: %s confidence %d < threshold %d",
+                            sym,
+                            sig.confidence,
+                            prefs.min_confidence,
+                        )
+                        continue
+
+                    subject = f"BUY Signal: {sym} @ {sig.current_price:,.2f} ({sig.confidence}% confidence)"
+
+                    if prefs.email_enabled and prefs.alert_email:
+                        send_email(
+                            to_address=prefs.alert_email,
+                            subject=subject,
+                            body_text=_build_email_body(
+                                sym, sig.current_price, sig.confidence, sig.reason
+                            ),
+                        )
+
+                    if prefs.sms_enabled and prefs.alert_phone:
+                        send_sms(
+                            to_number=prefs.alert_phone,
+                            body=_build_sms_body(sym, sig.current_price, sig.confidence),
+                        )
+
+                    alerts_sent += 1
+
+                    # Update last_alerted_at directly on the loaded ORM object —
+                    # no second SELECT needed; single commit at end of full loop.
+                    prefs.last_alerted_at = now
+
+                    # Only alert once per user per run (first matching symbol wins)
+                    break
+
+            # Commit all last_alerted_at updates in one round-trip
+            await db.commit()
+
+            logger.info(
+                "run_commodity_alerts: complete — users=%d alerts_sent=%d",
+                len(prefs_list),
+                alerts_sent,
+            )
 
     except Exception as exc:
         logger.exception("run_commodity_alerts: job failed: %s", exc)

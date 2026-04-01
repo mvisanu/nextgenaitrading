@@ -28,7 +28,6 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
 from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +35,7 @@ from app.models.buy_signal import BuyNowSignal
 from app.models.buy_zone import StockBuyZoneSnapshot
 from app.options.calendar import get_days_to_earnings
 from app.services.buy_zone_service import get_or_calculate_buy_zone
+from app.services.market_data import load_ohlcv
 from app.services.notification_service import dispatch_notification
 
 logger = logging.getLogger(__name__)
@@ -204,12 +204,12 @@ async def evaluate_buy_signal(
 
     # ── Step 2: load live OHLCV ───────────────────────────────────────────────
     try:
-        df = yf.download(ticker, period="2y", interval="1d", auto_adjust=True, progress=False)
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+        # Route through load_ohlcv: Alpaca-first for stocks, yfinance fallback;
+        # enforces 750-row cap to prevent Render OOM.
+        df = load_ohlcv(ticker, interval="1d", period="730d")
         df = df.dropna()
     except Exception as exc:
-        logger.error("evaluate_buy_signal: yfinance failed for %s: %s", ticker, exc)
+        logger.error("evaluate_buy_signal: load_ohlcv failed for %s: %s", ticker, exc)
         raise RuntimeError(f"Cannot evaluate {ticker}: data unavailable") from exc
 
     if len(df) < 50:

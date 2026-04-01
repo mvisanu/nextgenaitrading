@@ -314,6 +314,11 @@ export const liveApi = {
     get<{ candles: import("@/types").CandleBar[]; bollinger?: import("@/types").BollingerOverlayBar[] | null }>(
       `/live/chart-data?symbol=${encodeURIComponent(symbol)}&interval=${interval}${bollinger ? "&bollinger=true" : ""}`
     ),
+
+  watchlistPrices: (symbols: string[]) =>
+    get<Record<string, { price: number; change: number; changePercent: number }>>(
+      `/live/watchlist-prices?symbols=${symbols.map(encodeURIComponent).join(",")}`
+    ),
 };
 
 // ─── Artifacts ────────────────────────────────────────────────────────────────

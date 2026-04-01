@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -122,6 +123,7 @@ async def list_orders(
 async def list_positions(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(default=50, ge=1, le=200),
 ) -> list[PositionOut]:
     """
     Returns open position snapshots from DB.
@@ -135,6 +137,7 @@ async def list_positions(
             PositionSnapshot.is_open.is_(True),
         )
         .order_by(PositionSnapshot.created_at.desc())
+        .limit(limit)
     )
     positions = result.scalars().all()
     return [PositionOut.model_validate(p) for p in positions]
@@ -209,7 +212,8 @@ async def get_live_chart_data(
             detail=f"Invalid symbol '{symbol}'. Must be 1–20 characters, letters/digits/hyphens, starting with a letter.",
         )
     try:
-        df = load_ohlcv_for_strategy(symbol, interval)
+        # Run blocking yfinance/pandas work off the event loop thread
+        df = await asyncio.to_thread(load_ohlcv_for_strategy, symbol, interval)
         candles = df_to_candles(df, interval)
     except Exception as exc:
         raise HTTPException(
@@ -267,3 +271,57 @@ async def get_live_chart_data(
             logger.warning("Bollinger overlay computation failed: %s", exc)
 
     return LiveChartResponse(candles=candles, bollinger=bollinger_overlay)
+
+
+@router.get("/watchlist-prices")
+async def get_watchlist_prices(
+    symbols: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> dict:
+    """
+    Batch price endpoint — returns price/change/changePercent for up to 20 symbols.
+
+    Accepts a comma-separated symbols query string, e.g. ?symbols=AAPL,MSFT,TSLA
+    All symbols are fetched concurrently via asyncio.gather with asyncio.to_thread
+    so blocking yfinance calls don't stall the event loop.
+
+    Does NOT accept db=Depends(get_db) — no DB queries needed here; each call
+    that acquires a pool connection would exhaust the 5-connection Render pool.
+    """
+    _VALID_SYM = re.compile(r"^[A-Z\^][A-Z0-9\-\.=]{0,19}$")
+    raw_symbols = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    valid_symbols = [s for s in raw_symbols if _VALID_SYM.fullmatch(s)][:20]
+
+    if not valid_symbols:
+        return {}
+
+    def _fetch_price(sym: str) -> tuple[str, dict | None]:
+        try:
+            df = load_ohlcv_for_strategy(sym, "1d")
+            if df is None or len(df) < 1:
+                return sym, None
+            last_close = float(df["Close"].iloc[-1])
+            if len(df) >= 2:
+                prev_close = float(df["Close"].iloc[-2])
+                change = round(last_close - prev_close, 4)
+                change_pct = round((change / prev_close) * 100, 4) if prev_close != 0 else 0.0
+            else:
+                change = 0.0
+                change_pct = 0.0
+            return sym, {"price": last_close, "change": change, "changePercent": change_pct}
+        except Exception as exc:
+            logger.debug("watchlist-prices: fetch failed for %s: %s", sym, exc)
+            return sym, None
+
+    tasks = [asyncio.to_thread(_fetch_price, sym) for sym in valid_symbols]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    prices: dict[str, dict] = {}
+    for item in results:
+        if isinstance(item, Exception):
+            continue
+        sym, data = item
+        if data is not None:
+            prices[sym] = data
+
+    return prices

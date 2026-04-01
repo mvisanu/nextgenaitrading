@@ -5,7 +5,9 @@ All DB queries scoped to current_user.id.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -43,6 +45,12 @@ from app.options.executor import OptionsExecutor
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# ── Module-level trend cache (symbol → (trend, price, timestamp)) ─────────────
+# Signals are polled every 60s; EMA trend doesn't change tick-by-tick.
+# TTL 60s avoids redundant yfinance downloads across back-to-back requests.
+_TREND_CACHE: dict[str, tuple[str, float, float]] = {}  # sym -> (trend, price, ts)
+_TREND_CACHE_TTL = 60.0  # seconds
 
 router = APIRouter(tags=["options"])
 
@@ -162,16 +170,53 @@ async def get_signals(
     )
     signals: list[OptionsSignalOut] = []
 
-    for sym in symbols[:10]:
+    async def _fetch_trend_and_price(sym: str) -> tuple[str, float]:
+        """Return (trend, price) for a symbol, using the module-level TTL cache."""
+        import yfinance as yf
+        now = time.monotonic()
+        cached = _TREND_CACHE.get(sym)
+        if cached and (now - cached[2]) < _TREND_CACHE_TTL:
+            return cached[0], cached[1]
+
+        underlying_price = 100.0
+        underlying_trend = "neutral"
         try:
-            # Get nearest expiration
+            fast_info = await asyncio.get_running_loop().run_in_executor(
+                None, lambda: yf.Ticker(sym).fast_info
+            )
+            lp = getattr(fast_info, "last_price", None)
+            if lp and lp > 0:
+                underlying_price = float(lp)
+            hist = await asyncio.get_running_loop().run_in_executor(
+                None, lambda: yf.download(sym, period="60d", interval="1d",
+                                          auto_adjust=True, progress=False)
+            )
+            if not hist.empty and len(hist) >= 20:
+                closes = hist["Close"].squeeze()
+                ema20 = float(closes.ewm(span=20, adjust=False).mean().iloc[-1])
+                ema50 = float(closes.ewm(span=50, adjust=False).mean().iloc[-1]) if len(hist) >= 50 else ema20
+                price = float(closes.iloc[-1])
+                if price > ema20 and ema20 > ema50:
+                    underlying_trend = "bullish"
+                elif price < ema20 and ema20 < ema50:
+                    underlying_trend = "bearish"
+                else:
+                    underlying_trend = "neutral"
+        except Exception as price_exc:
+            logger.debug("Price/trend fetch failed for %s: %s", sym, price_exc)
+
+        _TREND_CACHE[sym] = (underlying_trend, underlying_price, time.monotonic())
+        return underlying_trend, underlying_price
+
+    async def _eval_symbol(sym: str) -> OptionsSignalOut | None:
+        try:
             exps = await broker.get_expirations(sym)
             if not exps:
-                continue
+                return None
             exp = exps[0]
             chain = await broker.get_options_chain(sym, exp)
             if not chain:
-                continue
+                return None
 
             history = await get_iv_history(sym, db)
             sample_iv = next((c.implied_volatility for c in chain if c.implied_volatility > 0), 0.30)
@@ -179,39 +224,9 @@ async def get_signals(
             iv_pct = compute_iv_percentile(sample_iv, history)
             days_to_earnings = await get_days_to_earnings(sym)
 
-            # Fetch real underlying price and derive trend from EMA-20 vs EMA-50
-            underlying_price = 100.0
-            underlying_trend = "neutral"
-            try:
-                import yfinance as yf
-                import asyncio
-                fast_info = await asyncio.get_running_loop().run_in_executor(
-                    None, lambda: yf.Ticker(sym).fast_info
-                )
-                lp = getattr(fast_info, "last_price", None)
-                if lp and lp > 0:
-                    underlying_price = float(lp)
-                # Derive trend: fetch recent closes for EMA-20/50
-                hist = await asyncio.get_running_loop().run_in_executor(
-                    None, lambda: yf.download(sym, period="60d", interval="1d",
-                                              auto_adjust=True, progress=False)
-                )
-                if not hist.empty and len(hist) >= 20:
-                    closes = hist["Close"].squeeze()
-                    ema20 = float(closes.ewm(span=20, adjust=False).mean().iloc[-1])
-                    ema50 = float(closes.ewm(span=50, adjust=False).mean().iloc[-1]) if len(hist) >= 50 else ema20
-                    price = float(closes.iloc[-1])
-                    if price > ema20 and ema20 > ema50:
-                        underlying_trend = "bullish"
-                    elif price < ema20 and ema20 < ema50:
-                        underlying_trend = "bearish"
-                    else:
-                        underlying_trend = "neutral"
-            except Exception as price_exc:
-                logger.debug("Price/trend fetch failed for %s: %s", sym, price_exc)
+            underlying_trend, underlying_price = await _fetch_trend_and_price(sym)
 
             chain = compute_greeks(chain, underlying_price)
-
             signal = evaluate_signal(sym, chain, iv_rank, iv_pct, underlying_trend, days_to_earnings, config)
 
             legs = [
@@ -225,7 +240,7 @@ async def get_signals(
                 )
                 for c in signal.contract_legs
             ]
-            signals.append(OptionsSignalOut(
+            return OptionsSignalOut(
                 symbol=signal.symbol,
                 strategy=signal.strategy,
                 confidence=signal.confidence,
@@ -237,9 +252,13 @@ async def get_signals(
                 blocked=signal.blocked,
                 block_reason=signal.block_reason,
                 legs=legs,
-            ))
+            )
         except Exception as exc:
             logger.warning("Signal generation failed for %s: %s", sym, exc)
+            return None
+
+    results = await asyncio.gather(*[_eval_symbol(s) for s in symbols[:10]])
+    signals = [r for r in results if r is not None]
 
     return signals
 

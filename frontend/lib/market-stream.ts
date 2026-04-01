@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { getSupabaseBrowserClient } from "./supabase";
 
 const BASE_URL =
@@ -53,7 +53,8 @@ export function useMarketStream(symbols: string[]): UseMarketStreamResult {
   const esRef = useRef<{ abort: () => void } | null>(null);
   const reconnectTimer = useRef<number | null>(null);
   const retryCountRef = useRef(0);
-  const symbolKey = symbols.slice().sort().join(",");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const symbolKey = useMemo(() => symbols.slice().sort().join(","), [symbols]);
 
   // Use a ref to hold the connect function to avoid stale closures in reconnect callbacks
   const connectRef = useRef<(syms: string[]) => void>(() => {});

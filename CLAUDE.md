@@ -115,6 +115,7 @@ SECRET_KEY=<generated>
 JWT_ALGORITHM=HS256
 ENCRYPTION_KEY=<fernet-key>
 CORS_ORIGINS=http://localhost:3000
+FRONTEND_BASE_URL=http://localhost:3000   # set to https://nextgenaitrading.vercel.app on Render
 DEBUG=true
 ALPACA_BASE_URL=https://api.alpaca.markets
 ALPACA_PAPER_URL=https://paper-api.alpaca.markets
@@ -171,7 +172,7 @@ COMMODITY_ALERT_MINUTES=15
 - **Live trading defaults to dry-run.** Require explicit opt-in + confirmation dialog.
 - **Broker keys never returned in API responses.**
 - **`SPEC.md` is authoritative** for all feature specs (V1/V2/V3/Screener/Bitcoin).
-- **V3 scanner alerts fire only when ALL 10 conditions pass.** No partial alerts. See `PRD.md` Part 3 §4.3.
+- **V3 scanner alerts fire only when ALL 10 conditions pass.** No partial alerts. See `PRD.md` Part 3 §4.3. Condition 9 (`not_near_earnings`) calls `get_days_to_earnings()` from `options/calendar.py` (60-min LRU cache) — blocks within `OPTIONS_EARNINGS_BLOCK_DAYS` (default 5 days).
 - **V3 wording:** Use "historically favorable", "high-probability entry zone", "confidence score" — never "guaranteed", "safe", "certain to go up".
 - **CORS never `["*"]`.** Use `settings.cors_origins_list`; error handlers validate origin before reflecting. Default includes both `http://localhost:3000` and `https://nextgenaitrading.vercel.app`. Render env var: `CORS_ORIGINS=http://localhost:3000,https://nextgenaitrading.vercel.app`.
 - **List endpoints must have bounded `limit`:** `Query(default=50, ge=1, le=200)`.
@@ -246,6 +247,17 @@ COMMODITY_ALERT_MINUTES=15
 | Options signals: `underlying_trend` was hardcoded "neutral" (all signals = iron_condor); now derived from EMA-20/EMA-50 cross via yfinance; underlying price was hardcoded 100.0, now fetches real `fast_info.last_price` | Fixed — 2026-04-01 |
 | Options executor: debit strategies (bull_call_debit, bear_put_debit, long_straddle) were submitting legs as "sell"; now correctly sets action="buy" + limit_debit for debit strategies, action="sell" + limit_credit for credit strategies | Fixed — 2026-04-01 |
 | Options Live dialog hydration error: `<DialogDescription>` renders as `<p>`; nested `<p>` tags inside caused React hydration warning; fixed with `asChild` + `<div>` wrapper | Fixed — 2026-04-01 |
+| auto_buy_engine.py tautological safeguard: `position_size_limit` check was always true (`quantity * price == max_trade_amount` by construction); now computes `proposed_cost` from `target_buy_price` vs current price before capping | Fixed — 2026-04-01 |
+| Missing gc.collect() in 4 schedulers: `evaluate_auto_buy.py`, `evaluate_alerts.py`, `refresh_theme_scores.py`, `scan_watchlist.py` — risk of OOM on Render Starter | Fixed — 2026-04-01 |
+| V3 condition 9 hardcoded True: `not_near_earnings` in `buy_signal_service.py` was always True; now calls `get_days_to_earnings()` (60-min LRU cache) and blocks within `OPTIONS_EARNINGS_BLOCK_DAYS` (default 5) | Fixed — 2026-04-01 |
+| Auth middleware missing routes: `/portfolio`, `/options`, `/gold`, `/multi-chart`, `/stock` not in `PROTECTED_PREFIXES` in `middleware.ts` — unauthenticated users could reach these pages | Fixed — 2026-04-01 |
+| Unbounded limit on decisions endpoint: `limit: int = 100` → `limit: int = Query(default=100, ge=1, le=200)` in `backend/app/api/strategies.py` | Fixed — 2026-04-01 |
+| JWT audience bypass on fallback path: `auth/dependencies.py` fallback `jwt.decode()` lacked `audience="authenticated"` + `verify_aud=True` — forged tokens without audience claim accepted | Fixed — 2026-04-01 |
+| RSI inconsistency: `commodity_signal_service.py` used Cutler simple rolling mean; standardized to Wilder's EWM (`ewm(com=period-1, adjust=False)`) matching `buy_signal_service.py` | Fixed — 2026-04-01 |
+| Deprecated datetime.utcnow(): replaced all `datetime.utcnow()` calls in `options/signals.py` + `api/v4/options.py` with `datetime.now(timezone.utc)` | Fixed — 2026-04-01 |
+| Deprecated asyncio.get_event_loop(): replaced with `asyncio.get_running_loop()` at 2 call sites in `api/v4/options.py` | Fixed — 2026-04-01 |
+| max_overflow default mismatch: `core/config.py` defaulted to 4; corrected to 3 to match CLAUDE.md constraint and render.yaml | Fixed — 2026-04-01 |
+| Alert email hardcoded localhost URL: commodity alert emails now use `settings.frontend_base_url` (set `FRONTEND_BASE_URL=https://nextgenaitrading.vercel.app` in Render env) | Fixed — 2026-04-01 |
 
 ## Alpaca Real-Time Streaming (2026-03-31)
 

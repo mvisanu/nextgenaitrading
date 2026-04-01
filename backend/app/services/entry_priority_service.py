@@ -25,6 +25,8 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+from app.services.yfinance_cache import get_ticker_info
+
 logger = logging.getLogger(__name__)
 
 _NEAR_52W_LOW_THRESHOLD = 1.10   # within 10% of 52w low
@@ -105,7 +107,7 @@ def check_entry_priority(ticker: str) -> EntryPriorityResult:
     t = ticker.upper()
 
     try:
-        info = yf.Ticker(t).info
+        info = get_ticker_info(t)
         current_price: float = info.get("regularMarketPrice") or info.get("currentPrice") or 0.0
         low_52w: float = info.get("fiftyTwoWeekLow") or 0.0
     except Exception as exc:

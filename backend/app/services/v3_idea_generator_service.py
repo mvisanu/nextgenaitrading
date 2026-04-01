@@ -88,6 +88,57 @@ IDEA_UNIVERSE: list[str] = [t for t in SCAN_UNIVERSE if t not in UNIVERSE_CONTEX
 IDEA_EXPIRY_HOURS = 24
 TOP_IDEAS_LIMIT = 50
 
+# ── Static company name lookup ─────────────────────────────────────────────────
+# Names for all ~44 IDEA_UNIVERSE tickers. Avoids per-ticker yf.Ticker().info calls.
+_COMPANY_NAMES: dict[str, str] = {
+    "AAPL": "Apple Inc.",
+    "MSFT": "Microsoft Corporation",
+    "GOOGL": "Alphabet Inc.",
+    "AMZN": "Amazon.com Inc.",
+    "NVDA": "NVIDIA Corporation",
+    "META": "Meta Platforms Inc.",
+    "TSLA": "Tesla Inc.",
+    "JPM": "JPMorgan Chase & Co.",
+    "BAC": "Bank of America Corporation",
+    "GS": "The Goldman Sachs Group Inc.",
+    "V": "Visa Inc.",
+    "MA": "Mastercard Incorporated",
+    "ETN": "Eaton Corporation",
+    "NEE": "NextEra Energy Inc.",
+    "XOM": "Exxon Mobil Corporation",
+    "CVX": "Chevron Corporation",
+    "LMT": "Lockheed Martin Corporation",
+    "RTX": "RTX Corporation",
+    "NOC": "Northrop Grumman Corporation",
+    "GD": "General Dynamics Corporation",
+    "AMD": "Advanced Micro Devices Inc.",
+    "INTC": "Intel Corporation",
+    "AVGO": "Broadcom Inc.",
+    "TSM": "Taiwan Semiconductor Manufacturing Co.",
+    "AMAT": "Applied Materials Inc.",
+    "ASML": "ASML Holding N.V.",
+    "ASTS": "AST SpaceMobile Inc.",
+    "RKLB": "Rocket Lab USA Inc.",
+    "LLY": "Eli Lilly and Company",
+    "NVO": "Novo Nordisk A/S",
+    "REGN": "Regeneron Pharmaceuticals Inc.",
+    "CRSP": "CRISPR Therapeutics AG",
+    "ILMN": "Illumina Inc.",
+    "PLTR": "Palantir Technologies Inc.",
+    "ISRG": "Intuitive Surgical Inc.",
+    "UNH": "UnitedHealth Group Incorporated",
+    "JNJ": "Johnson & Johnson",
+    "PFE": "Pfizer Inc.",
+    "ABBV": "AbbVie Inc.",
+    "TMO": "Thermo Fisher Scientific Inc.",
+    "ABT": "Abbott Laboratories",
+    "MSTR": "MicroStrategy Incorporated",
+    "COIN": "Coinbase Global Inc.",
+    "MARA": "Marathon Digital Holdings Inc.",
+    "RIOT": "Riot Platforms Inc.",
+    "IBIT": "iShares Bitcoin Trust ETF",
+}
+
 
 @dataclass
 class IdeaCandidate:
@@ -226,12 +277,8 @@ def _compute_technical_setup_score(df: pd.DataFrame) -> float:
 
 
 def _get_company_name(ticker: str) -> str:
-    """Fetch company name from yfinance; fallback to ticker."""
-    try:
-        info = yf.Ticker(ticker).info
-        return info.get("longName") or info.get("shortName") or ticker
-    except Exception:
-        return ticker
+    """Return company name from static lookup; fallback to ticker symbol."""
+    return _COMPANY_NAMES.get(ticker.upper(), ticker)
 
 
 async def _enrich_candidate(c: IdeaCandidate, db: AsyncSession) -> IdeaCandidate:
@@ -320,7 +367,10 @@ async def _scan_news_source(db: AsyncSession) -> list[IdeaCandidate]:
     return results
 
 
-async def _scan_theme_source(db: AsyncSession) -> list[IdeaCandidate]:
+async def _scan_theme_source(
+    db: AsyncSession,
+    df_cache: dict[str, pd.DataFrame],
+) -> list[IdeaCandidate]:
     """Source 2: tickers with high theme scores from DB."""
     theme_result = await db.execute(
         select(StockThemeScore).where(StockThemeScore.theme_score_total >= 0.60)
@@ -343,10 +393,13 @@ async def _scan_theme_source(db: AsyncSession) -> list[IdeaCandidate]:
             mega_fit = compute_megatrend_fit_score(all_tags)
             megatrend = get_priority_megatrend_tags(all_tags)
 
-            df_raw = yf.download(ticker, period="1y", interval="1d", auto_adjust=True, progress=False)
-            if isinstance(df_raw.columns, pd.MultiIndex):
-                df_raw.columns = df_raw.columns.get_level_values(0)
-            tech_score = _compute_technical_setup_score(df_raw.dropna())
+            if ticker not in df_cache:
+                df_raw = yf.download(ticker, period="1y", interval="1d", auto_adjust=True, progress=False)
+                if isinstance(df_raw.columns, pd.MultiIndex):
+                    df_raw.columns = df_raw.columns.get_level_values(0)
+                df_cache[ticker] = df_raw.dropna()
+            df_raw = df_cache[ticker]
+            tech_score = _compute_technical_setup_score(df_raw)
 
             c = IdeaCandidate(
                 ticker=ticker,
@@ -374,15 +427,20 @@ async def _scan_theme_source(db: AsyncSession) -> list[IdeaCandidate]:
     return candidates
 
 
-async def _scan_technical_source(db: AsyncSession) -> list[IdeaCandidate]:
+async def _scan_technical_source(
+    db: AsyncSession,
+    df_cache: dict[str, pd.DataFrame],
+) -> list[IdeaCandidate]:
     """Source 3: curated universe — 3 of 4 technical conditions must pass."""
     candidates: list[IdeaCandidate] = []
     for ticker in IDEA_UNIVERSE:
         try:
-            df_raw = yf.download(ticker, period="1y", interval="1d", auto_adjust=True, progress=False)
-            if isinstance(df_raw.columns, pd.MultiIndex):
-                df_raw.columns = df_raw.columns.get_level_values(0)
-            df_raw = df_raw.dropna()
+            if ticker not in df_cache:
+                df_raw = yf.download(ticker, period="1y", interval="1d", auto_adjust=True, progress=False)
+                if isinstance(df_raw.columns, pd.MultiIndex):
+                    df_raw.columns = df_raw.columns.get_level_values(0)
+                df_cache[ticker] = df_raw.dropna()
+            df_raw = df_cache[ticker]
 
             tech_score = _compute_technical_setup_score(df_raw)
             if tech_score < 0.75:   # require 3/4 conditions
@@ -446,9 +504,23 @@ async def run_idea_generator(db: AsyncSession) -> list[GeneratedIdea]:
     now_utc = datetime.now(timezone.utc)
     expires_at = now_utc + timedelta(hours=IDEA_EXPIRY_HOURS)
 
+    # Pre-populate shared OHLCV cache for all IDEA_UNIVERSE tickers.
+    # Both theme and technical scanners share this dict; each ticker is
+    # downloaded at most once, cutting ~80 duplicate yfinance HTTP calls.
+    _df_cache: dict[str, pd.DataFrame] = {}
+    logger.info("run_idea_generator: pre-loading OHLCV for %d tickers", len(IDEA_UNIVERSE))
+    for ticker in IDEA_UNIVERSE:
+        try:
+            df_raw = yf.download(ticker, period="1y", interval="1d", auto_adjust=True, progress=False)
+            if isinstance(df_raw.columns, pd.MultiIndex):
+                df_raw.columns = df_raw.columns.get_level_values(0)
+            _df_cache[ticker] = df_raw.dropna()
+        except Exception as exc:
+            logger.debug("run_idea_generator: OHLCV pre-load failed for %s: %s", ticker, exc)
+
     news_candidates = await _scan_news_source(db)
-    theme_candidates = await _scan_theme_source(db)
-    tech_candidates = await _scan_technical_source(db)
+    theme_candidates = await _scan_theme_source(db, _df_cache)
+    tech_candidates = await _scan_technical_source(db, _df_cache)
 
     # Deduplicate — merge by ticker, keep best scores
     merged: dict[str, IdeaCandidate] = {}

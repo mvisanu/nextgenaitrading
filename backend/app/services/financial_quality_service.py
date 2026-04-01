@@ -17,7 +17,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
-import yfinance as yf
+from app.services.yfinance_cache import get_ticker_info
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ def score_financial_quality(ticker: str) -> FinancialQualityResult:
     """
     t = ticker.upper()
     try:
-        info = yf.Ticker(t).info
+        info = get_ticker_info(t)
     except Exception as exc:
         logger.warning("financial_quality: yfinance failed for %s: %s", t, exc)
         return FinancialQualityResult(score=0.5, flags=["financials_unavailable"], financials_available=False)

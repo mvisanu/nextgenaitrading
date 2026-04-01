@@ -118,7 +118,8 @@ export default function OptionsPage() {
   const { data: chain, isLoading: loadingChain } = useQuery({
     queryKey: ["options-chain", symbol, selectedExpiration, underlyingPrice],
     queryFn: () => optionsApi.getChain(symbol, selectedExpiration, underlyingPrice),
-    enabled: !!symbol && !!selectedExpiration,
+    // Only fetch chain in Pro mode — it triggers N Greeks computations server-side
+    enabled: viewMode === "pro" && !!symbol && !!selectedExpiration,
   });
 
   const { data: ivRank } = useQuery({
@@ -130,18 +131,23 @@ export default function OptionsPage() {
   const { data: signals, isLoading: loadingSignals } = useQuery({
     queryKey: ["options-signals"],
     queryFn: optionsApi.getSignals,
+    // signals shown in both beginner and pro modes — always enabled
     refetchInterval: 60_000,
   });
 
   const { data: positions } = useQuery({
     queryKey: ["options-positions"],
     queryFn: optionsApi.getPositions,
+    // positions panel only visible in Pro mode
+    enabled: viewMode === "pro",
     refetchInterval: 30_000,
   });
 
   const { data: greeks } = useQuery({
     queryKey: ["options-portfolio-greeks"],
     queryFn: optionsApi.getPortfolioGreeks,
+    // Greeks dashboard only rendered in Pro mode
+    enabled: viewMode === "pro",
     refetchInterval: 30_000,
   });
 

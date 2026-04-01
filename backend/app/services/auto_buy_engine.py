@@ -455,15 +455,18 @@ async def evaluate_all_auto_buy(db: AsyncSession) -> dict:
 
     logger.info("Auto-buy evaluation cycle starting")
 
-    # Find all users with auto-buy enabled
+    # Single JOIN query — fetches AutoBuySettings + User in one round-trip,
+    # eliminating the N+1 per-iteration SELECT users WHERE id = ? pattern.
     result = await db.execute(
-        select(AutoBuySettings).where(AutoBuySettings.enabled.is_(True))
+        select(AutoBuySettings, UserModel)
+        .join(UserModel, UserModel.id == AutoBuySettings.user_id)
+        .where(AutoBuySettings.enabled.is_(True))
     )
-    enabled_settings = list(result.scalars().all())
+    enabled_pairs = list(result.all())
 
     total = evaluated = errors = 0
 
-    for settings_row in enabled_settings:
+    for settings_row, user in enabled_pairs:
         # Get all tradable tickers for this user
         tickers_result = await db.execute(
             select(WatchlistIdeaTicker)
@@ -478,14 +481,6 @@ async def evaluate_all_auto_buy(db: AsyncSession) -> dict:
         )
         tickers = list(tickers_result.scalars().all())
         total += len(tickers)
-
-        # Load user
-        user_result = await db.execute(
-            select(UserModel).where(UserModel.id == settings_row.user_id)
-        )
-        user = user_result.scalar_one_or_none()
-        if not user:
-            continue
 
         for ticker_row in tickers:
             try:

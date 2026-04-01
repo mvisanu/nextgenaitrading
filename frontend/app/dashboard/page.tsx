@@ -743,6 +743,7 @@ function KpiCardsPanel() {
   const { data: runs = [] } = useQuery({
     queryKey: ["strategies", "runs"],
     queryFn: () => strategyApi.listRuns(10),
+    staleTime: 300_000,  // 5 minutes — strategy run counts don't need frequent refresh
   });
 
   const totalRuns = runs.length;
@@ -1037,33 +1038,21 @@ function DashboardContent() {
   const { data: liveWatchlistPrices } = useQuery({
     queryKey: ["watchlist-live-prices", watchlistSymbols],
     queryFn: async () => {
-      const results = await Promise.allSettled(
-        watchlistSymbols.map((sym) => liveApi.chartData(sym, "1d"))
-      );
+      // Single batch call instead of N concurrent chart-data fetches.
+      const raw = await liveApi.watchlistPrices(watchlistSymbols);
       const prices: Record<string, { close: number; change: number; changePct: number }> = {};
-      results.forEach((result, idx) => {
-        if (result.status === "fulfilled") {
-          const sym = watchlistSymbols[idx];
-          const bars = result.value?.candles ?? [];
-          if (bars.length >= 2) {
-            const last = bars[bars.length - 1];
-            const prev = bars[bars.length - 2];
-            const change = last.close - prev.close;
-            prices[sym] = {
-              close: last.close,
-              change,
-              changePct: prev.close !== 0 ? (change / prev.close) * 100 : 0,
-            };
-          } else if (bars.length === 1) {
-            prices[sym] = { close: bars[0].close, change: 0, changePct: 0 };
-          }
-        }
-      });
+      for (const [sym, data] of Object.entries(raw)) {
+        prices[sym] = {
+          close: data.price,
+          change: data.change,
+          changePct: data.changePercent,
+        };
+      }
       return prices;
     },
     refetchInterval: 30_000,
     staleTime: 15_000,
-    enabled: watchlistSymbols.length > 0,
+    enabled: watchlistSymbols.length > 0 && !!user,
   });
 
   // ── Real-time quote streaming (Alpaca WebSocket → SSE) ──────────────────
