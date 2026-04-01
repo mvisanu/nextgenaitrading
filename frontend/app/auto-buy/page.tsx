@@ -856,7 +856,7 @@ function TargetFields({
             value={dryRunTicker}
             onChange={(e) => setDryRunTicker(e.target.value.toUpperCase())}
             placeholder="e.g. AAPL, TSLA, BTC"
-            className="bg-surface-lowest border-none text-xs placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary h-9 pr-8"
+            className="bg-surface-lowest border-none text-xs placeholder:text-primary/40 focus-visible:ring-1 focus-visible:ring-primary h-9 pr-8"
           />
           <button
             data-testid="dry-run-btn"

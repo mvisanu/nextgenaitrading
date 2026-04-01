@@ -654,7 +654,7 @@ function SymbolSearch({
               if (e.key === "Escape") { setIsOpen(false); setQuery(""); }
             }}
             placeholder="Symbol (e.g. AAPL, BTC-USD)"
-            className="bg-transparent text-xs font-mono text-foreground outline-none w-[180px] placeholder:text-muted-foreground"
+            className="bg-transparent text-xs font-mono text-foreground outline-none w-[180px] placeholder:text-primary/40"
           />
           <button
             onClick={() => { setIsOpen(false); setQuery(""); }}

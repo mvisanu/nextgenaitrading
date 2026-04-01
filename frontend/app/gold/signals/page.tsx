@@ -172,7 +172,7 @@ export default function GoldSignalsPage() {
               onKeyDown={(e) => e.key === "Enter" && commitSymbol()}
               placeholder="Symbol..."
               maxLength={20}
-              className="h-8 w-32 rounded border border-border/20 bg-surface-2 px-3 text-[12px] font-bold uppercase tracking-widest text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 transition-colors"
+              className="h-8 w-32 rounded border border-border/20 bg-surface-mid px-3 text-[12px] font-bold uppercase tracking-widest text-foreground placeholder:text-primary/40 focus:outline-none focus:border-primary/60 transition-colors"
             />
             <Button size="sm" onClick={commitSymbol} className="h-8 px-3 text-[11px] font-black uppercase tracking-widest">
               Load
@@ -220,7 +220,7 @@ export default function GoldSignalsPage() {
             onClick={() => void fetchSignals(committedSymbol, timeframe)}
             disabled={loading}
             title="Refresh"
-            className="h-8 w-8 flex items-center justify-center rounded border border-border/20 bg-surface-2 text-muted-foreground/60 hover:text-foreground hover:border-border/40 transition-colors disabled:opacity-40"
+            className="h-8 w-8 flex items-center justify-center rounded border border-border/20 bg-surface-mid text-muted-foreground/60 hover:text-foreground hover:border-border/40 transition-colors disabled:opacity-40"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           </button>
@@ -259,18 +259,18 @@ export default function GoldSignalsPage() {
         {loading ? (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-12 rounded bg-surface-2 border border-border/10 animate-pulse" />
+              <div key={i} className="h-12 rounded bg-surface-mid border border-border/10 animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-32 rounded bg-surface-2 border border-border/10 text-muted-foreground/40 text-[12px] uppercase tracking-widest">
+          <div className="flex items-center justify-center h-32 rounded bg-surface-mid border border-border/10 text-muted-foreground/40 text-[12px] uppercase tracking-widest">
             No signals matching filter
           </div>
         ) : (
           <div className="overflow-x-auto rounded border border-border/10">
             <table className="w-full text-[11px] tabular-nums">
               <thead>
-                <tr className="border-b border-border/10 bg-surface-2">
+                <tr className="border-b border-border/10 bg-surface-mid">
                   {["Time", "Strategy", "Dir", "Entry", "SL", "TP", "R:R", "TF", "Conf", "Pos Size", "Volatility", "Status", "Reasoning"].map((h) => (
                     <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 whitespace-nowrap">
                       {h}
@@ -286,7 +286,7 @@ export default function GoldSignalsPage() {
                       key={sig.id}
                       className={cn(
                         "border-b border-border/5 transition-colors",
-                        i % 2 === 0 ? "bg-surface-lowest" : "bg-surface-2/50",
+                        i % 2 === 0 ? "bg-surface-lowest" : "bg-surface-mid/50",
                         "hover:bg-surface-mid/30"
                       )}
                     >

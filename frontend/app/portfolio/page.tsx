@@ -452,7 +452,7 @@ function HoldingModal({ initial, onSave, onClose, title }: HoldingModalProps) {
                 value={form.symbol}
                 onChange={(e) => setField("symbol", e.target.value.toUpperCase())}
                 placeholder="TSLA"
-                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
               />
             </div>
             <div>
@@ -463,7 +463,7 @@ function HoldingModal({ initial, onSave, onClose, title }: HoldingModalProps) {
                 value={form.name}
                 onChange={(e) => setField("name", e.target.value)}
                 placeholder="Tesla, Inc."
-                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
               />
             </div>
           </div>
@@ -512,7 +512,7 @@ function HoldingModal({ initial, onSave, onClose, title }: HoldingModalProps) {
               value={form.tag}
               onChange={(e) => setField("tag", e.target.value.toUpperCase().slice(0, 8))}
               placeholder="TECH"
-              className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+              className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
             />
           </div>
 
@@ -528,7 +528,7 @@ function HoldingModal({ initial, onSave, onClose, title }: HoldingModalProps) {
                 value={form.quantity}
                 onChange={(e) => setField("quantity", e.target.value)}
                 placeholder="100"
-                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
               />
             </div>
             <div>
@@ -542,7 +542,7 @@ function HoldingModal({ initial, onSave, onClose, title }: HoldingModalProps) {
                 value={form.avgCost}
                 onChange={(e) => setField("avgCost", e.target.value)}
                 placeholder="100.00"
-                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
               />
             </div>
             <div>
@@ -556,7 +556,7 @@ function HoldingModal({ initial, onSave, onClose, title }: HoldingModalProps) {
                 value={form.lastPrice}
                 onChange={(e) => setField("lastPrice", e.target.value)}
                 placeholder="120.00"
-                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
               />
             </div>
           </div>
@@ -571,7 +571,7 @@ function HoldingModal({ initial, onSave, onClose, title }: HoldingModalProps) {
               value={form.dayPnlPct}
               onChange={(e) => setField("dayPnlPct", e.target.value)}
               placeholder="0.0"
-              className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+              className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
             />
           </div>
 
@@ -669,7 +669,7 @@ function ActivityModal({ onSave, onClose }: ActivityModalProps) {
                 value={form.symbol}
                 onChange={(e) => setField("symbol", e.target.value.toUpperCase())}
                 placeholder="AAPL"
-                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+                className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
               />
             </div>
           </div>
@@ -682,7 +682,7 @@ function ActivityModal({ onSave, onClose }: ActivityModalProps) {
               value={form.description}
               onChange={(e) => setField("description", e.target.value)}
               placeholder="50 shares @ $100.00"
-              className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+              className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
             />
           </div>
 
@@ -696,7 +696,7 @@ function ActivityModal({ onSave, onClose }: ActivityModalProps) {
               value={form.amount}
               onChange={(e) => setField("amount", e.target.value)}
               placeholder="-5000"
-              className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/40"
+              className="w-full bg-surface-lowest border border-border/20 rounded px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/65 focus:outline-none focus:border-primary/40"
             />
           </div>
 

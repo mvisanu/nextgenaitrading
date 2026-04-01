@@ -58,7 +58,7 @@ function StrategyCard({ strategy }: { strategy: GoldStrategyPerformance }) {
   const ddPct = (strategy.max_drawdown * 100).toFixed(1);
 
   return (
-    <div className="rounded bg-surface-2 border border-border/10 p-4 space-y-3">
+    <div className="rounded bg-surface-mid border border-border/10 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className={cn(
           "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border",
@@ -185,7 +185,7 @@ export default function GoldPerformancePage() {
               onKeyDown={(e) => e.key === "Enter" && commitSymbol()}
               placeholder="Symbol..."
               maxLength={20}
-              className="h-8 w-32 rounded border border-border/20 bg-surface-2 px-3 text-[12px] font-bold uppercase tracking-widest text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 transition-colors"
+              className="h-8 w-32 rounded border border-border/20 bg-surface-mid px-3 text-[12px] font-bold uppercase tracking-widest text-foreground placeholder:text-primary/40 focus:outline-none focus:border-primary/60 transition-colors"
             />
             <button
               onClick={commitSymbol}
@@ -217,7 +217,7 @@ export default function GoldPerformancePage() {
             onClick={() => void fetchData(committedSymbol, days)}
             disabled={loading}
             title="Refresh"
-            className="h-8 w-8 flex items-center justify-center rounded border border-border/20 bg-surface-2 text-muted-foreground/60 hover:text-foreground hover:border-border/40 transition-colors disabled:opacity-40"
+            className="h-8 w-8 flex items-center justify-center rounded border border-border/20 bg-surface-mid text-muted-foreground/60 hover:text-foreground hover:border-border/40 transition-colors disabled:opacity-40"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           </button>
@@ -233,14 +233,14 @@ export default function GoldPerformancePage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-52 rounded bg-surface-2 border border-border/10 animate-pulse" />
+              <div key={i} className="h-52 rounded bg-surface-mid border border-border/10 animate-pulse" />
             ))}
           </div>
         ) : data ? (
           <div className="space-y-4">
             {/* Overall summary */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded bg-surface-2 border border-primary/20 p-4 text-center">
+              <div className="rounded bg-surface-mid border border-primary/20 p-4 text-center">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
                   Overall Win Rate
                 </div>
@@ -248,7 +248,7 @@ export default function GoldPerformancePage() {
                   {(data.overall_win_rate * 100).toFixed(1)}%
                 </div>
               </div>
-              <div className="rounded bg-surface-2 border border-border/10 p-4 text-center">
+              <div className="rounded bg-surface-mid border border-border/10 p-4 text-center">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
                   Avg Expectancy
                 </div>
@@ -260,7 +260,7 @@ export default function GoldPerformancePage() {
                   {data.overall_expectancy.toFixed(2)}R
                 </div>
               </div>
-              <div className="rounded bg-surface-2 border border-border/10 p-4 text-center">
+              <div className="rounded bg-surface-mid border border-border/10 p-4 text-center">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
                   Strategies
                 </div>
@@ -268,7 +268,7 @@ export default function GoldPerformancePage() {
                   {data.strategies.length}
                 </div>
               </div>
-              <div className="rounded bg-surface-2 border border-border/10 p-4 text-center">
+              <div className="rounded bg-surface-mid border border-border/10 p-4 text-center">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold mb-1">
                   Window
                 </div>
@@ -288,7 +288,7 @@ export default function GoldPerformancePage() {
               <div className="overflow-x-auto rounded border border-border/10">
                 <table className="w-full text-[11px] tabular-nums">
                   <thead>
-                    <tr className="border-b border-border/10 bg-surface-2">
+                    <tr className="border-b border-border/10 bg-surface-mid">
                       {["Rank", "Strategy", "Win Rate", "Expectancy", "Profit Factor", "Max DD", "Avg R", "Signals"].map((h) => (
                         <th key={h} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 whitespace-nowrap">
                           {h}
@@ -302,7 +302,7 @@ export default function GoldPerformancePage() {
                         key={s.strategy_name}
                         className={cn(
                           "border-b border-border/5 transition-colors",
-                          i % 2 === 0 ? "bg-surface-lowest" : "bg-surface-2/50",
+                          i % 2 === 0 ? "bg-surface-lowest" : "bg-surface-mid/50",
                           "hover:bg-surface-mid/30"
                         )}
                       >

@@ -257,7 +257,7 @@ export default function OptionsPage() {
             onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === "Enter" && handleSymbolSearch()}
             placeholder="Symbol…"
-            className="w-28 h-8 text-sm font-mono bg-zinc-900 border-zinc-700"
+            className="w-28 h-8 text-sm font-mono bg-zinc-900 border-zinc-700 placeholder:text-primary/40"
           />
           <Button
             size="sm"

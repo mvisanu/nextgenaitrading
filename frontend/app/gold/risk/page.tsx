@@ -146,7 +146,7 @@ export default function GoldRiskPage() {
               onKeyDown={(e) => { if (e.key === "Enter") { addSymbol(symbolInput); setSymbolInput(""); } }}
               placeholder="Add symbol..."
               maxLength={20}
-              className="h-8 w-32 rounded border border-border/20 bg-surface-2 px-3 text-[12px] font-bold uppercase tracking-widest text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 transition-colors"
+              className="h-8 w-32 rounded border border-border/20 bg-surface-mid px-3 text-[12px] font-bold uppercase tracking-widest text-foreground placeholder:text-primary/40 focus:outline-none focus:border-primary/60 transition-colors"
             />
           </div>
 
@@ -155,7 +155,7 @@ export default function GoldRiskPage() {
             onClick={() => void fetchRisk(symbols)}
             disabled={loading}
             title="Refresh (auto-refreshes every 30s)"
-            className="h-8 w-8 flex items-center justify-center rounded border border-border/20 bg-surface-2 text-muted-foreground/60 hover:text-foreground hover:border-border/40 transition-colors disabled:opacity-40"
+            className="h-8 w-8 flex items-center justify-center rounded border border-border/20 bg-surface-mid text-muted-foreground/60 hover:text-foreground hover:border-border/40 transition-colors disabled:opacity-40"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           </button>
@@ -172,7 +172,7 @@ export default function GoldRiskPage() {
         {loading && Object.keys(riskData).length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {symbols.map((s) => (
-              <div key={s} className="h-64 rounded bg-surface-2 border border-border/10 animate-pulse" />
+              <div key={s} className="h-64 rounded bg-surface-mid border border-border/10 animate-pulse" />
             ))}
           </div>
         ) : (
@@ -180,7 +180,7 @@ export default function GoldRiskPage() {
             {symbols.map((sym) => {
               const risk = riskData[sym];
               if (!risk) return (
-                <div key={sym} className="h-64 rounded bg-surface-2 border border-border/10 animate-pulse" />
+                <div key={sym} className="h-64 rounded bg-surface-mid border border-border/10 animate-pulse" />
               );
 
               const mode = MODE_CONFIG[risk.mode] ?? MODE_CONFIG.active;
@@ -276,7 +276,7 @@ export default function GoldRiskPage() {
         )}
 
         {/* Risk rules info */}
-        <div className="rounded bg-surface-2 border border-border/10 p-4 space-y-3">
+        <div className="rounded bg-surface-mid border border-border/10 p-4 space-y-3">
           <div className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/70">
             Risk Rules
           </div>

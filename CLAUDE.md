@@ -254,6 +254,10 @@ COMMODITY_ALERT_MINUTES=15
 | auto_buy_engine.py tautological safeguard: `position_size_limit` check was always true (`quantity * price == max_trade_amount` by construction); now computes `proposed_cost` from `target_buy_price` vs current price before capping | Fixed — 2026-04-01 |
 | Missing gc.collect() in 4 schedulers: `evaluate_auto_buy.py`, `evaluate_alerts.py`, `refresh_theme_scores.py`, `scan_watchlist.py` — risk of OOM on Render Starter | Fixed — 2026-04-01 |
 | V3 condition 9 hardcoded True: `not_near_earnings` in `buy_signal_service.py` was always True; now calls `get_days_to_earnings()` (60-min LRU cache) and blocks within `OPTIONS_EARNINGS_BLOCK_DAYS` (default 5) | Fixed — 2026-04-01 |
+| Security: JWT `verify_aud` was conditional on `SUPABASE_JWT_SECRET` being set — tokens with any audience accepted when secret absent; now always `True` (`auth/dependencies.py`) | Fixed — 2026-04-01 |
+| Security: `decode_token()` in `core/security.py` had no audience check — added `audience="authenticated"` to prevent cross-service token reuse | Fixed — 2026-04-01 |
+| Security: `dev_token` cookie set with `httponly=False` and no `secure` flag; changed to `httponly=True` + `secure=settings.cookie_secure` (`api/test_reset.py`) | Fixed — 2026-04-01 |
+| Security: `GET /api/v1/stream/status` was unauthenticated, leaking subscribed symbols to any caller; now requires `get_current_user` | Fixed — 2026-04-01 |
 | Auth middleware missing routes: `/portfolio`, `/options`, `/gold`, `/multi-chart`, `/stock` not in `PROTECTED_PREFIXES` in `middleware.ts` — unauthenticated users could reach these pages | Fixed — 2026-04-01 |
 | Unbounded limit on decisions endpoint: `limit: int = 100` → `limit: int = Query(default=100, ge=1, le=200)` in `backend/app/api/strategies.py` | Fixed — 2026-04-01 |
 | JWT audience bypass on fallback path: `auth/dependencies.py` fallback `jwt.decode()` lacked `audience="authenticated"` + `verify_aud=True` — forged tokens without audience claim accepted | Fixed — 2026-04-01 |
@@ -433,3 +437,21 @@ Redesigned for beginner accessibility while retaining all existing backend bindi
 **Sidebar childActive fix (`frontend/components/layout/Sidebar.tsx`):**
 - Sub-menu child active state now uses exact `pathname === child.href` (not `startsWith`)
 - Fixes Overview link incorrectly highlighted on all `/gold/*` sub-pages
+
+## Paper Trade Test Workflow (2026-04-01)
+
+Manual paper-buy test executed via `testbuy.md` instructions. Screened and placed 3 simulated orders (`dry_run=true`, recorded in local DB). Results logged to `LEDGER.md`.
+
+**Candidates selected:**
+- **Stock — LRCX** (Lam Research): Golden Cross (EMA50>EMA200), daily RSI 50.9 (pullback zone), weekly trend Very Strong. 4 shares × $224.69 ≈ $899. DB Order ID 87.
+- **Crypto — BTC-USD**: Weekly price above 200 EMA, RSI recovering from oversold (31→35). $1,000 notional fractional buy → 0.01453 BTC. DB Order ID 88.
+- **Gold — GLD ETF**: Gold +6.1% on macro tailwind; direct GC=F futures not supported via Alpaca equity account; GLD is the configured project proxy. 2 shares × $439.94 ≈ $880. DB Order ID 89.
+- **Option — LRCX CALL**: SKIPPED — system IV rank gate blocked all symbols (0.0 < minimum 30.0, no iv_history data in local DB). Correct conservative behavior per testbuy.md rules.
+
+**Total paper capital deployed: ~$2,779 (dry-run/simulated only)**
+
+**Key files:**
+- `testbuy.md` — paper-buy workflow instructions
+- `LEDGER.md` — trade log (symbol, type, qty, price, status, reasoning)
+
+**To place real Alpaca paper orders** (not just local simulation): set real `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` from Alpaca Paper account in `backend/.env`, ensure backend is running, then re-run with `dry_run=False` + `paper_trading=True` broker credential.

@@ -97,7 +97,7 @@ function Tip({ text, children }: { text: string; children: React.ReactNode }) {
         <HelpCircle className="h-3 w-3 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors" />
       </span>
       {show && (
-        <span className="absolute bottom-full left-0 mb-2 z-50 w-56 rounded-lg border border-border/30 bg-surface-2 p-3 text-[11px] text-muted-foreground/80 leading-relaxed shadow-xl pointer-events-none">
+        <span className="absolute bottom-full left-0 mb-2 z-50 w-56 rounded-lg border border-border/30 bg-surface-mid p-3 text-[11px] text-muted-foreground/80 leading-relaxed shadow-xl pointer-events-none">
           {text}
         </span>
       )}
@@ -183,7 +183,7 @@ function HeroSignalCard({ signal }: { signal: GoldSignal }) {
 
       {/* Plain-language strategy */}
       {strategyInfo && (
-        <div className="flex items-start gap-2 rounded-xl bg-surface-2 border border-border/10 px-4 py-3">
+        <div className="flex items-start gap-2 rounded-xl bg-surface-mid border border-border/10 px-4 py-3">
           <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <div>
             <p className="text-[12px] font-bold text-foreground/90">{strategyInfo.label} Pattern</p>
@@ -199,21 +199,21 @@ function HeroSignalCard({ signal }: { signal: GoldSignal }) {
 
       {/* Price levels — large and clear */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl bg-surface-2 border border-border/10 p-4 text-center space-y-1">
+        <div className="rounded-xl bg-surface-mid border border-border/10 p-4 text-center space-y-1">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">
             <Tip text="The price at which the AI recommends entering the trade.">Entry Price</Tip>
           </p>
           <p className="text-lg font-black text-foreground tabular-nums">{fmtPrice(signal.entry_price)}</p>
           <p className="text-[10px] text-muted-foreground/40">Where to buy/sell</p>
         </div>
-        <div className="rounded-xl bg-surface-2 border border-[#ff716a]/20 p-4 text-center space-y-1">
+        <div className="rounded-xl bg-surface-mid border border-[#ff716a]/20 p-4 text-center space-y-1">
           <p className="text-[10px] uppercase tracking-widest text-[#ff716a]/70 font-semibold">
             <Tip text="Your exit price if the trade goes wrong. This limits your loss. Always set this before entering!">Stop Loss</Tip>
           </p>
           <p className="text-lg font-black text-[#ff716a] tabular-nums">{fmtPrice(signal.stop_loss)}</p>
           <p className="text-[10px] text-[#ff716a]/50">Exit if wrong</p>
         </div>
-        <div className="rounded-xl bg-surface-2 border border-emerald-400/20 p-4 text-center space-y-1">
+        <div className="rounded-xl bg-surface-mid border border-emerald-400/20 p-4 text-center space-y-1">
           <p className="text-[10px] uppercase tracking-widest text-emerald-400/70 font-semibold">
             <Tip text="Your target price to take profits. If price reaches here, the trade was successful.">Take Profit</Tip>
           </p>
@@ -223,7 +223,7 @@ function HeroSignalCard({ signal }: { signal: GoldSignal }) {
       </div>
 
       {/* Risk/Reward explainer */}
-      <div className="rounded-xl bg-surface-2 border border-border/10 px-4 py-3 flex items-center gap-4">
+      <div className="rounded-xl bg-surface-mid border border-border/10 px-4 py-3 flex items-center gap-4">
         <div className="space-y-0.5">
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-semibold">
             <Tip text="Risk:Reward ratio. A 1:2 ratio means for every $1 you risk losing, you stand to gain $2. Higher is better.">
@@ -273,7 +273,7 @@ function RiskTrafficLight({ risk }: { risk: GoldRiskStatus }) {
   const dailyPct = Math.min((risk.daily_loss_pct / risk.daily_loss_cap_pct) * 100, 100);
 
   return (
-    <div className="rounded-2xl border border-border/10 bg-surface-2 p-5 space-y-4">
+    <div className="rounded-2xl border border-border/10 bg-surface-mid p-5 space-y-4">
       <div className="flex items-center gap-3">
         <div className={cn(
           "h-10 w-10 rounded-full flex items-center justify-center shrink-0",
@@ -394,7 +394,7 @@ function HowItWorks() {
   ];
 
   return (
-    <div className="rounded-2xl border border-border/10 bg-surface-2 overflow-hidden">
+    <div className="rounded-2xl border border-border/10 bg-surface-mid overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-3 p-4 hover:bg-surface-high/30 transition-colors text-left"
@@ -510,13 +510,13 @@ function StatsRow({
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      <div className="rounded-2xl bg-surface-2 border border-border/10 p-4 space-y-1 text-center">
+      <div className="rounded-2xl bg-surface-mid border border-border/10 p-4 space-y-1 text-center">
         <p className="text-2xl font-black text-foreground tabular-nums">{activeCount}</p>
         <p className="text-[11px] text-muted-foreground/60">
           <Tip text="Signals that are currently active or waiting to be confirmed.">Active signals</Tip>
         </p>
       </div>
-      <div className="rounded-2xl bg-surface-2 border border-border/10 p-4 space-y-1 text-center">
+      <div className="rounded-2xl bg-surface-mid border border-border/10 p-4 space-y-1 text-center">
         <p className={cn("text-2xl font-black tabular-nums", performance ? "text-emerald-400" : "text-muted-foreground/40")}>
           {winRate}
         </p>
@@ -524,7 +524,7 @@ function StatsRow({
           <Tip text="Percentage of past signals that hit their target price (take profit) before their stop loss.">Historical win rate</Tip>
         </p>
       </div>
-      <div className="rounded-2xl bg-surface-2 border border-border/10 p-4 space-y-1 text-center">
+      <div className="rounded-2xl bg-surface-mid border border-border/10 p-4 space-y-1 text-center">
         <div className="flex items-center justify-center gap-1.5">
           <div className={cn(
             "h-2.5 w-2.5 rounded-full",
@@ -608,7 +608,7 @@ function NotificationPrefsPanel() {
   const isActive = emailEnabled || smsEnabled;
 
   return (
-    <div className="rounded-2xl border border-border/10 bg-surface-2 overflow-hidden">
+    <div className="rounded-2xl border border-border/10 bg-surface-mid overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-3 p-4 hover:bg-surface-high/30 transition-colors text-left"
@@ -668,7 +668,7 @@ function NotificationPrefsPanel() {
                     value={alertEmail}
                     onChange={(e) => setAlertEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full h-9 rounded-xl border border-border/20 bg-surface-lowest px-3 text-[12px] text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 transition-colors"
+                    className="w-full h-9 rounded-xl border border-border/20 bg-surface-lowest px-3 text-[12px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 transition-colors"
                   />
                 )}
               </div>
@@ -694,7 +694,7 @@ function NotificationPrefsPanel() {
                     value={alertPhone}
                     onChange={(e) => setAlertPhone(e.target.value)}
                     placeholder="+1 555 0100"
-                    className="w-full h-9 rounded-xl border border-border/20 bg-surface-lowest px-3 text-[12px] text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 transition-colors"
+                    className="w-full h-9 rounded-xl border border-border/20 bg-surface-lowest px-3 text-[12px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 transition-colors"
                   />
                 )}
               </div>
@@ -709,7 +709,7 @@ function NotificationPrefsPanel() {
                   value={symbolsInput}
                   onChange={(e) => setSymbolsInput(e.target.value.toUpperCase())}
                   placeholder="XAUUSD, XAGUSD, BTCUSD"
-                  className="w-full h-9 rounded-xl border border-border/20 bg-surface-lowest px-3 text-[12px] text-foreground font-bold tracking-widest placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 transition-colors"
+                  className="w-full h-9 rounded-xl border border-border/20 bg-surface-lowest px-3 text-[12px] text-foreground font-bold tracking-widest placeholder:text-primary/40 focus:outline-none focus:border-primary/60 transition-colors"
                 />
                 <p className="text-[10px] text-muted-foreground/40">Separate multiple symbols with a comma</p>
               </div>
@@ -784,7 +784,7 @@ function AdvancedDetails({
   if (!performance && !loadingPerf) return null;
 
   return (
-    <div className="rounded-2xl border border-border/10 bg-surface-2 overflow-hidden">
+    <div className="rounded-2xl border border-border/10 bg-surface-mid overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-3 p-4 hover:bg-surface-high/30 transition-colors text-left"
@@ -1009,7 +1009,7 @@ export default function GoldPage() {
               onKeyDown={handleKeyDown}
               placeholder="e.g. XAUUSD"
               maxLength={20}
-              className="h-9 w-32 rounded-xl border border-border/20 bg-surface-2 px-3 text-[13px] font-bold uppercase tracking-widest text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 transition-colors"
+              className="h-9 w-32 rounded-xl border border-border/20 bg-surface-mid px-3 text-[13px] font-bold uppercase tracking-widest text-foreground placeholder:text-primary/40 focus:outline-none focus:border-primary/60 transition-colors"
             />
             <Button
               size="sm"
@@ -1028,7 +1028,7 @@ export default function GoldPage() {
           </div>
 
           {/* Timeframe selector */}
-          <div className="flex items-center gap-1 bg-surface-2 border border-border/10 rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-surface-mid border border-border/10 rounded-xl p-1">
             {TIMEFRAMES.map((tf) => (
               <button
                 key={tf}
@@ -1050,7 +1050,7 @@ export default function GoldPage() {
             onClick={() => void fetchAll(committedSymbol, timeframe)}
             disabled={loadingSignals}
             title="Refresh data"
-            className="h-9 w-9 flex items-center justify-center rounded-xl border border-border/20 bg-surface-2 text-muted-foreground/60 hover:text-foreground hover:border-border/40 transition-colors disabled:opacity-40 ml-auto"
+            className="h-9 w-9 flex items-center justify-center rounded-xl border border-border/20 bg-surface-mid text-muted-foreground/60 hover:text-foreground hover:border-border/40 transition-colors disabled:opacity-40 ml-auto"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", loadingSignals && "animate-spin")} />
           </button>
@@ -1087,11 +1087,11 @@ export default function GoldPage() {
               </div>
 
               {loadingSignals ? (
-                <div className="h-72 rounded-2xl bg-surface-2 border border-border/10 animate-pulse" />
+                <div className="h-72 rounded-2xl bg-surface-mid border border-border/10 animate-pulse" />
               ) : heroSignal ? (
                 <HeroSignalCard signal={heroSignal} />
               ) : (
-                <div className="rounded-2xl bg-surface-2 border border-border/10 flex flex-col items-center justify-center py-16 gap-3 text-center px-6">
+                <div className="rounded-2xl bg-surface-mid border border-border/10 flex flex-col items-center justify-center py-16 gap-3 text-center px-6">
                   <Zap className="h-8 w-8 text-muted-foreground/20" />
                   <p className="text-sm font-bold text-foreground/70">No signals yet</p>
                   <p className="text-[12px] text-muted-foreground/50">
@@ -1121,7 +1121,7 @@ export default function GoldPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <Clock className="h-4 w-4 text-muted-foreground/50" />
                   <h2 className="text-sm font-black text-foreground">Recent Signals</h2>
-                  <span className="px-2 py-0.5 rounded-full bg-surface-2 border border-border/10 text-[10px] font-bold text-muted-foreground/50">
+                  <span className="px-2 py-0.5 rounded-full bg-surface-mid border border-border/10 text-[10px] font-bold text-muted-foreground/50">
                     {recentSignals.length}
                   </span>
                   <Link
@@ -1131,7 +1131,7 @@ export default function GoldPage() {
                     View all <ChevronRight className="h-3 w-3" />
                   </Link>
                 </div>
-                <div className="rounded-2xl bg-surface-2 border border-border/10 overflow-hidden">
+                <div className="rounded-2xl bg-surface-mid border border-border/10 overflow-hidden">
                   {recentSignals.map((sig) => (
                     <SignalRow key={sig.id} signal={sig} />
                   ))}
@@ -1153,7 +1153,7 @@ export default function GoldPage() {
                 <h2 className="text-sm font-black text-foreground">Risk Status</h2>
               </div>
               {loadingRisk ? (
-                <div className="h-40 rounded-2xl bg-surface-2 border border-border/10 animate-pulse" />
+                <div className="h-40 rounded-2xl bg-surface-mid border border-border/10 animate-pulse" />
               ) : risk ? (
                 <RiskTrafficLight risk={risk} />
               ) : null}
@@ -1166,7 +1166,7 @@ export default function GoldPage() {
             <AdvancedDetails performance={performance} loadingPerf={loadingPerf} />
 
             {/* Disclaimer */}
-            <div className="rounded-2xl bg-surface-2 border border-border/10 px-4 py-3 space-y-1">
+            <div className="rounded-2xl bg-surface-mid border border-border/10 px-4 py-3 space-y-1">
               <div className="flex items-center gap-2">
                 <Info className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
                 <p className="text-[11px] font-bold text-muted-foreground/60">Disclaimer</p>

@@ -169,7 +169,7 @@ export function IdeaForm({ existing, onSuccess }: IdeaFormProps) {
           placeholder="Describe your investment thesis, key catalysts, and assumptions..."
           className={cn(
             "flex min-h-[80px] w-full rounded-md bg-surface-lowest px-3 py-2.5",
-            "text-xs placeholder:text-muted-foreground/50",
+            "text-xs placeholder:text-muted-foreground/65",
             "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
             "disabled:cursor-not-allowed disabled:opacity-50 resize-y border-none"
           )}
