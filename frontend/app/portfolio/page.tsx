@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/AppShell";
+import { liveApi } from "@/lib/api";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -719,18 +721,112 @@ function ActivityModal({ onSave, onClose }: ActivityModalProps) {
   );
 }
 
+// ─── Map PositionSnapshot → Holding ──────────────────────────────────────────
+
+function positionToHolding(pos: {
+  id: number;
+  symbol: string;
+  quantity: number;
+  avg_entry_price: number | null;
+  mark_price: number | null;
+  strategy_mode: string | null;
+}): Holding {
+  const isCrypto = pos.symbol.includes("-") || ["BTC", "ETH", "SOL", "DOGE", "ADA"].includes(pos.symbol);
+  return {
+    id: String(pos.id),
+    symbol: pos.symbol,
+    name: pos.symbol,
+    sector: isCrypto ? "Crypto" : "Tech",
+    tag: isCrypto ? "CRYPTO" : "TECH",
+    tagColor: isCrypto ? "crypto" : "primary",
+    quantity: pos.quantity,
+    avgCost: pos.avg_entry_price ?? 0,
+    lastPrice: pos.mark_price ?? pos.avg_entry_price ?? 0,
+    dayPnlPct: 0,
+  };
+}
+
+// ─── Map BrokerOrder → ActivityEntry ─────────────────────────────────────────
+
+function orderToActivity(order: {
+  id: number;
+  created_at: string;
+  symbol: string;
+  side: string;
+  notional_usd: number | null;
+  quantity: number | null;
+  filled_price: number | null;
+  dry_run: boolean;
+  status: string | null;
+}): ActivityEntry {
+  const date = new Date(order.created_at);
+  const isToday = new Date().toDateString() === date.toDateString();
+  const timeStr = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const timestamp = isToday ? `Today, ${timeStr}` : date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + `, ${timeStr}`;
+  const qty = order.quantity ? `${order.quantity.toFixed(4)} shares` : "";
+  const price = order.filled_price ? `@ $${order.filled_price.toFixed(2)}` : "";
+  const desc = [qty, price].filter(Boolean).join(" ") || (order.notional_usd ? `$${order.notional_usd.toFixed(2)} notional` : "Market order");
+  return {
+    id: String(order.id),
+    type: order.side === "buy" ? "BUY" : "SELL",
+    symbol: order.symbol,
+    description: `${order.dry_run ? "[DRY RUN] " : ""}${desc}`,
+    amount: order.side === "buy" ? -(order.notional_usd ?? (order.quantity ?? 0) * (order.filled_price ?? 0)) : (order.notional_usd ?? (order.quantity ?? 0) * (order.filled_price ?? 0)),
+    timestamp,
+  };
+}
+
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function PortfolioPage() {
+  const queryClient = useQueryClient();
   const [activePeriod, setActivePeriod] = useState<Period>("1M");
-  const [holdings, setHoldings] = useLocalStorage<Holding[]>(
+  const [localHoldings, setHoldings] = useLocalStorage<Holding[]>(
     "portfolio_holdings",
     DEFAULT_HOLDINGS
   );
-  const [activity, setActivity] = useLocalStorage<ActivityEntry[]>(
+  const [localActivity, setActivity] = useLocalStorage<ActivityEntry[]>(
     "portfolio_activity",
     DEFAULT_ACTIVITY
   );
+
+  // ── Live DB queries ─────────────────────────────────────────────────────
+  const { data: dbPositions } = useQuery({
+    queryKey: ["live", "positions"],
+    queryFn: liveApi.positions,
+    refetchInterval: 30_000,
+    retry: false,
+  });
+
+  const { data: dbOrders } = useQuery({
+    queryKey: ["live", "orders"],
+    queryFn: () => liveApi.orders(50),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+
+  // ── Merge DB + local data ───────────────────────────────────────────────
+  // When DB has open positions, use them as the primary source.
+  // Manual localStorage holdings are always shown alongside (user may add
+  // demo/manual entries for positions held outside this platform).
+  const dbHoldings: Holding[] = useMemo(
+    () => (dbPositions ?? [])
+      .filter((p: any) => p.is_open && p.quantity > 0)
+      .map(positionToHolding),
+    [dbPositions]
+  );
+
+  const dbActivity: ActivityEntry[] = useMemo(
+    () => (dbOrders ?? []).slice(0, 20).map(orderToActivity),
+    [dbOrders]
+  );
+
+  // Show DB holdings when we have any, otherwise fall back to localStorage demo.
+  const holdings = dbHoldings.length > 0 ? dbHoldings : localHoldings;
+  // Activity: prepend DB orders (most recent first), then any manual local entries.
+  const activity = dbActivity.length > 0
+    ? [...dbActivity, ...localActivity.filter((a) => !dbActivity.some((d) => d.id === a.id))]
+    : localActivity;
 
   // Modal state
   const [holdingModal, setHoldingModal] = useState<
@@ -983,9 +1079,16 @@ export default function PortfolioPage() {
           {/* Recent Activity */}
           <div className="bg-card rounded-lg p-5 flex flex-col">
             <div className="flex items-center justify-between mb-5">
-              <p className="text-2xs uppercase tracking-widest font-bold text-muted-foreground">
-                Recent Activity
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xs uppercase tracking-widest font-bold text-muted-foreground">
+                  Recent Activity
+                </p>
+                {dbActivity.length > 0 && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-widest bg-primary/10 text-primary">
+                    Live
+                  </span>
+                )}
+              </div>
               <button
                 onClick={() => setShowActivityModal(true)}
                 className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-primary hover:underline"
@@ -1027,13 +1130,15 @@ export default function PortfolioPage() {
                     <span className={["text-[11px] tabular-nums font-bold shrink-0", amountColor].join(" ")}>
                       {fmtSign(entry.amount)}
                     </span>
-                    <button
-                      onClick={() => deleteActivity(entry.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive/60 hover:text-destructive text-xs ml-1 shrink-0"
-                      title="Remove"
-                    >
-                      ×
-                    </button>
+                    {!dbActivity.some((d) => d.id === entry.id) && (
+                      <button
+                        onClick={() => deleteActivity(entry.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive/60 hover:text-destructive text-xs ml-1 shrink-0"
+                        title="Remove"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -1045,10 +1150,30 @@ export default function PortfolioPage() {
         <div className="bg-card rounded-lg overflow-hidden">
 
           <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/10">
-            <p className="text-2xs uppercase tracking-widest font-bold text-muted-foreground">
-              Holdings Ledger
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-2xs uppercase tracking-widest font-bold text-muted-foreground">
+                Holdings Ledger
+              </p>
+              {dbHoldings.length > 0 && (
+                <span className="text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-widest bg-primary/10 text-primary">
+                  Live
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-4 flex-wrap">
+              <button
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ["live", "positions"] });
+                  queryClient.invalidateQueries({ queryKey: ["live", "orders"] });
+                }}
+                className="flex items-center gap-1.5 text-2xs font-bold text-muted-foreground hover:text-foreground uppercase tracking-wider"
+              >
+                <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M13 8A5 5 0 1 1 8 3" strokeLinecap="round" />
+                  <path d="M13 3v5h-5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Refresh
+              </button>
               <button
                 onClick={() => setHoldingModal({ mode: "add" })}
                 className="flex items-center gap-1.5 text-2xs font-bold text-primary hover:underline uppercase tracking-wider"
@@ -1139,26 +1264,28 @@ export default function PortfolioPage() {
                           <span className="text-[9px] font-normal opacity-80">{fmtPct(upnlPct)}</span>
                         </td>
                         <td className="px-3 py-3">
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => setHoldingModal({ mode: "edit", holding: h })}
-                              className="p-1 rounded hover:bg-white/5 text-muted-foreground hover:text-foreground"
-                              title="Edit"
-                            >
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M11 2l3 3-8 8H3v-3l8-8z" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => deleteHolding(h.id)}
-                              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                              title="Remove"
-                            >
-                              <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M4 4l1 9h6l1-9" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </button>
-                          </div>
+                          {!dbHoldings.some((d) => d.id === h.id) && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => setHoldingModal({ mode: "edit", holding: h })}
+                                className="p-1 rounded hover:bg-white/5 text-muted-foreground hover:text-foreground"
+                                title="Edit"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                  <path d="M11 2l3 3-8 8H3v-3l8-8z" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => deleteHolding(h.id)}
+                                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                                title="Remove"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                  <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M4 4l1 9h6l1-9" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

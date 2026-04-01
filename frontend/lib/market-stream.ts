@@ -19,6 +19,7 @@ export type StreamStatus =
   | "connecting"
   | "live"
   | "reconnecting"
+  | "yfinance_fallback"
   | "error"
   | "disconnected"
   | "unconfigured";

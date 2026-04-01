@@ -79,6 +79,8 @@ class AlpacaStreamManager:
         self._stopped = False
         self._connected = False
         self._ws = None  # websockets connection
+        self._hit_connection_limit = False  # True when Alpaca rejects with 406
+        self._yfinance_fallback_active = False  # True while polling yfinance during Alpaca outage
 
     # ── Public API ─────────────────────────────────────────────────────────
 
@@ -98,6 +100,8 @@ class AlpacaStreamManager:
             return "stopped"
         if self._connected:
             return "live"
+        if self._yfinance_fallback_active:
+            return "yfinance_fallback"
         return "connecting"
 
     @property
@@ -121,6 +125,7 @@ class AlpacaStreamManager:
             "symbols": self.subscribed_symbols,
             "connected_clients": len(self._clients),
             "cached_quotes": len(self._quotes),
+            "yfinance_fallback": self._yfinance_fallback_active,
         }
 
     async def start(self) -> None:
@@ -210,6 +215,7 @@ class AlpacaStreamManager:
     async def _run_with_backoff(self) -> None:
         backoff = 1
         while not self._stopped:
+            self._hit_connection_limit = False
             try:
                 await self._connect_and_listen()
                 backoff = 1  # reset on clean disconnect
@@ -220,10 +226,66 @@ class AlpacaStreamManager:
                     "AlpacaStream disconnected (%s), reconnecting in %ds", exc, backoff
                 )
             self._connected = False
-            self._broadcast({"type": "status", "data": {"status": "reconnecting"}})
             if not self._stopped:
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, MAX_RECONNECT_BACKOFF)
+                if self._hit_connection_limit:
+                    # 406: another connection is still alive on Alpaca's side.
+                    # Poll yfinance during the wait so clients keep receiving prices.
+                    wait = MAX_RECONNECT_BACKOFF
+                    logger.warning(
+                        "AlpacaStream: connection limit exceeded (406) — "
+                        "waiting %ds for previous connection to expire; "
+                        "switching to yfinance fallback", wait
+                    )
+                    fallback_task = asyncio.create_task(
+                        self._yfinance_poll_loop(poll_interval=30.0)
+                    )
+                    try:
+                        await asyncio.sleep(wait)
+                    finally:
+                        fallback_task.cancel()
+                        try:
+                            await fallback_task
+                        except asyncio.CancelledError:
+                            pass
+                        self._yfinance_fallback_active = False
+                        logger.info(
+                            "AlpacaStream: yfinance fallback stopped, attempting Alpaca reconnect"
+                        )
+                        self._broadcast({"type": "status", "data": {"status": "reconnecting"}})
+                else:
+                    self._broadcast({"type": "status", "data": {"status": "reconnecting"}})
+                    wait = backoff
+                    backoff = min(backoff * 2, MAX_RECONNECT_BACKOFF)
+                    await asyncio.sleep(wait)
+
+    async def _yfinance_poll_loop(self, poll_interval: float = 30.0) -> None:
+        """Poll yfinance for current prices while Alpaca stream is unavailable (406 limit)."""
+        import yfinance as yf  # imported here — only used during fallback
+
+        self._yfinance_fallback_active = True
+        self._broadcast({"type": "status", "data": {"status": "yfinance_fallback"}})
+        logger.info("AlpacaStream: yfinance fallback polling every %ds", poll_interval)
+
+        while True:
+            symbols = list(self._symbols)
+            for sym in symbols:
+                try:
+                    info = yf.Ticker(sym).fast_info
+                    last_price = getattr(info, "last_price", None)
+                    if last_price is not None:
+                        q = self._quotes.get(sym) or QuoteData(symbol=sym)
+                        q.last_price = float(last_price)
+                        q.stale = False
+                        q.updated_at = time.monotonic()
+                        self._quotes[sym] = q
+                        self._broadcast({
+                            "type": "quote",
+                            "symbol": sym,
+                            "data": {**q.to_dict(), "source": "yfinance"},
+                        })
+                except Exception as exc:
+                    logger.debug("yfinance fallback error for %s: %s", sym, exc)
+            await asyncio.sleep(poll_interval)
 
     async def _connect_and_listen(self) -> None:
         import websockets  # transitive dep via alpaca-py
@@ -323,7 +385,14 @@ class AlpacaStreamManager:
             })
 
         elif msg_type == "error":
+            code = msg.get("code")
             logger.warning("AlpacaStream error message: %s", msg)
+            if code == 406:
+                # Connection limit exceeded — flag so backoff uses max delay.
+                # Alpaca closes the socket after sending this; the async-for
+                # loop will exit naturally and _run_with_backoff will sleep
+                # MAX_RECONNECT_BACKOFF seconds before the next attempt.
+                self._hit_connection_limit = True
 
     def _broadcast(self, event: dict) -> None:
         dead = []

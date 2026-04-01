@@ -22,6 +22,7 @@ import {
   Minus,
   Gauge,
   GraduationCap,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,6 +154,45 @@ export default function OptionsPage() {
         underlyingPrice
       ),
     enabled: !!selectedContract,
+  });
+
+  // ── Execute from chain selection (Pro mode) ───────────────────────────────────
+  const executeFromChain = useMutation({
+    mutationFn: () => {
+      if (!selectedContract) throw new Error("No contract selected");
+      const strategy =
+        selectedContract.option_type === "call" ? "bull_call_debit" : "bear_put_debit";
+      return optionsApi.execute({
+        symbol,
+        strategy,
+        legs: [
+          {
+            symbol: selectedContract.symbol,
+            strike: selectedContract.strike,
+            option_type: selectedContract.option_type,
+            expiration: selectedContract.expiration,
+            delta: selectedContract.delta,
+            theta: selectedContract.theta,
+          },
+        ],
+        iv_rank: ivRank?.iv_rank ?? 0,
+        iv_percentile: ivRank?.iv_percentile ?? 0,
+        underlying_trend: selectedContract.option_type === "call" ? "bullish" : "bearish",
+        confidence: 0.5,
+        dry_run: dryRun,
+        underlying_price: underlyingPrice,
+      });
+    },
+    onSuccess: (result) => {
+      toast.success(result.dry_run ? "Paper trade placed!" : "Live trade submitted!", {
+        description: `${selectedContract?.symbol} · ${selectedContract?.option_type?.toUpperCase()}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["options-positions"] });
+      queryClient.invalidateQueries({ queryKey: ["options-portfolio-greeks"] });
+    },
+    onError: (err: Error) => {
+      toast.error("Could not place trade", { description: err.message });
+    },
   });
 
   // ── Derived ───────────────────────────────────────────────────────────────────
@@ -391,6 +431,7 @@ export default function OptionsPage() {
                     key={`${signal.symbol}-${signal.strategy}-${i}`}
                     signal={signal}
                     dryRun={dryRun}
+                    underlyingPrice={underlyingPrice}
                     onApproved={() => {
                       queryClient.invalidateQueries({ queryKey: ["options-positions"] });
                       queryClient.invalidateQueries({ queryKey: ["options-portfolio-greeks"] });
@@ -400,24 +441,32 @@ export default function OptionsPage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-8 text-center">
-                <div className="text-2xl mb-2">📡</div>
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-8 text-center flex flex-col items-center gap-3">
+                <div className="text-2xl">📡</div>
                 <p className="text-sm text-zinc-400 font-medium">
                   {direction !== "all"
                     ? `No ${direction} trades found right now`
-                    : "No trades available right now"}
+                    : "No signal-based trades available right now"}
                 </p>
-                <p className="text-xs text-zinc-600 mt-1">
-                  Signals refresh every 60 seconds. The engine requires Alpaca API keys to fetch live options data.
+                <p className="text-xs text-zinc-600 max-w-xs">
+                  Signals refresh every 60 seconds and require Alpaca API keys with options access.
                 </p>
-                {direction !== "all" && (
+                <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                  {direction !== "all" && (
+                    <button
+                      onClick={() => setDirection("all")}
+                      className="text-xs text-[#44DFA3] hover:text-[#44DFA3]/80 transition-colors border border-[#44DFA3]/30 hover:border-[#44DFA3]/50 rounded-lg px-3 py-1.5"
+                    >
+                      Show all directions →
+                    </button>
+                  )}
                   <button
-                    onClick={() => setDirection("all")}
-                    className="mt-3 text-xs text-[#44DFA3] hover:text-[#44DFA3]/80 transition-colors"
+                    onClick={() => setViewMode("pro")}
+                    className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors border border-zinc-700 hover:border-zinc-600 rounded-lg px-3 py-1.5"
                   >
-                    Show all directions →
+                    Trade manually in Pro View →
                   </button>
-                )}
+                </div>
               </div>
             )}
 
@@ -434,6 +483,7 @@ export default function OptionsPage() {
                       key={`blocked-${signal.symbol}-${i}`}
                       signal={signal}
                       dryRun={dryRun}
+                      underlyingPrice={underlyingPrice}
                       onViewDetails={switchToProForSymbol}
                     />
                   ))}
@@ -607,8 +657,51 @@ export default function OptionsPage() {
                     </span>
                   )}
                 </span>
+                {selectedContract && (
+                  <span className="text-[10px] text-zinc-500">
+                    Click &quot;Place Trade&quot; to execute
+                  </span>
+                )}
               </div>
               <PLChart riskModel={riskModel ?? null} underlyingPrice={underlyingPrice} />
+
+              {/* Buy button for selected contract */}
+              {selectedContract ? (
+                <div className="pt-2 border-t border-zinc-800 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    <span className="font-mono text-zinc-300">{selectedContract.symbol}</span>
+                    <span className="uppercase text-[10px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400">
+                      {selectedContract.option_type}
+                    </span>
+                    <span>Strike ${selectedContract.strike}</span>
+                    <span className="ml-auto text-zinc-600">
+                      Bid {selectedContract.bid.toFixed(2)} / Ask {selectedContract.ask.toFixed(2)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => executeFromChain.mutate()}
+                    disabled={executeFromChain.isPending}
+                    className={cn(
+                      "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all",
+                      dryRun
+                        ? "bg-[#44DFA3]/10 hover:bg-[#44DFA3]/20 border border-[#44DFA3]/40 text-[#44DFA3]"
+                        : "bg-red-900/25 hover:bg-red-900/40 border border-red-700/50 text-red-300",
+                      executeFromChain.isPending && "opacity-60 cursor-not-allowed"
+                    )}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {executeFromChain.isPending
+                      ? "Placing…"
+                      : dryRun
+                      ? `Place Paper Trade — ${selectedContract.option_type === "call" ? "Buy Call" : "Buy Put"}`
+                      : `Place Live Trade — ${selectedContract.option_type === "call" ? "Buy Call" : "Buy Put"}`}
+                  </button>
+                </div>
+              ) : (
+                <div className="pt-2 border-t border-zinc-800 text-xs text-zinc-600 text-center">
+                  Click any contract in the Options Chain to select it, then place a trade here.
+                </div>
+              )}
             </div>
 
             {/* Signals — bottom-right */}
@@ -663,18 +756,20 @@ export default function OptionsPage() {
               <AlertTriangle className="w-5 h-5" />
               Enable Live Options Trading?
             </DialogTitle>
-            <DialogDescription className="text-zinc-400 text-sm space-y-2 pt-2">
-              <p>
-                You are about to switch from paper simulation to{" "}
-                <strong className="text-zinc-200">live order execution</strong>. Approved signals
-                will be submitted directly to your broker using real funds.
-              </p>
-              <p>
-                Options trading carries significant risk including the potential loss of your entire
-                investment. This platform is for educational purposes only and does not constitute
-                financial advice.
-              </p>
-              <p>Ensure your broker account is configured and funded before proceeding.</p>
+            <DialogDescription asChild>
+              <div className="text-zinc-400 text-sm space-y-2 pt-2">
+                <p>
+                  You are about to switch from paper simulation to{" "}
+                  <strong className="text-zinc-200">live order execution</strong>. Approved signals
+                  will be submitted directly to your broker using real funds.
+                </p>
+                <p>
+                  Options trading carries significant risk including the potential loss of your entire
+                  investment. This platform is for educational purposes only and does not constitute
+                  financial advice.
+                </p>
+                <p>Ensure your broker account is configured and funded before proceeding.</p>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

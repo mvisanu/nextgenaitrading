@@ -236,6 +236,12 @@ COMMODITY_ALERT_MINUTES=15
 | PriceChart chart recreated on every poll: `drawings` in Effect 1 deps caused teardown when autoFVGs recalculated; moved drawing attachment to Effect 3 | Fixed — 2026-03-31 |
 | npm audit: 3 vulnerabilities (brace-expansion/handlebars/picomatch in jest/eslint dev deps) | Fixed — 2026-03-31 |
 | Index symbol 422s: DJI/SPX/NDQ/VIX/DXY not in normalize_symbol map → yfinance returned no data; added 9 index mappings to _SYMBOL_MAP | Fixed — 2026-03-31 |
+| py_vollib_vectorized numba crash on Render: `RuntimeError` on import (read-only fs); `except ImportError` → `except Exception` in greeks.py; falls back to analytic B-S | Fixed — 2026-03-31 |
+| Alembic `DuplicatePreparedStatementError` on Render: Supabase PgBouncer transaction mode incompatible with asyncpg prepared statements; added `statement_cache_size=0` to alembic env.py engine | Fixed — 2026-03-31 |
+| Portfolio live ledger: buys from any page now immediately write `BrokerOrder` + upsert `PositionSnapshot`; portfolio page polls `/live/positions` + `/live/orders` every 30s; DB data shown with Live badge + Refresh button | Complete — 2026-03-31 |
+| Auto-buy ledger gap: auto_buy_engine never wrote `BrokerOrder` records; now writes order + upserts position snapshot on every automated buy | Fixed — 2026-03-31 |
+| Options page buy flow: Pro mode had no execute button after chain selection; added Place Trade button in P&L panel; `underlying_price` de-hardcoded in BeginnerTradeCard | Fixed — 2026-03-31 |
+| Alpaca stream 406 loop: free IEX tier allows 1 connection; on server restart the old connection lingers and new one gets 406; now applies MAX_RECONNECT_BACKOFF (60s) immediately on 406 instead of 1s retry | Fixed — 2026-03-31 |
 
 ## Alpaca Real-Time Streaming (2026-03-31)
 

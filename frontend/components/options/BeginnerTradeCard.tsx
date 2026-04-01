@@ -117,6 +117,7 @@ const DEFAULT_INFO: StrategyInfo = {
 interface BeginnerTradeCardProps {
   signal: OptionsSignalOut;
   dryRun: boolean;
+  underlyingPrice?: number;
   onApproved?: () => void;
   onViewDetails?: (symbol: string) => void;
 }
@@ -124,6 +125,7 @@ interface BeginnerTradeCardProps {
 export function BeginnerTradeCard({
   signal,
   dryRun,
+  underlyingPrice = 100,
   onApproved,
   onViewDetails,
 }: BeginnerTradeCardProps) {
@@ -159,7 +161,7 @@ export function BeginnerTradeCard({
         underlying_trend: signal.underlying_trend,
         confidence: signal.confidence,
         dry_run: dryRun,
-        underlying_price: 100,
+        underlying_price: underlyingPrice,
       }),
     onSuccess: (result) => {
       toast.success(result.dry_run ? "Paper trade placed!" : "Live trade submitted!", {

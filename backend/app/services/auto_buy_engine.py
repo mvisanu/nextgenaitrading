@@ -38,6 +38,7 @@ from app.models.idea import WatchlistIdea, WatchlistIdeaTicker
 from app.models.live import BrokerOrder
 from app.models.user import User
 from app.services.credential_service import get_credential
+from app.services.execution_service import _upsert_position_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -359,6 +360,40 @@ async def evaluate_auto_buy(
                     order_payload["broker_order_id"] = result.broker_order_id
                     order_payload["status"] = result.status
                     logger.info("Auto-buy order submitted: %s broker_order_id=%s", ticker, result.broker_order_id)
+
+                    # Write BrokerOrder ledger record so the order appears in /live/orders
+                    broker_order = BrokerOrder(
+                        user_id=user.id,
+                        symbol=ticker,
+                        side="buy",
+                        order_type="market",
+                        quantity=round(quantity, 6),
+                        notional_usd=settings_row.max_trade_amount,
+                        broker_order_id=result.broker_order_id,
+                        status=result.status,
+                        filled_price=result.filled_price,
+                        filled_quantity=result.filled_quantity,
+                        mode_name="auto_buy",
+                        dry_run=False,
+                    )
+                    db.add(broker_order)
+                    await db.commit()
+
+                    # Upsert PositionSnapshot so portfolio reflects the new holding
+                    try:
+                        await _upsert_position_snapshot(
+                            db=db,
+                            user_id=user.id,
+                            symbol=ticker,
+                            side="buy",
+                            filled_qty=result.filled_quantity or quantity,
+                            filled_price=result.filled_price or snap.current_price,
+                            mode_name="auto_buy",
+                        )
+                    except Exception as snap_exc:
+                        logger.warning(
+                            "Auto-buy PositionSnapshot upsert failed for %s: %s", ticker, snap_exc
+                        )
                 except Exception as exc:
                     logger.exception("Auto-buy order failed for %s: %s", ticker, exc)
                     decision_state = "blocked_by_risk"

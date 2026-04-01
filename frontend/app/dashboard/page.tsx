@@ -1661,6 +1661,8 @@ function DashboardContent() {
                     "text-[9px] font-bold uppercase tracking-widest mr-2 px-1.5 py-0.5 rounded-sm",
                     streamStatus === "live"
                       ? "text-[#44DFA3] bg-[#44DFA3]/10"
+                      : streamStatus === "yfinance_fallback"
+                      ? "text-orange-400 bg-orange-400/10"
                       : streamStatus === "connecting" || streamStatus === "reconnecting"
                       ? "text-yellow-400 bg-yellow-400/10 animate-pulse"
                       : streamStatus === "unconfigured"
@@ -1670,6 +1672,8 @@ function DashboardContent() {
                 >
                   {streamStatus === "live"
                     ? "● LIVE"
+                    : streamStatus === "yfinance_fallback"
+                    ? "◐ yfinance"
                     : streamStatus === "connecting"
                     ? "○ connecting"
                     : streamStatus === "reconnecting"

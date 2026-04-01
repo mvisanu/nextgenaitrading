@@ -71,20 +71,29 @@ class OptionsExecutor:
             await self._log(signal, risk, result, user_id, dry_run, db)
             return result
 
-        # Build order request
+        # Build order request — credit strategies sell legs, debit strategies buy
         from .broker.base import OptionsOrderLeg
+        _CREDIT_STRATEGIES = {
+            "cash_secured_put", "covered_call", "iron_condor",
+            "bull_put_spread", "bear_call_spread",
+        }
+        _DEBIT_STRATEGIES = {
+            "bull_call_debit", "bear_put_debit", "long_straddle",
+        }
+        is_credit = signal.strategy in _CREDIT_STRATEGIES
+        action = "sell" if is_credit else "buy"
         legs = [
-            OptionsOrderLeg(contract=c, action="sell", quantity=1)
+            OptionsOrderLeg(contract=c, action=action, quantity=1)
             for c in signal.contract_legs
         ]
+        total_mid = sum(c.mid for c in signal.contract_legs)
         order_req = OptionsOrderRequest(
             strategy=signal.strategy,
             underlying=signal.symbol,
             legs=legs,
             order_type="limit",
-            limit_credit=sum(c.mid for c in signal.contract_legs if signal.strategy in {
-                "cash_secured_put", "covered_call", "iron_condor", "bull_put_spread", "bear_call_spread"
-            }),
+            limit_credit=total_mid if is_credit else None,
+            limit_debit=total_mid if not is_credit else None,
             dry_run=dry_run,
         )
 

@@ -32,8 +32,10 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Real-time commodity alerts** — SMTP email + Twilio SMS fired when a commodity ticker meets all 4 technical conditions (EMA cross, trend, RSI, volume); per-user cooldown, confidence threshold, and symbol watchlist; scheduler checks every 15 min using live yfinance data; confirmed working end-to-end
 - **Alpaca market data integration** — `alpaca_data.py` wraps `StockHistoricalDataClient`; `load_ohlcv()` routes US stocks/ETFs through Alpaca automatically when `ALPACA_API_KEY` is set, falls back to yfinance; commodities/forex/crypto always use yfinance
 - **Real-time WebSocket streaming** — `AlpacaStreamManager` singleton maintains one persistent Alpaca WebSocket connection, fans out quote/trade events to all connected clients via SSE (`GET /api/v1/stream/quotes`); dashboard shows live bid/ask/spread and a connection status badge (● LIVE / ○ connecting / ○ error); gracefully falls back to 30s polling when streaming is unavailable or unconfigured; memory-safe: max 20 symbols, bounded per-client queues (50), stale eviction after 90s
-- **Portfolio ledger** — editable holdings and activity log persisted to localStorage with computed P&L, asset allocation donut, and CSV export
+- **Portfolio ledger** — live positions from DB polled every 30s; every buy (from any page) immediately writes a `BrokerOrder` record and upserts a `PositionSnapshot` with weighted avg cost basis; falls back to localStorage for manual entries when DB is empty
 - **Beginner-friendly Auto-Buy UI** — Define Targets panel (symbol, max order size, buy/sell price targets in a clear 2×2 grid) + Execution Timeframe pill selector (Live / 15 min / 30 min / 1 hr / 2 hrs) with plain-English labels; `DEFAULT_SETTINGS` fallback ensures the form always renders without a prior API call
+- **Options trading buy flow** — Pro mode P&L panel now includes a full-width "Place Paper/Live Trade" button that activates after selecting any contract from the chain table; Beginner mode empty state routes to Pro when signals are unavailable; `underlying_price` wired through to execute payload instead of hardcoded to 100
+- **Alpaca stream resilience** — 406 connection-limit error (free IEX tier: 1 connection per account) now triggers 60s backoff immediately instead of a 1s retry storm; `_hit_connection_limit` flag detected in message handler, consumed in reconnect loop
 
 ---
 
@@ -255,7 +257,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Alpaca real-time stream | `AlpacaStreamManager` singleton connects to Alpaca WebSocket (IEX free / SIP paid via `ALPACA_FEED`); fans out bid/ask/trade events to frontend via SSE (`GET /api/v1/stream/quotes`); dashboard shows live bid/ask/spread + connection badge; bounded to 20 symbols / 50-entry queues; falls back to 30s polling when unconfigured |
 | Commodity signal engine | XAUUSD/XAGUSD/multi-symbol signal engine fully integrated into the main backend (`/gold/*` endpoints, Bearer auth); sidebar sub-menu with Overview, Signals, Performance, and Risk sub-pages |
 | Commodity buy-signal alerts | Real-time email (SMTP/TLS) + SMS (Twilio) when all 4 technical conditions pass on a watched symbol; per-user prefs stored in `commodity_alert_prefs` table; settings UI at `/gold`; APScheduler job every 15 min |
-| Portfolio ledger | Editable holdings table + activity log persisted to localStorage; computed total market value, day P&L, unrealized P&L; asset allocation + sector donut charts; CSV export |
+| Portfolio ledger | Live positions from DB (`PositionSnapshot`) polled every 30s; every buy from any page immediately writes `BrokerOrder` + upserts position with weighted avg cost basis; DB data shown with Live badge + manual fallback to localStorage entries when DB is empty; CSV export |
 | Multi-Chart view | 2×3 chart grid with configurable symbols and watchlist sidebar |
 | Stock detail page | Per-ticker financial KPIs, analyst consensus gauge, earnings history |
 | Mobile responsiveness | All pages phone-friendly — hamburger menus, scrollable tables, Sheet overlays, responsive grids |
@@ -708,10 +710,16 @@ Test coverage by suite:
 ### Render (backend)
 
 1. Create a Web Service pointing to the `backend` directory
-2. Build command: `pip install -r requirements.txt && alembic upgrade head`
-3. Start command: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+2. Build command: `pip install -r requirements.txt`
+3. Start command: `uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --limit-concurrency 20` (the Dockerfile CMD runs `alembic upgrade head` automatically before uvicorn)
 4. Add all environment variables from the [Configuration](#configuration) section, including `SUPABASE_JWT_SECRET`
 5. Set `CORS_ORIGINS=https://your-vercel-app.vercel.app`
+
+**Render-specific notes (Starter 512 MB plan):**
+- DB pool: `pool_size=2`, `max_overflow=3` — do not raise these
+- `statement_cache_size=0` is set on all asyncpg engines — required for Supabase PgBouncer (transaction mode)
+- `py_vollib_vectorized` (options Greeks) gracefully falls back to analytic Black-Scholes if numba can't cache on the read-only filesystem
+- yfinance output capped at 750 rows; weekly/monthly periods capped at 5 years to prevent OOM
 
 ### Supabase (database + auth)
 

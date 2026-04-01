@@ -11,9 +11,11 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
 from app.broker.factory import get_broker_client
 from app.broker.robinhood_client import ROBINHOOD_CRYPTO_SYMBOLS
-from app.models.live import BrokerOrder
+from app.models.live import BrokerOrder, PositionSnapshot
 from app.models.user import User
 from app.schemas.live import ExecuteRequest, OrderOut
 from app.services.credential_service import get_credential
@@ -119,6 +121,26 @@ async def execute_order(
             detail="Order could not be saved — invalid strategy_run_id or data constraint violation.",
         ) from exc
 
+    # Upsert PositionSnapshot immediately so the portfolio reflects the new holding.
+    # We do this for both dry-run and live orders so the ledger stays consistent.
+    # Only update position for buy/sell — skip on error to avoid phantom positions.
+    if order_status not in ("error",):
+        try:
+            await _upsert_position_snapshot(
+                db=db,
+                user_id=current_user.id,
+                symbol=payload.symbol,
+                side=payload.side,
+                filled_qty=filled_qty or quantity,
+                filled_price=filled_price or estimated_price,
+                mode_name=payload.mode_name,
+            )
+        except Exception as exc:
+            logger.warning(
+                "PositionSnapshot upsert failed for user_id=%d symbol=%s: %s",
+                current_user.id, payload.symbol, exc,
+            )
+
     if error_msg and not payload.dry_run:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -126,3 +148,71 @@ async def execute_order(
         )
 
     return OrderOut.model_validate(broker_order)
+
+
+async def _upsert_position_snapshot(
+    db: AsyncSession,
+    user_id: int,
+    symbol: str,
+    side: str,
+    filled_qty: float,
+    filled_price: float | None,
+    mode_name: str | None,
+) -> None:
+    """
+    Upsert PositionSnapshot for user after a buy or sell order.
+
+    Buy:  add quantity; recalculate weighted avg entry price.
+    Sell: reduce quantity; mark is_open=False when qty reaches 0.
+
+    Isolated from the main order commit so a snapshot failure never
+    rolls back the BrokerOrder record.
+    """
+    if filled_qty <= 0:
+        return
+
+    result = await db.execute(
+        select(PositionSnapshot)
+        .where(
+            PositionSnapshot.user_id == user_id,
+            PositionSnapshot.symbol == symbol,
+            PositionSnapshot.is_open.is_(True),
+        )
+        .order_by(PositionSnapshot.created_at.desc())
+        .limit(1)
+    )
+    existing: PositionSnapshot | None = result.scalar_one_or_none()
+
+    if side == "buy":
+        if existing:
+            # Weighted average entry price
+            old_notional = (existing.avg_entry_price or 0.0) * existing.quantity
+            new_notional = (filled_price or 0.0) * filled_qty
+            new_qty = existing.quantity + filled_qty
+            existing.avg_entry_price = (
+                (old_notional + new_notional) / new_qty if new_qty > 0 else filled_price
+            )
+            existing.quantity = new_qty
+            existing.is_open = True
+            if mode_name and not existing.strategy_mode:
+                existing.strategy_mode = mode_name
+        else:
+            snap = PositionSnapshot(
+                user_id=user_id,
+                symbol=symbol,
+                position_side="long",
+                quantity=filled_qty,
+                avg_entry_price=filled_price,
+                mark_price=filled_price,
+                is_open=True,
+                strategy_mode=mode_name,
+            )
+            db.add(snap)
+    elif side == "sell":
+        if existing:
+            new_qty = max(existing.quantity - filled_qty, 0.0)
+            existing.quantity = new_qty
+            if new_qty <= 0:
+                existing.is_open = False
+
+    await db.commit()

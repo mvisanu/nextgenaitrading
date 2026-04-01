@@ -179,9 +179,38 @@ async def get_signals(
             iv_pct = compute_iv_percentile(sample_iv, history)
             days_to_earnings = await get_days_to_earnings(sym)
 
-            # Derive underlying trend from IV (simplified — real impl uses TA)
+            # Fetch real underlying price and derive trend from EMA-20 vs EMA-50
+            underlying_price = 100.0
             underlying_trend = "neutral"
-            chain = compute_greeks(chain, 100.0)  # placeholder price
+            try:
+                import yfinance as yf
+                import asyncio
+                fast_info = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: yf.Ticker(sym).fast_info
+                )
+                lp = getattr(fast_info, "last_price", None)
+                if lp and lp > 0:
+                    underlying_price = float(lp)
+                # Derive trend: fetch recent closes for EMA-20/50
+                hist = await asyncio.get_event_loop().run_in_executor(
+                    None, lambda: yf.download(sym, period="60d", interval="1d",
+                                              auto_adjust=True, progress=False)
+                )
+                if not hist.empty and len(hist) >= 20:
+                    closes = hist["Close"].squeeze()
+                    ema20 = float(closes.ewm(span=20, adjust=False).mean().iloc[-1])
+                    ema50 = float(closes.ewm(span=50, adjust=False).mean().iloc[-1]) if len(hist) >= 50 else ema20
+                    price = float(closes.iloc[-1])
+                    if price > ema20 and ema20 > ema50:
+                        underlying_trend = "bullish"
+                    elif price < ema20 and ema20 < ema50:
+                        underlying_trend = "bearish"
+                    else:
+                        underlying_trend = "neutral"
+            except Exception as price_exc:
+                logger.debug("Price/trend fetch failed for %s: %s", sym, price_exc)
+
+            chain = compute_greeks(chain, underlying_price)
 
             signal = evaluate_signal(sym, chain, iv_rank, iv_pct, underlying_trend, days_to_earnings, config)
 

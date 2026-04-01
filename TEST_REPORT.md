@@ -1,347 +1,418 @@
-# NextGenStock — Comprehensive Test Report
+# TEST_REPORT.md
 
-**Generated:** 2026-03-25
-**Scope:** Full system test run — backend unit tests (pytest), frontend unit tests (Jest), E2E integration tests (Playwright)
+## Summary
 
----
-
-## Executive Summary
-
-| Suite | Tests | Pass | Fail | Skip | Pass Rate |
-|-------|-------|------|------|------|-----------|
-| Backend — pytest (V1+V2+V3) | 471 | 471 | 0 | 0 | 100% |
-| Frontend — Jest | 249 | 199 | 50 | 0 | 80% |
-| E2E — Playwright (Chromium) | 451 | ~310 | ~141 | 0 | ~69% |
-| **Total** | **1171** | **~980** | **~191** | 0 | **~84%** |
-
-**Critical open bug:** P1 logout cookie issue — `auth/router.py` returns a new `Response(204)` instead of the DI `response` object, so `Set-Cookie: max_age=0` headers from `_clear_auth_cookies()` are discarded. Logout does not actually clear cookies in the browser or Playwright context. See Bug P1-001 below.
+| Metric | Value |
+|--------|-------|
+| **Report date** | 2026-03-31 |
+| **Backend unit tests** | 548 passed, 0 failed |
+| **Frontend unit tests** | 189 passed, 56 failed (10 suites) |
+| **Frontend build** | PASS (zero errors, zero warnings) |
+| **Frontend ESLint** | PASS (clean) |
+| **TypeScript (tsc --noEmit)** | PASS (clean) |
+| **E2E tests** | BLOCKED (requires live servers) |
+| **Total confirmed bugs** | 12 |
 
 ---
 
-## 1. Backend Unit Tests (pytest)
+## Coverage Matrix
 
-**Command:**
-```bash
-cd backend
-.venv/Scripts/python.exe -m pytest tests/ -v --tb=short -q
-```
-
-**Result: 471 passed, 0 failed, 0 skipped**
-
-### Suite Breakdown
-
-| Test Module | Tests | Pass | Fail |
-|-------------|-------|------|------|
-| `tests/test_auth.py` | 18 | 18 | 0 |
-| `tests/test_profile.py` | 12 | 12 | 0 |
-| `tests/test_broker.py` | 24 | 24 | 0 |
-| `tests/test_strategies.py` | 22 | 22 | 0 |
-| `tests/test_backtests.py` | 18 | 18 | 0 |
-| `tests/test_live.py` | 16 | 16 | 0 |
-| `tests/test_artifacts.py` | 14 | 14 | 0 |
-| `tests/v2/test_buy_zone.py` | 38 | 38 | 0 |
-| `tests/v2/test_alerts.py` | 34 | 34 | 0 |
-| `tests/v2/test_auto_buy.py` | 42 | 42 | 0 |
-| `tests/v2/test_ideas.py` | 28 | 28 | 0 |
-| `tests/v2/test_opportunities.py` | 22 | 22 | 0 |
-| `tests/v2/test_schemas_v2.py` | 18 | 18 | 0 |
-| `tests/v3/test_watchlist.py` | 24 | 24 | 0 |
-| `tests/v3/test_buy_signals.py` | 28 | 28 | 0 |
-| `tests/v3/test_generated_ideas.py` | 22 | 22 | 0 |
-| `tests/v3/test_scanner.py` | 18 | 18 | 0 |
-| `tests/v3/test_services.py` | 22 | 22 | 0 |
-| Security / misc | 51 | 51 | 0 |
-
-All 471 backend tests pass clean. V3 asyncpg issue that previously caused 19 failures was resolved when the test environment was configured with the correct database URL.
+| Area | Test IDs | Result |
+|---|---|---|
+| Backend: 548 unit tests (v1/v2/v3/v4) | T-001 | PASS |
+| Frontend: Next.js production build | T-002 | PASS |
+| Frontend: ESLint | T-003 | PASS |
+| Frontend: TypeScript strict | T-004 | PASS |
+| auto_buy_engine.py — position_size_limit safeguard | T-005 | FAIL (BUG-001) |
+| auto_buy_engine.py — daily_risk_budget calculation | T-006 | FAIL (BUG-002) |
+| execution_service.py — phantom positions on NotImplemented | T-007 | FAIL (BUG-003) |
+| middleware/proxy.ts — auth session detection in tests | T-008 | FAIL (BUG-004) |
+| api.ts — 401 silent-refresh flow | T-009 | FAIL (BUG-005) |
+| Login/Register pages — form contract change | T-010 | FAIL (BUG-006) |
+| StrategyModeSelector — role=tab ARIA contract | T-011 | FAIL (BUG-007) |
+| StrategyForm — Leverage label/input association | T-012 | FAIL (BUG-008) |
+| LiveTradingPage — button text regression | T-013 | FAIL (BUG-009) |
+| ArtifactsPage — header text regression | T-014 | FAIL (BUG-010) |
+| ProfilePage — section heading regression | T-015 | FAIL (BUG-010) |
+| Scheduler tasks — missing gc.collect() | T-016 | FAIL (BUG-011) |
+| CORS configuration | T-017 | PASS |
+| Multi-tenancy (user_id scoping) | T-018 | PASS |
+| DELETE endpoint status code | T-019 | PASS |
+| Broker key exposure | T-020 | PASS |
+| List endpoint bounded limit | T-021 | PARTIAL (BUG-012) |
+| E2E tests (playwright) | T-022 | BLOCKED |
 
 ---
 
-## 2. Frontend Unit Tests (Jest)
+## Test Results
 
-**Command:**
-```bash
-cd frontend
-npm test -- --watchAll=false --passWithNoTests
-```
+### T-001 — Backend Unit Tests (548 tests)
+- **Category:** Unit
+- **Covers:** v2 auto-buy engine, v2 buy-zone, v2 alert engine, v2 theme scoring, v3 scanner services, v4 options engine, auth
+- **Result:** PASS
+- **Notes:** All 548 tests pass in 6.93s. Ran from `backend/` with `.venv/Scripts/python.exe -m pytest tests/`.
 
-**Result: 199 passed, 50 failed — 8 failing suites**
+### T-002 — Frontend Production Build
+- **Category:** Build
+- **Covers:** All 41 routes, TypeScript compilation, Next.js 15 optimization
+- **Result:** PASS
+- **Notes:** Clean build, 0 errors, 0 warnings. All 41 pages generated successfully.
 
-### Suite Breakdown
+### T-003 — Frontend ESLint
+- **Category:** Static Analysis
+- **Covers:** `app/`, `components/`, `lib/` directories
+- **Result:** PASS
+- **Notes:** No ESLint errors or warnings.
 
-| Test File | Tests | Pass | Fail | Notes |
-|-----------|-------|------|------|-------|
-| `__tests__/middleware.test.ts` | 4 | 2 | 2 | Expects `/` to return 200; middleware redirects to `/login` → stale test |
-| `__tests__/register.test.tsx` | 8 | 6 | 2 | Expects `"Account created! Please sign in."` but `page.tsx` sends `"Account created! Welcome to NextGenStock."` |
-| `__tests__/login.test.tsx` | 12 | 10 | 2 | `useSearchParams()` without Suspense boundary in jsdom; `router.push` mock incomplete |
-| `__tests__/dashboard.test.tsx` | 18 | 14 | 4 | `useRouter()` undefined in jsdom; needs `jest.mock('next/navigation')` |
-| `__tests__/ideas.test.tsx` | 22 | 17 | 5 | `useQuery` from `@tanstack/react-query` requires `QueryClientProvider` wrapper in tests |
-| `__tests__/alerts.test.tsx` | 20 | 14 | 6 | Same `QueryClientProvider` issue; `threshold_json` field name not reflected in mock |
-| `__tests__/auto-buy.test.tsx` | 24 | 16 | 8 | `allowed_account_ids_json.includes()` crash when null — test hits non-null-safe path |
-| `__tests__/faq.test.tsx` | 14 | 12 | 2 | `setLang` prop type mismatch in older test expecting raw dispatcher |
-| All other suites | 127 | 108 | — | Pass cleanly |
+### T-004 — TypeScript tsc --noEmit
+- **Category:** Static Analysis
+- **Covers:** Entire frontend TypeScript codebase
+- **Result:** PASS
+- **Notes:** No type errors detected.
 
-### Root Cause Categories
+### T-005 — auto_buy_engine position_size_limit Safeguard
+- **Category:** Business Logic
+- **Covers:** `backend/app/services/auto_buy_engine.py` lines 230-242
+- **Result:** FAIL
+- **Expected:** Safeguard blocks orders where the computed trade amount exceeds `max_trade_amount`
+- **Actual:** Check is tautological — always passes. `notional = (max_trade_amount / price) * price` always equals `max_trade_amount`
+- **See:** BUG-001
 
-**Category A — Stale test expectations (2 failures)**
-- `register.test.tsx`: Toast message updated in `page.tsx` (`"Welcome to NextGenStock."`) but test still asserts old string (`"Please sign in."`).
+### T-006 — auto_buy_engine daily_risk_budget Calculation
+- **Category:** Business Logic
+- **Covers:** `backend/app/services/auto_buy_engine.py` lines 154-155
+- **Result:** FAIL
+- **Expected:** Daily total is the sum of trade values (not doubled)
+- **Actual:** Uses `+` between `notional_usd` and `filled_price * filled_qty`, double-counting orders that have both fields populated
+- **See:** BUG-002
 
-**Category B — Next.js App Router mocking missing (13 failures)**
-- `login.test.tsx`, `dashboard.test.tsx`: Tests render App Router components in jsdom without `jest.mock('next/navigation')`. `useRouter()` and `useSearchParams()` throw because there is no router context in jsdom.
-- Fix: Add to each affected test file:
-  ```typescript
-  jest.mock('next/navigation', () => ({
-    useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
-    useSearchParams: () => new URLSearchParams(),
-    usePathname: () => '/',
-  }));
+### T-007 — execution_service Phantom Positions on NotImplementedError
+- **Category:** Data Integrity
+- **Covers:** `backend/app/services/execution_service.py` line 127
+- **Result:** FAIL
+- **Expected:** No `PositionSnapshot` upsert when broker returns `NotImplementedError`
+- **Actual:** Condition `if order_status not in ("error",)` allows `"not_implemented"` through, creating a phantom position for an order that was never placed
+- **See:** BUG-003
+
+### T-008 — middleware/proxy.ts Authentication Session Detection
+- **Category:** Auth
+- **Covers:** `frontend/__tests__/middleware.test.ts`, `frontend/proxy.ts`
+- **Result:** FAIL (5 tests)
+- **Expected:** Authenticated mock returns 200 for protected routes, 307 for auth routes
+- **Actual:** `proxy.ts` gates the Supabase client creation behind `if (supabaseUrl && supabaseKey)`. In the test environment, these env vars are empty strings, so the block is skipped and `user` remains `null` regardless of mock state
+- **See:** BUG-004
+
+### T-009 — api.ts 401 Silent-Refresh Flow
+- **Category:** Auth
+- **Covers:** `frontend/__tests__/lib/api.test.ts`
+- **Result:** FAIL (2 tests)
+- **Expected:** `authApi.me()` triggers a token refresh and retries on 401; throws "Session expired" when refresh fails
+- **Actual:** `authApi.me()` now calls Supabase directly (not the backend fetch wrapper), so the mock-fetch-based test assertions are never triggered — 0 fetch calls instead of 3
+- **See:** BUG-005
+
+### T-010 — Login and Register Page Form Contract
+- **Category:** UI
+- **Covers:** `frontend/__tests__/app/(auth)/login.test.tsx`, `register.test.tsx`
+- **Result:** FAIL (17 tests across both suites)
+- **Expected:** Password field present; branding text "NextGenStock"; button labeled "Sign in"
+- **Actual:** Login page was redesigned to magic-link (email only — no password field). Branding changed to "NextGen Trading". Submit button is now "Send magic link" with an icon, not an accessible button named "Sign in"
+- **See:** BUG-006
+
+### T-011 — StrategyModeSelector ARIA Role Contract
+- **Category:** Accessibility / UI
+- **Covers:** `frontend/__tests__/components/strategy/StrategyModeSelector.test.tsx`
+- **Result:** FAIL (6 tests)
+- **Expected:** Four elements with `role="tab"` labelled Conservative / Aggressive / AI Pick / Buy Low/Sell High
+- **Actual:** Component uses custom `<button>` elements without `role="tab"` or `aria-selected` — redesigned away from Radix Tabs
+- **See:** BUG-007
+
+### T-012 — StrategyForm Leverage Label Association
+- **Category:** Accessibility / UI
+- **Covers:** `frontend/__tests__/components/strategy/StrategyForm.test.tsx`
+- **Result:** FAIL (13 tests)
+- **Expected:** `<label>` for "Leverage Exposure" is programmatically associated with the range input
+- **Actual:** `<label>` has no `htmlFor` attribute and the `<input type="range">` has no matching `id` — WCAG 1.3.1 violation. `getByLabelText(/Leverage/i)` throws because no associated control is found
+- **See:** BUG-008
+
+### T-013 — LiveTradingPage Button Text Regression
+- **Category:** UI
+- **Covers:** `frontend/__tests__/app/live-trading.test.tsx`
+- **Result:** FAIL (2 tests)
+- **Expected:** "Dry Run" text visible in mode selector; "Execute LIVE Order" button text
+- **Actual:** Mode selector renders "DRY RUN" (all-caps). Execute button renders "EXECUTE LIVE ORDER" (all-caps). Tests use exact-match text queries
+- **See:** BUG-009
+
+### T-014 — ArtifactsPage Header Text Regression
+- **Category:** UI
+- **Covers:** `frontend/__tests__/app/artifacts.test.tsx`
+- **Result:** FAIL (1 test)
+- **Expected:** Header matches `/Pine Script Artifacts \(2\)/`
+- **Actual:** The artifacts page header is split across elements — "Pine Script Artifacts" and "(2)" are in separate DOM nodes, so the compound regex fails
+- **See:** BUG-010
+
+### T-015 — ProfilePage Section Heading Regression
+- **Category:** UI
+- **Covers:** `frontend/__tests__/app/profile.test.tsx`
+- **Result:** FAIL (7 tests)
+- **Expected:** "User Profile" section heading; "Broker Credentials" section heading; button labelled "Add Credential"; Alpaca badge text "/Alpaca.*Stocks.*ETFs/"
+- **Actual:** Section headings and button text have been renamed or restructured in the redesign — the profile page has been significantly restyled
+- **See:** BUG-010
+
+### T-016 — Scheduler Tasks Missing gc.collect()
+- **Category:** Memory / Reliability
+- **Covers:** `backend/app/scheduler/tasks/evaluate_auto_buy.py`, `evaluate_alerts.py`, `refresh_theme_scores.py`, `scan_watchlist.py`
+- **Result:** FAIL
+- **Expected:** `gc.collect()` in `finally` block of every scheduler task (per CLAUDE.md Render constraint)
+- **Actual:** `evaluate_auto_buy.py`, `evaluate_alerts.py`, `refresh_theme_scores.py`, and `scan_watchlist.py` have no `gc.collect()` call. Only `refresh_buy_zones.py`, `run_commodity_alerts.py`, `run_idea_generator.py`, and `run_live_scanner.py` comply
+- **See:** BUG-011
+
+### T-017 — CORS Configuration
+- **Category:** Security
+- **Covers:** `backend/app/main.py`
+- **Result:** PASS
+- **Notes:** CORS never uses `["*"]`. Uses `settings.cors_origins_list`. Error handlers validate origin before reflecting. Both localhost:3000 and Vercel URL are in the allow-list.
+
+### T-018 — Multi-tenancy (user_id Scoping)
+- **Category:** Security
+- **Covers:** All API endpoints, service layer
+- **Result:** PASS
+- **Notes:** `assert_ownership()` enforced at credential layer. All DB queries include `WHERE user_id = current_user.id`. `_upsert_position_snapshot` scoped to `user_id`. `evaluate_auto_buy` loads user object and passes it explicitly.
+
+### T-019 — DELETE Endpoint Status Codes
+- **Category:** API Contract
+- **Covers:** `alerts.py`, `broker.py`, `ideas.py`, `watchlist.py`
+- **Result:** PASS
+- **Notes:** All DELETE endpoints return `Response(status_code=204)` not using decorator `status_code=204`.
+
+### T-020 — Broker Key Exposure
+- **Category:** Security
+- **Covers:** All API response schemas, credential service
+- **Result:** PASS
+- **Notes:** `BrokerCredential` model redacts keys. `get_credential()` returns ORM object for internal use only, never in API response.
+
+### T-021 — List Endpoint Bounded Limit
+- **Category:** API Contract
+- **Covers:** All list endpoints
+- **Result:** PARTIAL
+- **Notes:** `GET /runs/{run_id}/decisions` in `strategies.py:127` uses `limit: int = 100` without `Query(ge=1, le=200)` — not a FastAPI Query parameter, so there is no server-side enforcement of the upper bound. All other list endpoints comply.
+- **See:** BUG-012
+
+### T-022 — E2E Tests (Playwright)
+- **Category:** E2E
+- **Result:** BLOCKED
+- **Notes:** Requires live backend server (`:8000`) and frontend server (`:3000`) with valid Supabase credentials. Cannot be executed in the current environment.
+
+---
+
+## Bug Report (Prioritised)
+
+### CRITICAL — BUG-001: position_size_limit Safeguard Is Tautological (Always Passes)
+
+- **Severity:** Critical
+- **Failing Test:** T-005
+- **File:** `backend/app/services/auto_buy_engine.py`, lines 230-242
+- **Description:** The `position_size_limit` safeguard computes `quantity = max_trade_amount / price` then `notional = quantity * price`. This always equals `max_trade_amount` (floating-point identity), so `notional <= max_trade_amount` is always `True`. The check never fails, making it dead-letter protection.
+- **Steps to Reproduce:**
+  ```python
+  max_trade_amount = 1000.0
+  price = 150.0
+  quantity = max_trade_amount / price   # 6.6667
+  notional = quantity * price           # 1000.0 — always equals max_trade_amount
+  assert notional <= max_trade_amount   # always True
   ```
-
-**Category C — Missing React Query provider (11 failures)**
-- `ideas.test.tsx`, `alerts.test.tsx`: Components use `useQuery`/`useMutation` from TanStack Query. Tests render components without a `QueryClientProvider` wrapper.
-- Fix: Create test utility `renderWithProviders(ui)` that wraps in `QueryClientProvider` and `ToasterProvider`.
-
-**Category D — Null-safe runtime crash (8 failures)**
-- `auto-buy.test.tsx`: `allowed_account_ids_json` is `null` in test data. `page.tsx` calls `.includes()` directly without null check. This is a **real application bug** (P2).
-
-**Category E — Minor type/prop mismatches (2 failures)**
-- `middleware.test.ts`: Route `/` should redirect to `/login` for unauthenticated users, but test expects 200. Test logic is wrong — the middleware redirect is correct behavior.
-- `faq.test.tsx`: `setLang` prop receives raw `Dispatch<SetStateAction<Lang>>` but test passes a plain function; minor typing issue.
+- **Expected:** Safeguard should compare the *requested* order size to the configured limit. It should receive `notional_usd` directly or compare against an externally-supplied quantity.
+- **Actual:** Check is a mathematical no-op; the safeguard always passes.
+- **Suggested Fix:** Pass `notional_usd` (the actual requested amount) directly as a parameter to `run_safeguards()` and compare that to `max_trade_amount`, rather than recomputing quantity from price in the same function.
 
 ---
 
-## 3. E2E Tests (Playwright — Chromium)
+### CRITICAL — BUG-002: daily_risk_budget Double-Counts Orders with Both notional_usd and filled Fields
 
-**Command:**
-```bash
-cd tests
-npx playwright test --config=e2e/playwright.config.ts --project=chromium
-```
-
-Both backend (`uvicorn app.main:app --port 8000`) and frontend (`npm run dev`, port 3000) must be running before executing E2E tests.
-
-### Spec File Results
-
-| Spec File | Total | Pass | Fail | Notes |
-|-----------|-------|------|------|-------|
-| `auth.spec.ts` | 22 | 18 | 4 | AUTH-07-01/02 fail: UI login form submits as GET before React hydrates; AUTH-11/12 fail: logout does not clear cookies (P1 bug) |
-| `register.spec.ts` | 12 | 10 | 2 | REG-05/06: stale success message expectation |
-| `broker-credentials.spec.ts` | 28 | 26 | 2 | CRED-10 intermittent timeout on slow CI; CRED-14 delete confirm dialog timing |
-| `strategies.spec.ts` | 32 | 28 | 4 | STRAT-09/10: yfinance insufficient data for obscure symbols; STRAT-15/16: CSS selector race |
-| `backtests.spec.ts` | 24 | 22 | 2 | BT-11/12: equity curve Recharts async render timeout |
-| `live-trading.spec.ts` | 28 | 24 | 4 | LIVE-07/08: signal check returns 422 when no prior strategy run exists; LIVE-11/12: same logout cookie P1 |
-| `artifacts.spec.ts` | 18 | 17 | 1 | ART-09: Pine Script copy to clipboard blocked in headless Chromium (permissions API) |
-| `profile.spec.ts` | 14 | 14 | 0 | All pass |
-| `buy-zone.spec.ts` | 32 | 26 | 6 | BZ-06/BZ-13: logout cookie P1; BZ-09/BZ-14: yfinance data intermittent; BZ-11/BZ-16: theme score timing |
-| `multi-tenancy.spec.ts` | 22 | 17 | 5 | MT-07/08: inverted assertions `expect([403,404]).toContain(200)` — test bugs; MT-11/12/13: stale data accumulation |
-| `security.spec.ts` | 18 | 14 | 4 | SEC-05/06: rate limit lockout bleeds between tests (in-memory state, no reset); SEC-09: inverted assertion test bug |
-| `opportunities.spec.ts` | 24 | 20 | 4 | OPP-07/08: V3 watchlist API 404 when no prior watchlist; OPP-11/12: async WatchlistTable render |
-| `ideas.spec.ts` | 22 | 19 | 3 | IDEA-08: create idea form `conviction_score` slider non-interactive in headless; IDEA-11/12: async list refresh |
-| `alerts.spec.ts` | 20 | 16 | 4 | ALERT-04/05: `threshold_json` field name not matched by test selector; ALERT-08/09: delete alert timing |
-| `auto-buy.spec.ts` | 24 | 18 | 6 | AB-07/08: `allowed_account_ids_json` null crash (P2 bug); AB-11/12: dry-run result display; AB-14/15/16: settings form resets |
-| `auto-buy-ui.spec.ts` | 18 | 15 | 3 | AB-UI-05/06/07: `data-testid` selectors present but component conditionally rendered |
-| `watchlist.spec.ts` (v3) | 16 | 15 | 1 | WATCH-09: 409 duplicate ticker error message not surfaced in toast within timeout |
-| `v3-opportunities.spec.ts` | 22 | 18 | 4 | V3-OPP-05/06: `BuyNowSignal` condition keys mismatch labels; V3-OPP-09/10: distance_to_zone_pct formatting |
-| `v3-ideas.spec.ts` | 12 | 10 | 2 | V3-IDEA-05: `reason_summary` truncated in card display; V3-IDEA-06: `theme_tags` filter chips missing Healthcare |
-| `nextgenstock-live.spec.ts` | 8 | 7 | 1 | NGS-LIVE-04: live position snapshot timestamp stale test |
-| `scanner.spec.ts` | 10 | 9 | 1 | SCAN-05: market hours guard prevents on-demand scan from running in test environment |
-| `faq.spec.ts` | 8 | 8 | 0 | All pass |
-| `learn.spec.ts` | 6 | 6 | 0 | All pass |
-| `strategy-samples.spec.ts` | 11 | 11 | 0 | All pass |
-
-### E2E Failure Categories
-
-**Category 1 — P1 Logout Bug (11 failures across 4 specs)**
-
-`POST /auth/logout` does not clear cookies. `auth/router.py` creates a fresh `Response(status_code=204)` and returns it, discarding cookie-clearing headers set on the FastAPI DI `response` object. Any test that logs out and then expects a subsequent request to be rejected (401) will fail because the access_token cookie is still present.
-
-Affected tests: AUTH-11, AUTH-12, LIVE-11, LIVE-12, BZ-06, BZ-13, MT-11, MT-12, MT-13, SEC-05, SEC-06.
-
-**Category 2 — React Hydration Race (4 failures)**
-
-UI tests that click the login submit button (`page.click('button[type="submit"]')`) trigger the native browser form submission as a GET request before React hydrates and attaches its event listener. The URL becomes `/login?email=...&password=...` instead of posting via fetch.
-
-Fix: Wait for React hydration marker or use `page.waitForFunction(() => document.querySelector('[data-hydrated]') !== null)` before form interaction, or add `await page.waitForLoadState('networkidle')` and then re-query the button.
-
-**Category 3 — yfinance Data Availability (5 failures)**
-
-Tests using obscure or delisted symbols receive `{"detail": "Insufficient data for analysis"}` from yfinance. These are environment flakiness issues, not code bugs. The test symbols should be changed to liquid instruments (AAPL, SPY, MSFT) that reliably return sufficient history.
-
-**Category 4 — Test Assertion Bugs — Pre-existing (7 failures)**
-
-- `multi-tenancy.spec.ts` MT-07/MT-08: `expect([403,404]).toContain(200)` — the subject and argument are swapped. Should be `expect(status).toBeOneOf([403,404])` or `expect([403,404]).toContain(status)`.
-- `security.spec.ts` SEC-09: same inverted assertion pattern — `expect([401,403,422]).toContain(200)` always fails by design.
-- These are test code bugs introduced at authoring time, not application bugs.
-
-**Category 5 — Missing DB Reset Between Runs (6 failures)**
-
-No `POST /api/v1/test/reset` endpoint exists. Auto-buy settings, strategy runs, and alerts accumulate across test runs. Tests that assert "no existing settings" or "0 alerts" fail on second run.
-
-**Category 6 — Clipboard API Blocked (1 failure)**
-
-Chromium headless blocks `navigator.clipboard.writeText()` by default. ART-09 (copy Pine Script) fails with a permissions error. Fix: add `--enable-permissions-policy` flag or mock clipboard in the test.
-
-**Category 7 — Market Hours Guard (1 failure)**
-
-SCAN-05 calls `POST /api/scanner/run-now` but the endpoint checks `market_hours.is_market_open()` and returns 403 when the market is closed. The test environment runs outside market hours. Fix: add a `force=true` query param bypass for tests (gated by `DEBUG=true`), or mock the market hours check.
+- **Severity:** Critical
+- **Failing Test:** T-006
+- **File:** `backend/app/services/auto_buy_engine.py`, line 155
+- **Description:** The daily spend calculation uses:
+  ```python
+  (o.notional_usd or 0.0) + (o.filled_price or 0.0) * (o.filled_quantity or 0.0)
+  ```
+  For filled orders that have both `notional_usd` and `filled_price/qty` populated, both terms are non-zero, so the order value is counted twice. A $1,000 filled order is counted as $2,000 toward the daily cap.
+- **Steps to Reproduce:** Create a `BrokerOrder` with `notional_usd=500, filled_price=100, filled_qty=5`. The daily total becomes `500 + 100*5 = 1000` instead of `500`.
+- **Expected:** Use `notional_usd` when available, fall back to `filled_price * filled_qty` only if `notional_usd` is null. Use coalescing, not addition.
+- **Actual:** Both values are summed with `+`, doubling the reported spend.
+- **Suggested Fix:** Change to: `o.notional_usd if o.notional_usd else (o.filled_price or 0.0) * (o.filled_quantity or 0.0)`.
 
 ---
 
-## 4. Bug List (Prioritized)
+### HIGH — BUG-003: execution_service Creates Phantom PositionSnapshot for NotImplementedError Orders
 
-### P0 — Blocking: Data Loss / Security
-
-None identified.
-
-### P1 — High: Core Flow Broken
-
-| ID | Bug | Location | Symptom | Fix |
-|----|-----|----------|---------|-----|
-| P1-001 | Logout does not clear cookies | `backend/app/auth/router.py` `logout()` | Browser retains `access_token` after logout; authenticated requests succeed post-logout | Change `return Response(status_code=204)` to `response.status_code = 204; return response` so cookie-clearing Set-Cookie headers are preserved |
-
-**Code fix for P1-001:**
-
-```python
-# backend/app/auth/router.py  (current — BROKEN)
-async def logout(..., response: Response, ...) -> Response:
-    await service.logout(db, response, refresh_token)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)   # ← new object, headers lost
-
-# CORRECT
-async def logout(..., response: Response, ...) -> Response:
-    await service.logout(db, response, refresh_token)
-    response.status_code = status.HTTP_204_NO_CONTENT
-    return response
-```
-
-### P2 — Medium: Application Crash / Incorrect Behavior
-
-| ID | Bug | Location | Symptom | Fix |
-|----|-----|----------|---------|-----|
-| P2-001 | `allowed_account_ids_json.includes()` crash when null | `frontend/app/auto-buy/page.tsx` | Runtime TypeError when `allowed_account_ids_json` is null | Change to `(allowed_account_ids_json ?? []).includes(...)` |
-| P2-002 | Market hours guard blocks on-demand scan in dev | `backend/app/api/scanner.py` | `POST /api/scanner/run-now` returns 403 outside market hours | Add `if settings.debug: pass` bypass or accept `force=true` param |
-| P2-003 | IDEA-08: conviction_score slider non-interactive | `frontend/components/ideas/IdeaForm.tsx` | Range input not movable in headless Playwright | Add `data-testid="conviction-score"` and programmatically set value |
-
-### P3 — Low: Test Infrastructure / DX
-
-| ID | Bug | Location | Symptom | Fix |
-|----|-----|----------|---------|-----|
-| P3-001 | No DB reset endpoint | Backend test infrastructure | Test state accumulates between runs; "0 items" assertions fail on re-run | Add `POST /api/test/reset` gated by `DEBUG=true` |
-| P3-002 | Jest missing Next.js router mocks | `frontend/__tests__/` | `useRouter()` undefined in 3 test files | Add `jest.mock('next/navigation', ...)` or create `__mocks__/next/navigation.ts` |
-| P3-003 | Jest missing QueryClientProvider | `frontend/__tests__/ideas.test.tsx`, `alerts.test.tsx` | TanStack Query hooks throw outside provider | Create shared `renderWithProviders()` test utility |
-| P3-004 | Stale toast message in register test | `frontend/__tests__/register.test.tsx` | Test asserts old success string | Update expected string to `"Account created! Welcome to NextGenStock."` |
-| P3-005 | Inverted assertions in multi-tenancy/security specs | `tests/e2e/specs/multi-tenancy.spec.ts`, `security.spec.ts` | `expect([403,404]).toContain(200)` always fails | Swap subject/argument: `expect(status).toBe(200)` or `expect([403,404]).toContain(status)` |
-| P3-006 | yfinance unreliable test symbols | Various E2E specs | Obscure symbols return insufficient data | Use only AAPL, SPY, MSFT as test symbols |
-| P3-007 | Clipboard API blocked in headless Chromium | `tests/e2e/specs/artifacts.spec.ts` | ART-09 fails with permissions error | Mock clipboard or add `browserContext.grantPermissions(['clipboard-read','clipboard-write'])` |
+- **Severity:** High
+- **Failing Test:** T-007
+- **File:** `backend/app/services/execution_service.py`, line 127
+- **Description:** When a broker raises `NotImplementedError` (Robinhood stub for stock orders), the order status is set to `"not_implemented"`. The guard that gates the `PositionSnapshot` upsert checks `if order_status not in ("error",)`, which evaluates to `True` for `"not_implemented"`. A position row is therefore written for a trade that never reached any broker.
+- **Steps to Reproduce:** Submit a stock order to a Robinhood credential. The `BrokerOrder` is created with `status="not_implemented"` and a `PositionSnapshot` row is immediately upserted, adding virtual shares to the portfolio that do not exist.
+- **Expected:** Position upsert should be skipped when `order_status` is `"not_implemented"` or `"error"`.
+- **Actual:** Only `"error"` is excluded; `"not_implemented"` proceeds to upsert.
+- **Suggested Fix:** Change condition to `if order_status not in ("error", "not_implemented"):`.
 
 ---
 
-## 5. Previous Fix History (2026-03-25)
+### HIGH — BUG-004: middleware Tests Fail Because proxy.ts Skips Supabase When Env Vars Are Empty
 
-All previously identified V2/V3 bugs have been resolved. See table below for reference.
-
-| Bug ID | Description | Status |
-|--------|-------------|--------|
-| B-05 | autoBuyDryRun 422 — helper sends no body | RESOLVED |
-| B-06 | Auto-buy settings stale across test runs | RESOLVED |
-| B-07 | Auto-buy UI elements not found | RESOLVED |
-| B-08 | `threshold` → `threshold_json` field mismatch | RESOLVED |
-| B-09 | Strategy schema missing fields | NOT A BUG |
-| B-11/B-12 | Ideas/Alerts UI create/delete flows | RESOLVED |
-| B-13 | CSS selector syntax errors | RESOLVED |
-| B-14 | Page headings `sr-only` invisible to Playwright | RESOLVED |
-| B-15 | LIVE-13 wrong status code | NOT A BUG |
-| B-16/B-17 | SEC-09 cookie isolation | RESOLVED |
-| B-18 | `tags` → `tags_json` field mismatch | RESOLVED |
-| B-19 | Buy zone theme score empty explanation | RESOLVED |
-| B-20 | Broker form submission timeout | RESOLVED |
-| B-21 | Auto-buy settings non-deterministic | RESOLVED (via B-06) |
-| B-22 | Missing `GET /alerts/{id}` endpoint | RESOLVED |
-| B-01/B-02/B-10 | Middleware not executing | RESOLVED |
-| B-03 | API cookie persistence / false 200s | RESOLVED |
-| B-04 | Multi-tenancy cookie isolation | RESOLVED |
-| Auth fixture | Set-Cookie parsing fails | RESOLVED |
-| Logout | Cookies not cleared by `delete_cookie` | RESOLVED (service.py) — router.py fix still needed (P1-001) |
+- **Severity:** High
+- **Failing Test:** T-008 (5 tests)
+- **File:** `frontend/proxy.ts` lines 41-64; `frontend/__tests__/middleware.test.ts`
+- **Description:** `proxy.ts` only calls `supabase.auth.getUser()` inside `if (supabaseUrl && supabaseKey)`. In the Jest test environment, these env vars are empty strings, so the block is never entered and `user` stays `null` regardless of what the mock returns. This means:
+  - Protected route + authenticated mock returns status 307 (not 200) — middleware redirects to /login
+  - Auth route + authenticated mock returns status 200 (not 307) — no redirect to /dashboard
+  - Root `/` + authenticated mock redirects to /login instead of /dashboard
+- **Expected:** 5 authenticated-path tests to pass.
+- **Actual:** All 5 fail with inverted status codes.
+- **Suggested Fix:** Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to non-empty strings in `jest.setup.ts` (or a `.env.test` file) before the middleware module is loaded, so the Supabase branch executes and the mock takes effect.
 
 ---
 
-## 6. Infrastructure Notes
+### HIGH — BUG-005: api.ts 401 Silent-Refresh Tests Fail — authApi.me() No Longer Uses fetch Wrapper
 
-### Test Environment Requirements
-
-- Docker Postgres running: `docker compose up -d` (port 5432)
-- Backend: `cd backend && .venv/Scripts/uvicorn.exe app.main:app --port 8000 --reload`
-- Frontend: `cd frontend && npm run dev` (port 3000)
-- Node.js ≥ 20 for Playwright
-- Python 3.11 in `.venv` (not system Python 3.10 — missing `slowapi`)
-
-### Playwright Single-Worker Constraint
-
-`workers: 1` is intentional. The backend uses PostgreSQL with no test-reset endpoint; parallel test execution causes cross-test state pollution. Do not increase workers without implementing per-test database isolation.
-
-### Rate Limiter State
-
-`slowapi` uses in-memory counters. The login lockout (5 attempts → 15-min lockout) persists across test runs within the same uvicorn process. If `auth.spec.ts` lockout tests run consecutively, the second run may see an already-locked account. Restart uvicorn between full E2E runs.
-
-### yfinance Data Reliability
-
-yfinance returns variable amounts of historical data depending on network latency and symbol availability. Tests relying on yfinance should:
-1. Use only major liquid symbols (AAPL, SPY, MSFT, BTC-USD)
-2. Assert on response shape, not specific trade counts
-3. Accept 422 "Insufficient data" as a valid test-environment skip condition
+- **Severity:** High
+- **Failing Test:** T-009 (2 tests)
+- **File:** `frontend/__tests__/lib/api.test.ts`; `frontend/lib/api.ts`
+- **Description:** The tests for the "401 silent refresh" flow expect `authApi.me()` to issue 3 `fetch` calls (original then 401 then refresh then retry). However, `authApi.me()` now calls Supabase directly and is no longer routed through the `_fetch` wrapper with 401 handling. The mock-fetch counter stays at 0 and the expected "Session expired" rejection never fires.
+- **Expected:** 3 fetch calls, retry after refresh, throw on double-401.
+- **Actual:** 0 fetch calls; resolved with `null` instead of throwing.
+- **Suggested Fix:** The `401 silent refresh flow` tests should be rewritten to test `_fetch()` directly with a protected backend endpoint (e.g., `profileApi.get()`), not `authApi.me()`.
 
 ---
 
-## 7. Recommendations
+### HIGH — BUG-006: Login and Register Test Suite Fails — UI Redesigned to Magic-Link Flow
 
-**Immediate (this sprint):**
-
-1. Fix P1-001 (logout router) — one-line change, unblocks 11 E2E tests
-2. Fix P2-001 (null-safe `allowed_account_ids_json`) — prevents production crash
-3. Update 5 stale Jest test assertions (P3-002 through P3-005) — 15-min effort
-4. Add `jest.mock('next/navigation')` to 3 unit test files — unblocks 13 Jest failures
-
-**Short-term (next sprint):**
-
-5. Add `POST /api/test/reset` endpoint gated by `DEBUG=true` — enables reliable repeated E2E runs
-6. Create `renderWithProviders()` Jest test utility — eliminates QueryClientProvider failures
-7. Replace obscure yfinance symbols in E2E tests with AAPL/SPY/MSFT
-8. Fix inverted assertions in MT-07, MT-08, SEC-09
-
-**Longer-term:**
-
-9. Add `browserContext.grantPermissions(['clipboard-read','clipboard-write'])` in Playwright config for clipboard tests
-10. Add `force=true` bypass on `POST /api/scanner/run-now` (gated by `DEBUG`) to unblock SCAN-05
-11. Consider Playwright `storageState` pre-seeding via global-setup.ts to reduce per-test login overhead
-12. Add `data-testid` attributes to interactive elements in auto-buy and ideas pages to reduce selector fragility
+- **Severity:** High
+- **Failing Test:** T-010 (17 tests across login + register)
+- **Files:** `frontend/__tests__/app/(auth)/login.test.tsx`, `register.test.tsx`; `frontend/app/(auth)/login/page.tsx`
+- **Description:** The login page was redesigned from password-based auth to Supabase magic-link (email only). This introduced multiple test/code mismatches:
+  1. Tests look for `getByLabelText(/password/i)` — no password field exists.
+  2. Tests look for `getByText("NextGenStock")` — branding changed to "NextGen Trading".
+  3. Tests look for `getByRole("button", { name: /sign in/i })` — button is now "Send magic link" with an icon; the button has no accessible text name.
+  4. Tests invoke `mockOnSuccess()` / `mockOnError()` callbacks that were wired to the old `useMutation` pattern — the new page uses `useState` + direct async calls.
+  5. The actual login/register error handlers use `error.message` directly (not `|| fallback`), so tests asserting fallback messages for empty `error.message` also fail.
+- **Expected:** All login and register tests pass.
+- **Actual:** 17 tests fail.
+- **Suggested Fix:** Rewrite the test suites to match the current magic-link UI: email-only form, mock `supabase.auth.signInWithOtp`, assert on the "Check your email" confirmation state.
 
 ---
 
-## 8. E2E Test File Index
+### MEDIUM — BUG-007: StrategyModeSelector Has No ARIA Role=Tab — Accessibility Regression
 
-| File | Feature Area | Cases |
-|------|-------------|-------|
-| `specs/auth.spec.ts` | Login, logout, session, registration flow | 22 |
-| `specs/register.spec.ts` | Registration form, validation, redirect | 12 |
-| `specs/broker-credentials.spec.ts` | Alpaca/Robinhood credential CRUD | 28 |
-| `specs/strategies.spec.ts` | Conservative/Aggressive/AI-Pick/BLSH modes | 32 |
-| `specs/backtests.spec.ts` | Backtest history, detail page, equity curve | 24 |
-| `specs/live-trading.spec.ts` | Signal check, order placement, dry-run | 28 |
-| `specs/artifacts.spec.ts` | Pine Script display and copy | 18 |
-| `specs/profile.spec.ts` | Profile read/update | 14 |
-| `specs/buy-zone.spec.ts` | Buy zone analysis, theme scores | 32 |
-| `specs/multi-tenancy.spec.ts` | Cross-user data isolation | 22 |
-| `specs/security.spec.ts` | Auth enforcement, rate limits, RBAC | 18 |
-| `specs/opportunities.spec.ts` | V3 watchlist opportunities | 24 |
-| `specs/ideas.spec.ts` | Watchlist ideas CRUD | 22 |
-| `specs/alerts.spec.ts` | Price alert rules CRUD | 20 |
-| `specs/auto-buy.spec.ts` | Auto-buy settings, dry-run, decision log | 24 |
-| `specs/auto-buy-ui.spec.ts` | Auto-buy UI elements and interactions | 18 |
-| `specs/watchlist.spec.ts` | V3 user watchlist | 16 |
-| `specs/v3-opportunities.spec.ts` | V3 WatchlistTable, BuyNowBadge | 22 |
-| `specs/v3-ideas.spec.ts` | Generated idea cards, theme filter | 12 |
-| `specs/nextgenstock-live.spec.ts` | Live API integration smoke tests | 8 |
-| `specs/scanner.spec.ts` | V3 live scanner, run-now | 10 |
-| `specs/faq.spec.ts` | FAQ page, Thai/English toggle | 8 |
-| `specs/learn.spec.ts` | Learn page content | 6 |
-| `specs/strategy-samples.spec.ts` | Strategy samples page | 11 |
-| **Total** | | **451** |
+- **Severity:** Medium
+- **Failing Test:** T-011 (6 tests)
+- **File:** `frontend/components/strategy/StrategyModeSelector.tsx`; `frontend/__tests__/components/strategy/StrategyModeSelector.test.tsx`
+- **Description:** The component was redesigned from Radix Tabs (which provides `role="tab"` and `aria-selected` automatically) to plain `<button>` elements. The test suite still queries `getByRole("tab", { name: /Conservative/i })`. Since the buttons have no `role="tab"` or `aria-selected`, all tab-role queries fail.
+- **Expected:** Four elements accessible as `role="tab"` with `aria-selected` state.
+- **Actual:** Four `<button>` elements with no ARIA tab role.
+- **Suggested Fix (accessibility):** Add `role="tab"`, `aria-selected={isActive}`, and wrap in a `role="tablist"` container. Alternatively, revert to Radix Tabs primitive.
+- **Suggested Fix (tests only):** Rewrite tests to query by `getByRole("button", { name: /Conservative/i })`.
+
+---
+
+### MEDIUM — BUG-008: StrategyForm Leverage Label Not Programmatically Associated — WCAG 1.3.1 Violation
+
+- **Severity:** Medium
+- **Failing Test:** T-012 (13 tests)
+- **File:** `frontend/components/strategy/StrategyForm.tsx`, lines 216-234
+- **Description:** The `<label>` for "Leverage Exposure" has no `htmlFor` attribute. The `<input type="range">` has no `id` attribute. The association between label and control does not exist in the accessibility tree. This is a WCAG 1.3.1 (Level A) violation and is the root cause of all 13 StrategyForm test failures (`getByLabelText(/Leverage/i)` throws because no associated control is found).
+- **Expected:** `<label htmlFor="leverage-{mode}">` paired with `<input id="leverage-{mode}">`.
+- **Actual:** Label and input are adjacent but not linked.
+- **Suggested Fix:** Add `htmlFor={\`leverage-${mode}\`}` to the label and `id={\`leverage-${mode}\`}` to the input.
+
+---
+
+### MEDIUM — BUG-009: LiveTradingPage Tests Fail — Button Text Casing Mismatch
+
+- **Severity:** Medium
+- **Failing Test:** T-013 (2 tests)
+- **File:** `frontend/__tests__/app/live-trading.test.tsx`; `frontend/app/live-trading/page.tsx`
+- **Description:** Two test failures due to UI text case changes:
+  1. Test expects `screen.getByText("Dry Run")` — actual text is `"DRY RUN"` (all-caps label in mode selector).
+  2. Test expects `screen.getByText("Execute LIVE Order")` — actual text is `"EXECUTE LIVE ORDER"` (all-caps submit button).
+- **Suggested Fix:** Update test assertions to use case-insensitive regex: `getByText(/dry run/i)` and `getByText(/execute live order/i)`.
+
+---
+
+### MEDIUM — BUG-010: ArtifactsPage and ProfilePage Tests Fail — UI Restructuring
+
+- **Severity:** Medium
+- **Failing Tests:** T-014 (1 test), T-015 (7 tests)
+- **Files:** `frontend/__tests__/app/artifacts.test.tsx`; `frontend/__tests__/app/profile.test.tsx`
+- **Description:**
+  - `ArtifactsPage`: Test queries `/Pine Script Artifacts \(2\)/` as a single text node. The page renders "Pine Script Artifacts" and "(2)" in separate DOM elements.
+  - `ProfilePage`: Section headings "User Profile" and "Broker Credentials" have been renamed or restructured. "Add Credential" button text changed. Delete buttons have no accessible name, causing ambiguous `getByRole("button", { name: "" })` errors.
+- **Suggested Fix:** Update tests to use `getByText` with partial match or regex. Add `aria-label` to icon-only delete buttons (e.g., `aria-label="Delete credential"`).
+
+---
+
+### MEDIUM — BUG-011: Four Scheduler Tasks Missing gc.collect() — Render OOM Risk
+
+- **Severity:** Medium
+- **Failing Test:** T-016
+- **Files:** `backend/app/scheduler/tasks/evaluate_auto_buy.py`, `evaluate_alerts.py`, `refresh_theme_scores.py`, `scan_watchlist.py`
+- **Description:** Per CLAUDE.md: "Every scheduler task must have `gc.collect()` in its `finally` block to release DataFrames immediately" — required for Render 512 MB Starter plan. Four tasks do not comply. `refresh_theme_scores` calls `compute_theme_score` per ticker (may load yfinance DataFrames) and is the highest risk.
+- **Expected:** All scheduler task try/except blocks end with `finally: gc.collect()`.
+- **Actual:** Only `refresh_buy_zones.py`, `run_commodity_alerts.py`, `run_idea_generator.py`, and `run_live_scanner.py` have `gc.collect()`.
+- **Suggested Fix:** Add `finally: import gc; gc.collect()` block to each non-compliant task.
+
+---
+
+### LOW — BUG-012: GET /runs/{run_id}/decisions Has Unbounded limit Parameter
+
+- **Severity:** Low
+- **Failing Test:** T-021
+- **File:** `backend/app/api/strategies.py`, line 127
+- **Description:** `limit: int = 100` is a plain Python default parameter, not a `Query(ge=1, le=200)` FastAPI parameter. Clients can pass `?limit=999999` and the server will attempt to return all matching rows. CLAUDE.md states: "List endpoints must have bounded `limit`: `Query(default=50, ge=1, le=200)`".
+- **Expected:** `limit: int = Query(default=100, ge=1, le=200)`
+- **Actual:** `limit: int = 100` — no server-side enforcement.
+- **Suggested Fix:** Change to `limit: int = Query(default=100, ge=1, le=200)` and add the `Query` import if missing.
+
+---
+
+## Skipped / Blocked Tests
+
+- **T-022 (E2E Playwright):** BLOCKED — requires live backend on `:8000` and frontend on `:3000` with valid `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `DATABASE_URL` environment variables. 546 E2E tests exist at `tests/e2e/`. Infrastructure must be running to execute them.
+
+---
+
+## Recommendations
+
+### Immediate (before next deploy)
+
+1. **Fix BUG-001** (`position_size_limit` tautology) — this safeguard has never actually protected against oversized orders. Pass `notional_usd` as a direct parameter to `run_safeguards()` in `backend/app/services/auto_buy_engine.py`.
+
+2. **Fix BUG-002** (`daily_risk_budget` double-counting) — the daily cap is half as effective as intended because filled orders are counted at 2x value. Change `+` to a coalescing expression on line 155 of `auto_buy_engine.py`.
+
+3. **Fix BUG-003** (phantom positions for `not_implemented` orders) — add `"not_implemented"` to the exclusion list on line 127 of `backend/app/services/execution_service.py`.
+
+### High priority (next sprint)
+
+4. **Fix BUG-011** (scheduler `gc.collect()`) — add `finally: gc.collect()` to the four non-compliant scheduler tasks before the next Render deploy to prevent OOM crashes.
+
+5. **Fix BUG-004** (middleware tests) — set non-empty Supabase env vars in `jest.setup.ts` before the middleware module is imported.
+
+6. **Fix BUG-005** (api.ts 401 tests) — rewrite the two failing tests to use `profileApi.get()` or another `_fetch`-based endpoint rather than `authApi.me()`.
+
+7. **Fix BUG-006** (login/register tests) — rewrite both test suites to match the current magic-link UI.
+
+### Medium priority
+
+8. **Fix BUG-007** (StrategyModeSelector ARIA) — add `role="tab"` and `aria-selected` to restore accessibility compliance and unblock 6 tests.
+
+9. **Fix BUG-008** (Leverage label/input association) — add matching `htmlFor`/`id` to resolve WCAG 1.3.1 violation and unblock 13 tests.
+
+10. **Fix BUG-009** (LiveTrading button text) — update 2 test assertions to use case-insensitive regex.
+
+11. **Fix BUG-010** (Artifacts/Profile test regressions) — update tests to match current UI structure; add `aria-label` to icon-only delete buttons.
+
+12. **Fix BUG-012** (unbounded limit) — wrap `limit` in `Query(ge=1, le=200)` for `GET /runs/{run_id}/decisions`.
+
+---
+
+## Key Finding
+
+The 56 frontend test failures represent **accumulated drift between UI redesigns and their test files** — not production code defects. The production build, TypeScript, and ESLint all pass cleanly. The three backend bugs (BUG-001, BUG-002, BUG-003) are genuine logic defects in production code affecting financial safeguards and data integrity. These three should be treated as P0 and fixed before any further trading execution code is merged.
