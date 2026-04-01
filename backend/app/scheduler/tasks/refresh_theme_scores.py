@@ -7,6 +7,7 @@ Uses a system-level user_id=0 placeholder for the compute call
 """
 from __future__ import annotations
 
+import gc
 import logging
 from datetime import datetime, timezone
 
@@ -62,3 +63,5 @@ async def refresh_theme_scores() -> None:
             )
     except Exception as exc:
         logger.exception("refresh_theme_scores job failed: %s", exc)
+    finally:
+        gc.collect()

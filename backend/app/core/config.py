@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )
     pool_size: int = Field(default=2, description="SQLAlchemy connection pool size")
     max_overflow: int = Field(
-        default=4, description="SQLAlchemy connection pool max overflow"
+        default=3, description="SQLAlchemy connection pool max overflow"
     )
 
     # ── JWT ────────────────────────────────────────────────────────────────────
@@ -41,6 +41,12 @@ class Settings(BaseSettings):
 
     # ── Fernet encryption ──────────────────────────────────────────────────────
     encryption_key: str = Field(description="Base64-URL Fernet key for broker creds")
+
+    # ── Frontend URL (used in notification emails) ─────────────────────────────
+    frontend_base_url: str = Field(
+        default="http://localhost:3000",
+        description="Base URL of the frontend app; used in alert email links. Set to https://nextgenaitrading.vercel.app in production.",
+    )
 
     # ── CORS ───────────────────────────────────────────────────────────────────
     # On Render, set CORS_ORIGINS to:

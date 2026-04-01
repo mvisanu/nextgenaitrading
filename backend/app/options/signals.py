@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -85,7 +85,7 @@ def _blocked(symbol: str, reason: str) -> OptionsSignal:
         iv_percentile=0.0,
         underlying_trend="neutral",
         days_to_earnings=None,
-        signal_time=datetime.utcnow(),
+        signal_time=datetime.now(timezone.utc),
         blocked=True,
         block_reason=reason,
     )
@@ -218,7 +218,7 @@ def evaluate_signal(
         iv_percentile=iv_pct,
         underlying_trend=underlying_trend,
         days_to_earnings=days_to_earnings,
-        signal_time=datetime.utcnow(),
+        signal_time=datetime.now(timezone.utc),
         blocked=False,
         block_reason=None,
     )

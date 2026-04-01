@@ -18,6 +18,7 @@ Per-user isolation:
 """
 from __future__ import annotations
 
+import gc
 import logging
 from datetime import datetime, timezone
 
@@ -131,3 +132,5 @@ async def scan_all_watchlists() -> None:
 
     except Exception as exc:
         logger.exception("scan_all_watchlists job failed: %s", exc)
+    finally:
+        gc.collect()

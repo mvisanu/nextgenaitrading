@@ -6,6 +6,7 @@ Only processes users with AutoBuySettings.enabled=True.
 """
 from __future__ import annotations
 
+import gc
 import logging
 from datetime import datetime, timezone
 
@@ -29,3 +30,5 @@ async def evaluate_auto_buy() -> None:
             )
     except Exception as exc:
         logger.exception("evaluate_auto_buy job failed: %s", exc)
+    finally:
+        gc.collect()

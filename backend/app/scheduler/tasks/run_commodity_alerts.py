@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.commodity_alert_prefs import CommodityAlertPrefs
 from app.services.commodity_signal_service import evaluate_signal
@@ -38,7 +39,7 @@ def _build_email_body(symbol: str, price: float, confidence: int, reason: str) -
         f"{'─' * 45}\n"
         f"This is an educational signal — not financial advice.\n"
         f"Always use proper risk management.\n\n"
-        f"Manage alerts: http://localhost:3000/gold\n"
+        f"Manage alerts: {settings.frontend_base_url}/gold\n"
     )
 
 

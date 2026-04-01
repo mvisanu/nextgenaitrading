@@ -242,6 +242,10 @@ COMMODITY_ALERT_MINUTES=15
 | Auto-buy ledger gap: auto_buy_engine never wrote `BrokerOrder` records; now writes order + upserts position snapshot on every automated buy | Fixed — 2026-03-31 |
 | Options page buy flow: Pro mode had no execute button after chain selection; added Place Trade button in P&L panel; `underlying_price` de-hardcoded in BeginnerTradeCard | Fixed — 2026-03-31 |
 | Alpaca stream 406 loop: free IEX tier allows 1 connection; on server restart the old connection lingers and new one gets 406; now applies MAX_RECONNECT_BACKOFF (60s) immediately on 406 instead of 1s retry | Fixed — 2026-03-31 |
+| Alpaca stream 406 yfinance fallback: when 406 connection limit hit, polls yfinance every 30s for subscribed symbols and broadcasts quote events; `status: "yfinance_fallback"` shown as orange badge in dashboard; switches back to Alpaca after 60s wait | Fixed — 2026-04-01 |
+| Options signals: `underlying_trend` was hardcoded "neutral" (all signals = iron_condor); now derived from EMA-20/EMA-50 cross via yfinance; underlying price was hardcoded 100.0, now fetches real `fast_info.last_price` | Fixed — 2026-04-01 |
+| Options executor: debit strategies (bull_call_debit, bear_put_debit, long_straddle) were submitting legs as "sell"; now correctly sets action="buy" + limit_debit for debit strategies, action="sell" + limit_credit for credit strategies | Fixed — 2026-04-01 |
+| Options Live dialog hydration error: `<DialogDescription>` renders as `<p>`; nested `<p>` tags inside caused React hydration warning; fixed with `asChild` + `<div>` wrapper | Fixed — 2026-04-01 |
 
 ## Alpaca Real-Time Streaming (2026-03-31)
 

@@ -124,7 +124,7 @@ async def get_run_decisions(
     run_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: int = 100,
+    limit: int = Query(default=100, ge=1, le=200),
 ) -> list[TradeDecisionOut]:
     # Ownership check via run
     run_result = await db.execute(

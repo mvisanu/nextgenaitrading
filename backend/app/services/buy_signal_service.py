@@ -34,6 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.buy_signal import BuyNowSignal
 from app.models.buy_zone import StockBuyZoneSnapshot
+from app.options.calendar import get_days_to_earnings
 from app.services.buy_zone_service import get_or_calculate_buy_zone
 from app.services.notification_service import dispatch_notification
 
@@ -234,8 +235,19 @@ async def evaluate_buy_signal(
     conditions["trend_regime_not_bearish"] = _trend_regime_bullish(snapshot)
     conditions["backtest_confidence_above_threshold"] = backtest_confidence >= BACKTEST_CONFIDENCE_THRESHOLD
 
-    # OQ-03: default not_near_earnings to True (optimistic; live lookup deferred to V4)
-    conditions["not_near_earnings"] = True
+    # Condition 9: not near earnings — block if earnings are within the configured
+    # block window (OPTIONS_EARNINGS_BLOCK_DAYS, default 5 days).
+    try:
+        from app.core.config import settings as _settings
+        _block_days = getattr(_settings, "options_earnings_block_days", 5)
+        days_to_earnings = await get_days_to_earnings(ticker)
+        if days_to_earnings is not None and days_to_earnings <= _block_days:
+            conditions["not_near_earnings"] = False
+        else:
+            conditions["not_near_earnings"] = True
+    except Exception:
+        # If the earnings lookup fails, allow the signal (fail-open to avoid blocking valid signals)
+        conditions["not_near_earnings"] = True
 
     # Cooldown check
     cooldown_active = await _has_cooldown_active(ticker, user_id, db)

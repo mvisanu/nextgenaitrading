@@ -50,13 +50,17 @@ def _decode_supabase_token(token: str) -> dict:
         )
         return payload
     except JWTError:
-        # If Supabase secret fails, try legacy secret_key as fallback
+        # Fallback to legacy secret_key only when supabase_jwt_secret is set and the
+        # primary decode failed (e.g. during key rotation).  Always enforce audience
+        # verification on the fallback path to prevent forged tokens from being accepted.
         if settings.supabase_jwt_secret and settings.secret_key:
             try:
                 return jwt.decode(
                     token,
                     settings.secret_key,
                     algorithms=[settings.jwt_algorithm],
+                    audience="authenticated",
+                    options={"verify_aud": True},
                 )
             except JWTError:
                 pass

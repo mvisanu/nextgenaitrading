@@ -19,6 +19,11 @@ const PROTECTED_PREFIXES = [
   "/auto-buy",
   "/screener",
   "/trade-log",
+  "/portfolio",
+  "/options",
+  "/gold",
+  "/multi-chart",
+  "/stock",
 ];
 
 /**

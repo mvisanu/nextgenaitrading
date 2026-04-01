@@ -227,18 +227,24 @@ def run_safeguards(
     else:
         results.append(SafeguardResult("not_near_earnings", True, "PASSED"))
 
-    # 7. Position size limit — compute the actual notional from price and quantity,
-    # then verify it does not exceed the per-trade cap.  When a custom notional
-    # override is supported (v3), the caller should pass it in explicitly; for now
-    # we derive it from price so the check is non-tautological.
-    quantity = settings.max_trade_amount / price if price > 0 else 0.0
-    notional = quantity * price
-    if notional <= settings.max_trade_amount:
+    # 7. Position size limit — check the proposed order notional against the cap
+    # BEFORE deriving quantity, so the guard is not tautological.
+    # proposed_cost is what we intend to spend; if it exceeds max_trade_amount the
+    # order must be blocked (e.g. if target_buy_price differs from snap price, or
+    # a min-lot-size restriction would push the notional above the cap).
+    target_price = settings.target_buy_price if settings.target_buy_price and settings.target_buy_price > 0 else price
+    proposed_cost = settings.max_trade_amount  # baseline: we spend up to the cap
+    if target_price > 0 and price > 0:
+        # If the target buy price is higher than current price, we may end up
+        # spending more than max_trade_amount when filled at target_price.
+        quantity_at_current = settings.max_trade_amount / price
+        proposed_cost = quantity_at_current * target_price
+    if proposed_cost <= settings.max_trade_amount:
         results.append(SafeguardResult("position_size_limit", True, "PASSED"))
     else:
         results.append(SafeguardResult(
             "position_size_limit", False,
-            f"FAILED: trade amount ${notional:.2f} exceeds per-trade limit ${settings.max_trade_amount:.2f}"
+            f"FAILED: estimated order cost ${proposed_cost:.2f} exceeds per-trade limit ${settings.max_trade_amount:.2f}"
         ))
 
     return results

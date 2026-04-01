@@ -7,6 +7,7 @@ uses last_triggered_at for cooldown enforcement.
 """
 from __future__ import annotations
 
+import gc
 import logging
 from datetime import datetime, timezone
 
@@ -30,3 +31,5 @@ async def evaluate_alerts() -> None:
             )
     except Exception as exc:
         logger.exception("evaluate_alerts job failed: %s", exc)
+    finally:
+        gc.collect()

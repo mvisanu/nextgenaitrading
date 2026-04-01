@@ -6,7 +6,7 @@ All DB queries scoped to current_user.id.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -185,14 +185,14 @@ async def get_signals(
             try:
                 import yfinance as yf
                 import asyncio
-                fast_info = await asyncio.get_event_loop().run_in_executor(
+                fast_info = await asyncio.get_running_loop().run_in_executor(
                     None, lambda: yf.Ticker(sym).fast_info
                 )
                 lp = getattr(fast_info, "last_price", None)
                 if lp and lp > 0:
                     underlying_price = float(lp)
                 # Derive trend: fetch recent closes for EMA-20/50
-                hist = await asyncio.get_event_loop().run_in_executor(
+                hist = await asyncio.get_running_loop().run_in_executor(
                     None, lambda: yf.download(sym, period="60d", interval="1d",
                                               auto_adjust=True, progress=False)
                 )
@@ -309,7 +309,7 @@ async def execute_signal(
         iv_percentile=body.iv_percentile,
         underlying_trend=body.underlying_trend,
         days_to_earnings=None,
-        signal_time=datetime.utcnow(),
+        signal_time=datetime.now(timezone.utc),
         blocked=False,
         block_reason=None,
     )
@@ -370,7 +370,7 @@ async def get_risk(
         iv_percentile=0.0,
         underlying_trend="neutral",
         days_to_earnings=None,
-        signal_time=datetime.utcnow(),
+        signal_time=datetime.now(timezone.utc),
         blocked=True,
         block_reason="No legs provided",
     )
