@@ -28,8 +28,8 @@ _MAX_CLIENT_SYMBOLS = 10
 
 
 @router.get("/status")
-async def stream_status() -> dict:
-    """Diagnostics — no auth required so the frontend can poll before login."""
+async def stream_status(current_user: User = Depends(get_current_user)) -> dict:
+    """Diagnostics — requires auth to prevent leaking subscribed symbols."""
     return stream_manager.get_diagnostics()
 
 

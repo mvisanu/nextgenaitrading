@@ -148,7 +148,8 @@ async def create_test_token(
     response.set_cookie(
         key="dev_token",
         value=token,
-        httponly=False,   # Must be accessible to JS (frontend reads it)
+        httponly=True,
+        secure=settings.cookie_secure,
         samesite="lax",
         max_age=3600,
         path="/",

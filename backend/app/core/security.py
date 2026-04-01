@@ -74,7 +74,12 @@ def decode_token(token: str) -> dict[str, Any]:
     Decode and validate a JWT.
     Raises JWTError on failure (invalid signature, expired, malformed).
     """
-    return jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+    return jwt.decode(
+        token,
+        settings.secret_key,
+        algorithms=[settings.jwt_algorithm],
+        audience="authenticated",
+    )
 
 
 # ── Fernet encryption ──────────────────────────────────────────────────────────

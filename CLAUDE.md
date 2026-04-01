@@ -47,6 +47,7 @@ backend/app/
                                           #   alpaca_data.py — Alpaca StockHistoricalDataClient; primary source for stocks/ETFs
                                           #   alpaca_stream.py — AlpacaStreamManager singleton; WebSocket→SSE fan-out; max 20 symbols; bounded queues
                                           #   market_data.py — routes load_ohlcv(): Alpaca→yfinance fallback; yfinance-only for commodities/forex/crypto
+                                          #   yfinance_cache.py — 30-min TTL cache for yf.Ticker.info; use get_ticker_info(t) instead of yf.Ticker(t).info directly
   strategies/                             # conservative, aggressive, bollinger_squeeze
   optimizers/                             # ai_pick, buy_low_sell_high
   scheduler/tasks/                        # APScheduler: buy-zone, alerts, auto-buy, live-scanner, idea-gen, commodity-alerts
@@ -177,6 +178,9 @@ COMMODITY_ALERT_MINUTES=15
 - **CORS never `["*"]`.** Use `settings.cors_origins_list`; error handlers validate origin before reflecting. Default includes both `http://localhost:3000` and `https://nextgenaitrading.vercel.app`. Render env var: `CORS_ORIGINS=http://localhost:3000,https://nextgenaitrading.vercel.app`.
 - **List endpoints must have bounded `limit`:** `Query(default=50, ge=1, le=200)`.
 - **Credential errors:** Return generic message; log real error server-side.
+- **`yf.Ticker(t).info` must use `get_ticker_info(t)` from `services/yfinance_cache.py`** — 30-min TTL cache prevents duplicate large JSON fetches across services in the same scheduler cycle. Never call `yf.Ticker(t).info` directly in a service.
+- **`AsyncSessionLocal()` must never open inside a loop body.** Open one session outside the loop, mutate ORM objects in-place, commit once. Per-iteration session opens exhaust the 5-connection pool.
+- **Frontend "fetch for every watchlist item" must use the batch endpoint** `GET /live/watchlist-prices?symbols=...` — not `Promise.allSettled(list.map(...))`. N parallel requests saturate the pool.
 - **`dangerouslySetInnerHTML` requires DOMPurify sanitization.**
 - **DELETE endpoints:** Return `Response(status_code=204)` — don't put `status_code=204` in decorator (FastAPI 0.115+).
 - **Intraday chart times:** `df_to_candles()` outputs Unix int timestamps for intraday intervals; ISO strings for daily+.
@@ -258,6 +262,19 @@ COMMODITY_ALERT_MINUTES=15
 | Deprecated asyncio.get_event_loop(): replaced with `asyncio.get_running_loop()` at 2 call sites in `api/v4/options.py` | Fixed — 2026-04-01 |
 | max_overflow default mismatch: `core/config.py` defaulted to 4; corrected to 3 to match CLAUDE.md constraint and render.yaml | Fixed — 2026-04-01 |
 | Alert email hardcoded localhost URL: commodity alert emails now use `settings.frontend_base_url` (set `FRONTEND_BASE_URL=https://nextgenaitrading.vercel.app` in Render env) | Fixed — 2026-04-01 |
+| Perf: v3_idea_generator_service — shared `_df_cache` dict + static `_COMPANY_NAMES` dict; eliminates 80+ duplicate yfinance downloads + `.info` calls per scheduler cycle; ~150 MB peak memory reduction | Fixed — 2026-04-01 |
+| Perf: dashboard watchlist prices — new `GET /live/watchlist-prices?symbols=...` batch endpoint; frontend replaces `Promise.allSettled(N)` fan-out with single call; drops concurrent pool connections from 15→1 every 30s | Fixed — 2026-04-01 |
+| Perf: options /signals — extracted `_eval_symbol` coroutine + `asyncio.gather` for all 10 symbols; module-level 60s TTL `_TREND_CACHE`; response time ~600ms vs previous 6s+ | Fixed — 2026-04-01 |
+| Perf: buy_signal_service — replaced direct uncapped `yf.download(period="2y")` with `load_ohlcv(period="730d")` enforcing 750-row cap and Alpaca-first routing | Fixed — 2026-04-01 |
+| Perf: run_commodity_alerts — single `AsyncSessionLocal` for full function body; ORM object mutated in-place; one `db.commit()` after loop; eliminates N pool connections per alert cycle | Fixed — 2026-04-01 |
+| Perf: auto_buy_engine N+1 — replaced per-iteration `SELECT users WHERE id=?` with JOIN on initial `AutoBuySettings` query; unpacked as `(settings_row, user)` tuples | Fixed — 2026-04-01 |
+| Perf: greeks.py vectorization — full chain evaluated in 2 batched `pv.greeks.analytical` calls (calls + puts) instead of 400 single-element numpy array allocations per 100-contract chain | Fixed — 2026-04-01 |
+| Perf: live.py chart-data — wrapped `load_ohlcv_for_strategy` + Bollinger computation in `asyncio.to_thread()`; frees event loop during blocking yfinance HTTP | Fixed — 2026-04-01 |
+| Perf: shared yfinance .info cache — new `services/yfinance_cache.py` with 30-min TTL; `entry_priority_service` + `financial_quality_service` both use `get_ticker_info()` instead of direct `yf.Ticker(t).info`; saves ~20 MB per enrichment cycle | Fixed — 2026-04-01 |
+| Perf: live.py /positions — added `limit: int = Query(default=50, ge=1, le=200)` param + `.limit(limit)` on query (was unbounded) | Fixed — 2026-04-01 |
+| Perf: market-stream.ts symbolKey — wrapped in `useMemo([symbols])` to prevent SSE reconnect storms on parent re-renders | Fixed — 2026-04-01 |
+| Perf: options/page.tsx Pro-mode queries — `chain`, `positions`, `greeks` queries gated with `enabled: viewMode === "pro"`; eliminates 3 polling queries when in Beginner mode | Fixed — 2026-04-01 |
+| Perf: dashboard KpiCardsPanel — added `staleTime: 300_000` (5 min) to strategy runs query; was refetching every 30s on state changes | Fixed — 2026-04-01 |
 
 ## Alpaca Real-Time Streaming (2026-03-31)
 

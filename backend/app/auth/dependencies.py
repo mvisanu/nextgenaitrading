@@ -46,7 +46,7 @@ def _decode_supabase_token(token: str) -> dict:
             secret,
             algorithms=[settings.jwt_algorithm],
             audience="authenticated",
-            options={"verify_aud": bool(settings.supabase_jwt_secret)},
+            options={"verify_aud": True},
         )
         return payload
     except JWTError:
