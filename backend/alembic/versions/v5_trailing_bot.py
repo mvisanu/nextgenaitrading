@@ -65,7 +65,9 @@ def upgrade() -> None:
         ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     )
+    op.create_index("ix_trailing_bot_sessions_user_id", "trailing_bot_sessions", ["user_id"], if_not_exists=True)
 
 
 def downgrade() -> None:
+    op.drop_index("ix_trailing_bot_sessions_user_id", table_name="trailing_bot_sessions", if_exists=True)
     op.drop_table("trailing_bot_sessions")
