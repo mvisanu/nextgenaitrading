@@ -29,10 +29,10 @@ router = APIRouter(prefix="/congress-copy", tags=["congress-copy"])
 @router.get("/politicians", response_model=list[PoliticianSummary])
 async def list_politicians(
     current_user: Annotated[User, Depends(get_current_user)],
-    top: int = Query(default=20, ge=1, le=50),
+    limit: int = Query(default=20, ge=1, le=200),
 ) -> list[PoliticianSummary]:
-    """Return top-N most-active politicians from Capitol Trades."""
-    return fetch_politicians(page_size=top)
+    """Return up to limit most-active politicians from Capitol Trades."""
+    return fetch_politicians(page_size=limit)
 
 
 @router.post("/setup", response_model=CongressCopySessionOut, status_code=status.HTTP_201_CREATED)

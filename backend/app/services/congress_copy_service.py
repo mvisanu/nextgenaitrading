@@ -21,9 +21,13 @@ from app.services.capitol_trades_service import fetch_trades_for_politician
 
 logger = logging.getLogger(__name__)
 
-# Fixed trade size: $500 per copied stock trade; always 1 contract for options
+# Fixed $500 notional per trade. Stock qty uses $100/share estimate (~5 shares).
+# NOTE: This is a deliberate simplification — live price lookup would require
+# an async yfinance/Alpaca call here. For now the bot defaults to dry_run=True,
+# so no real orders are placed. When enabling live mode, replace this with a
+# real price fetch before placing the order.
 _TRADE_USD = 500.0
-_STOCK_PRICE_ESTIMATE = 100.0
+_STOCK_PRICE_ESTIMATE = 100.0   # fallback estimate; only 5 shares per $500 trade
 _OPTION_CONTRACTS = 1.0
 
 
@@ -43,6 +47,8 @@ async def setup_congress_copy(
     )
     db.add(session)
     await db.flush()
+    # Commit here (router-facing setup function) — matches trailing_bot_service pattern.
+    # process_new_trades() does NOT commit; its caller (scheduler) owns the commit.
     await db.commit()
     await db.refresh(session)
     logger.info(
@@ -174,6 +180,9 @@ async def process_new_trades(
         db.add(order_row)
         processed += 1
 
+        # Track latest reported_at as the watermark.
+        # Capitol Trades API filters by reportedAt, so we use the disclosure
+        # date (not txDate) to avoid re-fetching already-processed entries.
         if entry.reported_at and (
             latest_reported is None or entry.reported_at > latest_reported
         ):
