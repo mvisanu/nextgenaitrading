@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Optional
@@ -103,7 +104,8 @@ async def setup_trailing_bot(
     broker = get_broker_client(cred)
 
     # 1. Market buy
-    buy_result = broker.place_order(
+    buy_result = await asyncio.to_thread(
+        broker.place_order,
         symbol=req.symbol,
         side="buy",
         quantity=req.initial_qty,
@@ -111,15 +113,15 @@ async def setup_trailing_bot(
     )
 
     # 2. Floor stop-market sell
-    stop_order_id = _place_stop_order_alpaca(
-        broker, req.symbol, req.initial_qty, req.floor_price, req.dry_run
+    stop_order_id = await asyncio.to_thread(
+        _place_stop_order_alpaca, broker, req.symbol, req.initial_qty, req.floor_price, req.dry_run
     )
 
     # 3. Ladder-in limit buys
     ladder_rows = []
     for rule in req.ladder_rules:
-        order_id = _place_limit_buy_alpaca(
-            broker, req.symbol, rule.qty, rule.price, req.dry_run
+        order_id = await asyncio.to_thread(
+            _place_limit_buy_alpaca, broker, req.symbol, rule.qty, rule.price, req.dry_run
         )
         ladder_rows.append({
             "price": rule.price,
@@ -163,9 +165,6 @@ async def adjust_trailing_stop(
     Called by the scheduler. Checks current price and adjusts the stop order
     upward if thresholds are met. The floor only ever moves UP.
     """
-    import asyncio
-    from app.services.market_data import load_ohlcv_for_strategy
-
     if session.status != "active" or session.entry_price is None:
         return
 
@@ -186,12 +185,13 @@ async def adjust_trailing_stop(
                     "Session %d: activating trailing stop. Gain=%.2f%%, new floor=$%.4f",
                     session.id, gain_pct, new_floor,
                 )
-                _cancel_order_alpaca(broker, session.stop_order_id or "", session.dry_run)
-                new_stop_id = _place_stop_order_alpaca(
-                    broker, session.symbol, session.initial_qty, new_floor, session.dry_run
+                await asyncio.to_thread(_cancel_order_alpaca, broker, session.stop_order_id or "", session.dry_run)
+                new_stop_id = await asyncio.to_thread(
+                    _place_stop_order_alpaca, broker, session.symbol, session.initial_qty, new_floor, session.dry_run
                 )
                 session.stop_order_id = new_stop_id
                 session.current_floor = new_floor
+                await db.commit()
         return
 
     # Already trailing: move floor up every trailing_step_pct above high water
@@ -206,10 +206,11 @@ async def adjust_trailing_stop(
                     "Session %d: raising floor. Price=$%.4f, new floor=$%.4f",
                     session.id, current_price, new_floor,
                 )
-                _cancel_order_alpaca(broker, session.stop_order_id or "", session.dry_run)
-                new_stop_id = _place_stop_order_alpaca(
-                    broker, session.symbol, session.initial_qty, new_floor, session.dry_run
+                await asyncio.to_thread(_cancel_order_alpaca, broker, session.stop_order_id or "", session.dry_run)
+                new_stop_id = await asyncio.to_thread(
+                    _place_stop_order_alpaca, broker, session.symbol, session.initial_qty, new_floor, session.dry_run
                 )
                 session.stop_order_id = new_stop_id
                 session.current_floor = new_floor
                 session.trailing_high_water = current_price
+                await db.commit()

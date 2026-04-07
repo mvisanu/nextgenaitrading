@@ -72,5 +72,5 @@ class TrailingBotSessionOut(BaseModel):
             ladder_rules=[LadderRuleOut(**r) for r in ladder_rules],
             dry_run=s.dry_run,
             status=s.status,
-            created_at=s.created_at.isoformat(),
+            created_at=s.created_at.isoformat() if s.created_at else "",
         )
