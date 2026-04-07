@@ -31,3 +31,4 @@ from app.models import (  # noqa: F401, E402
     # commodity alert prefs
     commodity_alert_prefs,
 )
+from app.models.congress_trade import CongressCopySession, CongressTrade, CongressCopiedOrder  # noqa: F401
