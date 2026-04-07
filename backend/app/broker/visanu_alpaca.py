@@ -29,6 +29,7 @@ def _make_client() -> Optional[TradingClient]:
         api_key=key,
         secret_key=secret,
         paper=settings.visanu_alpaca_paper,
+        url_override=settings.visanu_alpaca_endpoint_url or None,
     )
 
 
@@ -61,10 +62,14 @@ class VisanuAlpacaClient:
         side: "buy" | "sell"
         dry_run: if True, logs the order but does NOT submit it.
         """
+        side_lower = side.lower()
+        if side_lower not in ("buy", "sell"):
+            raise ValueError(f"VisanuAlpacaClient: invalid order side {side!r}")
+
         if dry_run:
             logger.info(
                 "VisanuAlpacaClient [DRY RUN]: %s %s x%.4f — no real order submitted",
-                side.upper(),
+                side_lower.upper(),
                 symbol,
                 qty,
             )
@@ -76,22 +81,29 @@ class VisanuAlpacaClient:
             )
             return None
 
-        alpaca_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+        alpaca_side = OrderSide.BUY if side_lower == "buy" else OrderSide.SELL
         request = MarketOrderRequest(
             symbol=symbol,
             qty=qty,
             side=alpaca_side,
             time_in_force=TimeInForce.DAY,
         )
-        order = self._client.submit_order(request)
-        logger.info(
-            "VisanuAlpacaClient: submitted %s %s x%.4f — order_id=%s",
-            side.upper(),
-            symbol,
-            qty,
-            order.id,
-        )
-        return str(order.id)
+        try:
+            order = self._client.submit_order(request)
+            logger.info(
+                "VisanuAlpacaClient: submitted %s %s x%.4f — order_id=%s",
+                side_lower.upper(),
+                symbol,
+                qty,
+                order.id,
+            )
+            return str(order.id)
+        except Exception as exc:
+            logger.error(
+                "VisanuAlpacaClient: submit_order failed for %s %s: %s",
+                side_lower.upper(), symbol, exc,
+            )
+            return None
 
 
 # Module-level singleton — instantiated once at import time

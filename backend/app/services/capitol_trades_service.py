@@ -31,6 +31,7 @@ _TIMEOUT = 15
 def _get(path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
     """GET request to Capitol Trades. Raises on HTTP error."""
     url = f"{_BASE}{path}"
+    # New client per call: runs from APScheduler thread, calls are not concurrent
     with httpx.Client(timeout=_TIMEOUT, headers=_HEADERS, follow_redirects=True) as client:
         resp = client.get(url, params=params)
         resp.raise_for_status()
@@ -141,6 +142,7 @@ def fetch_politicians(page_size: int = 50) -> list[PoliticianSummary]:
                 ),
             )
         )
+    results.sort(key=lambda p: p.trade_count_90d, reverse=True)
     return results
 
 
@@ -180,10 +182,22 @@ def fetch_trades_for_politician(
             entry = _parse_trade(raw, pol_id, pol_name)
             if entry.ticker:
                 entries.append(entry)
+            else:
+                logger.warning(
+                    "fetch_trades_for_politician(%s): skipping trade with no ticker | raw=%s",
+                    politician_id,
+                    raw,
+                )
         except Exception as exc:
             logger.warning(
                 "fetch_trades_for_politician: parse error: %s | raw=%s", exc, raw
             )
+
+    if since_date:
+        entries = [
+            e for e in entries
+            if e.reported_at and e.reported_at >= since_date
+        ]
     return entries
 
 
