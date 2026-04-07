@@ -11,6 +11,7 @@ A single AsyncSessionLocal covers the full function body; one db.commit() after 
 """
 from __future__ import annotations
 
+import asyncio
 import gc
 import logging
 
@@ -25,7 +26,7 @@ from app.services.trailing_bot_service import adjust_trailing_stop
 logger = logging.getLogger(__name__)
 
 
-async def monitor_trailing_bots() -> None:
+async def _run_monitor() -> None:
     """
     Check all active trailing bot sessions and adjust stop orders as needed.
 
@@ -91,3 +92,8 @@ async def monitor_trailing_bots() -> None:
         logger.exception("trailing_bot_monitor: job failed: %s", exc)
     finally:
         gc.collect()
+
+
+def monitor_trailing_bots() -> None:
+    """Synchronous APScheduler entry point."""
+    asyncio.run(_run_monitor())

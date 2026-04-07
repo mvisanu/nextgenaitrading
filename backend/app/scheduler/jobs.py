@@ -128,6 +128,7 @@ def register_jobs() -> None:
         id="trailing_bot_monitor",
         coalesce=True,
         max_instances=1,
+        replace_existing=True,
     )
 
     # ── Commodity alerts ──────────────────────────────────────────────────────
