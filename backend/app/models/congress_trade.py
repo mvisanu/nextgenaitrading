@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -68,15 +68,15 @@ class CongressCopiedOrder(Base):
         index=True,
     )
     congress_trade_id: Mapped[int] = mapped_column(
-        ForeignKey("congress_trades.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("congress_trades.id", ondelete="CASCADE"), nullable=False, index=True
     )
     alpaca_order_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     symbol: Mapped[str] = mapped_column(String(50), nullable=False)
     side: Mapped[str] = mapped_column(String(10), nullable=False)
-    qty: Mapped[float] = mapped_column(Float, nullable=False)
+    qty: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
     order_type: Mapped[str] = mapped_column(String(20), nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="submitted", nullable=False)
-    filled_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    filled_price: Mapped[Optional[float]] = mapped_column(Numeric(12, 4), nullable=True)
     dry_run: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -43,11 +43,11 @@ class CongressCopySessionOut(BaseModel):
     user_id: int
     politician_id: str
     politician_name: str
-    politician_party: Optional[str]
+    politician_party: Optional[str] = None
     dry_run: bool
     status: str
-    last_checked_at: Optional[datetime]
-    last_trade_date: Optional[str]
+    last_checked_at: Optional[datetime] = None
+    last_trade_date: Optional[str] = None
     created_at: datetime
 
 
@@ -59,13 +59,13 @@ class CongressTradeOut(BaseModel):
     capitol_trade_id: str
     politician_name: str
     ticker: str
-    asset_name: Optional[str]
-    asset_type: Optional[str]
-    option_type: Optional[str]
+    asset_name: Optional[str] = None
+    asset_type: Optional[str] = None
+    option_type: Optional[str] = None
     trade_type: str
-    size_range: Optional[str]
-    trade_date: Optional[str]
-    reported_at: Optional[str]
+    size_range: Optional[str] = None
+    trade_date: Optional[str] = None
+    reported_at: Optional[str] = None
     fetched_at: datetime
 
 
@@ -75,13 +75,13 @@ class CongressCopiedOrderOut(BaseModel):
     id: int
     session_id: int
     congress_trade_id: int
-    alpaca_order_id: Optional[str]
+    alpaca_order_id: Optional[str] = None
     symbol: str
     side: str
     qty: float
     order_type: str
     status: str
-    filled_price: Optional[float]
+    filled_price: Optional[float] = None
     dry_run: bool
-    error_message: Optional[str]
+    error_message: Optional[str] = None
     created_at: datetime

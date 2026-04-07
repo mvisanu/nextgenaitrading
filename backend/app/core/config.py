@@ -92,6 +92,7 @@ class Settings(BaseSettings):
         default="https://paper-api.alpaca.markets",
         description="Alpaca endpoint URL for Visanu account (paper or live)",
     )
+    visanu_alpaca_paper: bool = Field(default=True, description="Use Alpaca paper trading for Visanu account")
 
     # ── Scheduler ──────────────────────────────────────────────────────────────
     scheduler_enable: bool = Field(default=True, description="Enable APScheduler background jobs")
