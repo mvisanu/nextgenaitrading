@@ -241,6 +241,8 @@ from app.api.v4.options import router as options_router
 from app.api.v1.stream import router as stream_router
 # trailing stop bot
 from app.api.trailing_bot import router as trailing_bot_router
+# congress copy bot
+from app.api.congress_copy import router as congress_copy_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -270,6 +272,8 @@ app.include_router(options_router, prefix="/api/v4/options", tags=["options"])
 app.include_router(stream_router)
 # trailing stop bot
 app.include_router(trailing_bot_router, prefix="/api/v1")
+# congress copy bot
+app.include_router(congress_copy_router, prefix="/api/v1")
 
 # Test-only utilities (only mounted in debug mode)
 if settings.debug:
