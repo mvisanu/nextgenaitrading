@@ -24,6 +24,8 @@ const PROTECTED_PREFIXES = [
   "/gold",
   "/multi-chart",
   "/stock",
+  "/morning-brief",
+  "/trailing-bot",
 ];
 
 /**

@@ -30,6 +30,8 @@ import {
   Gem,
   ShieldAlert,
   BarChart2,
+  Sun,
+  TrendingDown,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -57,9 +59,11 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Terminal",
     links: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/morning-brief", label: "Morning Brief", icon: Sun },
       { href: "/live-trading", label: "Live Trading", icon: Radio },
       { href: "/portfolio", label: "Portfolio", icon: Wallet },
       { href: "/auto-buy", label: "Auto-Buy", icon: Zap },
+      { href: "/trailing-bot", label: "Trail Bot", icon: TrendingDown },
       { href: "/options", label: "Options", icon: BarChart2 },
     ],
   },
