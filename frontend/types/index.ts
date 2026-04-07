@@ -799,3 +799,64 @@ export interface NewsItem {
   theme_tags: string[];
   relevance_score: number;
 }
+
+// ── Morning Brief ─────────────────────────────────────────────────────────────
+export interface MorningBriefRow {
+  symbol: string;
+  name: string;
+  price: number | null;
+  ema200: number | null;
+  price_vs_ema200: "Above" | "Below" | "Near" | "N/A";
+  rsi: number | null;
+  macd_bias: "Bullish" | "Bearish" | "N/A";
+  bias: "Bullish" | "Bearish" | "Neutral" | "N/A";
+  signal: string;
+}
+
+export interface MorningBriefResponse {
+  rows: MorningBriefRow[];
+  analyzed_at: string;
+  timeframe: string;
+}
+
+// ─── Trailing Bot ─────────────────────────────────────────────────────────────
+
+export interface LadderRuleOut {
+  price: number;
+  qty: number;
+  order_id: string;
+  filled: boolean;
+}
+
+export interface TrailingBotSessionOut {
+  id: number;
+  symbol: string;
+  initial_qty: number;
+  entry_price: number | null;
+  initial_order_id: string | null;
+  stop_order_id: string | null;
+  floor_price: number;
+  trailing_trigger_pct: number;
+  trailing_trail_pct: number;
+  trailing_step_pct: number;
+  trailing_active: boolean;
+  current_floor: number | null;
+  ladder_rules: LadderRuleOut[];
+  dry_run: boolean;
+  status: string;
+  created_at: string;
+}
+
+export interface LadderRuleIn {
+  price: number;
+  qty: number;
+}
+
+export interface TrailingBotSetupRequest {
+  credential_id: number;
+  symbol: string;
+  initial_qty: number;
+  floor_price: number;
+  ladder_rules: LadderRuleIn[];
+  dry_run: boolean;
+}

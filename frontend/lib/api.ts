@@ -60,6 +60,7 @@ import type {
   TARequest,
   TAResult,
   TopMoverRow,
+  MorningBriefResponse,
 } from "@/types";
 
 import { getSupabaseBrowserClient } from "./supabase";
@@ -100,7 +101,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return {};
 }
 
-async function apiFetch<T>(
+export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -637,4 +638,10 @@ export const commodityAlertApi = {
 
   updatePrefs: (body: UpdateCommodityAlertPrefs): Promise<CommodityAlertPrefs> =>
     patch<CommodityAlertPrefs>("/commodity-alerts/prefs", body),
+};
+
+// ── Morning Brief ─────────────────────────────────────────────────────────────
+export const morningBriefApi = {
+  fetch: (): Promise<MorningBriefResponse> =>
+    get<MorningBriefResponse>("/api/v1/morning-brief"),
 };
