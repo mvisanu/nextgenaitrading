@@ -38,22 +38,30 @@ export interface WheelBotSetupRequest {
   dry_run?: boolean;
 }
 
+export const setupWheelBot = (
+  payload: WheelBotSetupRequest
+): Promise<WheelBotSession> =>
+  apiFetch("/api/v1/wheel-bot/setup", {
+    method: "POST",
+    body: JSON.stringify({ symbol: "TSLA", dry_run: true, ...payload }),
+  });
+
+export const listWheelSessions = (): Promise<WheelBotSession[]> =>
+  apiFetch("/api/v1/wheel-bot/sessions");
+
+export const getWheelSession = (id: number): Promise<WheelBotSession> =>
+  apiFetch(`/api/v1/wheel-bot/sessions/${id}`);
+
+export const cancelWheelSession = (id: number): Promise<void> =>
+  apiFetch(`/api/v1/wheel-bot/sessions/${id}`, { method: "DELETE" });
+
+export const getWheelSummary = (id: number): Promise<WheelBotSummary> =>
+  apiFetch(`/api/v1/wheel-bot/sessions/${id}/summary`);
+
 export const wheelBotApi = {
-  setup: (payload: WheelBotSetupRequest): Promise<WheelBotSession> =>
-    apiFetch("/api/v1/wheel-bot/setup", {
-      method: "POST",
-      body: JSON.stringify({ symbol: "TSLA", dry_run: true, ...payload }),
-    }),
-
-  list: (): Promise<WheelBotSession[]> =>
-    apiFetch("/api/v1/wheel-bot/sessions"),
-
-  get: (id: number): Promise<WheelBotSession> =>
-    apiFetch(`/api/v1/wheel-bot/sessions/${id}`),
-
-  cancel: (id: number): Promise<void> =>
-    apiFetch(`/api/v1/wheel-bot/sessions/${id}`, { method: "DELETE" }),
-
-  summary: (id: number): Promise<WheelBotSummary> =>
-    apiFetch(`/api/v1/wheel-bot/sessions/${id}/summary`),
+  setup: setupWheelBot,
+  list: listWheelSessions,
+  get: getWheelSession,
+  cancel: cancelWheelSession,
+  summary: getWheelSummary,
 };
