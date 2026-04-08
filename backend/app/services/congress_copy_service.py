@@ -6,6 +6,7 @@ process_new_trades()   — fetch new Capitol Trades entries, persist them, place
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -78,10 +79,11 @@ async def process_new_trades(
 
     IMPORTANT: Does NOT commit — caller (scheduler task) commits once after the loop.
     """
-    entries = fetch_trades_for_politician(
+    entries = await asyncio.to_thread(
+        fetch_trades_for_politician,
         session.politician_id,
-        page_size=50,
-        since_date=session.last_trade_date,
+        50,
+        session.last_trade_date,
     )
 
     if not entries:

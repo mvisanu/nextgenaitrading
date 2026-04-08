@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -35,6 +35,9 @@ class CongressCopySession(Base):
 
 class CongressTrade(Base):
     __tablename__ = "congress_trades"
+    __table_args__ = (
+        UniqueConstraint("session_id", "capitol_trade_id", name="uq_congress_trades_session_trade"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     session_id: Mapped[int] = mapped_column(
@@ -42,7 +45,7 @@ class CongressTrade(Base):
         nullable=False,
         index=True,
     )
-    capitol_trade_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    capitol_trade_id: Mapped[str] = mapped_column(String(100), nullable=False)
     politician_id: Mapped[str] = mapped_column(String(100), nullable=False)
     politician_name: Mapped[str] = mapped_column(String(200), nullable=False)
     ticker: Mapped[str] = mapped_column(String(20), nullable=False)

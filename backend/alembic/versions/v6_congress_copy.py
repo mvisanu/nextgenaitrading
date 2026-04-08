@@ -60,7 +60,7 @@ def upgrade() -> None:
             nullable=False,
             index=True,
         ),
-        sa.Column("capitol_trade_id", sa.String(100), nullable=False, unique=True),
+        sa.Column("capitol_trade_id", sa.String(100), nullable=False),
         sa.Column("politician_id", sa.String(100), nullable=False),
         sa.Column("politician_name", sa.String(200), nullable=False),
         sa.Column("ticker", sa.String(20), nullable=False),
@@ -77,6 +77,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             nullable=False,
         ),
+        sa.UniqueConstraint("session_id", "capitol_trade_id", name="uq_congress_trades_session_trade"),
     )
     op.create_index(
         "ix_congress_trades_session_id",

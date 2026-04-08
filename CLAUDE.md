@@ -169,7 +169,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - **DB pool:** `pool_size=2`, `max_overflow=3` (5 max connections). Never raise these.
 - **uvicorn:** `--workers 1 --limit-concurrency 20 --backlog 64`. Single worker (APScheduler singleton).
 - **yfinance:** Hard cap at 750 rows after download. Weekly/monthly intervals limited to `"1825d"` (5 years).
-- **Scheduler intervals:** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min.
+- **Scheduler intervals:** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min, congress-copy=30min.
 - **Scheduler gc:** Every scheduler task must have `gc.collect()` in its `finally` block.
 - **`chart-data` endpoint:** Never add `db: Depends(get_db)` unless actually used — dashboard fires 15+ concurrent polls per symbol.
 
@@ -266,6 +266,10 @@ ALPACA_API_KEY=...       # required
 ALPACA_SECRET_KEY=...    # required
 BTC_USD=1000             # dollar amount to buy initially (default: $1000)
 POLL_INTERVAL_SEC=30     # price check interval in seconds
+VISANU_ALPACA_API_KEY=...
+VISANU_ALPACA_SECRET_KEY=...
+VISANU_ALPACA_ENDPOINT_URL=https://paper-api.alpaca.markets
+CONGRESS_COPY_POLL_MINUTES=30
 ```
 
 **Run:**
@@ -327,7 +331,7 @@ Frontend page at `/trailing-bot`. Full backend + scheduler integration.
 - `frontend/lib/trailing-bot-api.ts` — typed API wrappers
 
 ## Implementation Status
-All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Run `alembic upgrade head` after pulling.
+All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Congress Copy Bot web feature (V6) added 2026-04-07. Run `alembic upgrade head` after pulling.
 
 ## Known Spec Deviations
 - Auth: Supabase magic links (not password-based JWT)

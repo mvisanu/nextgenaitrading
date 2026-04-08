@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Annotated
 
@@ -32,7 +33,7 @@ async def list_politicians(
     limit: int = Query(default=20, ge=1, le=200),
 ) -> list[PoliticianSummary]:
     """Return up to limit most-active politicians from Capitol Trades."""
-    return fetch_politicians(page_size=limit)
+    return await asyncio.to_thread(fetch_politicians, limit)
 
 
 @router.post("/setup", response_model=CongressCopySessionOut, status_code=status.HTTP_201_CREATED)
