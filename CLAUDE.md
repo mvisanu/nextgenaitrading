@@ -480,7 +480,7 @@ pytest tests/
 - ~~Trailing bot 502 on live mode~~ → fixed: whole-share GTC orders, 2dp price rounding, fill-poll + partial-cancel to avoid wash trade, full rollback contract, 409 guard for duplicate symbol sessions.
 
 ## Implementation Status
-All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Copy Trading (V6) added 2026-04-08 — uses Quiver Quant API, user's own broker credentials, broker account selector. Wheel Strategy Bot (V7) backend + frontend fully built 2026-04-08. Trailing bot live-mode Alpaca order bugs fixed 2026-04-08. Run `alembic upgrade head` after pulling (applies v5 → v6 → v7 → v7b → v6b migrations).
+All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Copy Trading (V6) added 2026-04-08 — uses Quiver Quant API, user's own broker credentials, broker account selector. Wheel Strategy Bot (V7) backend + frontend fully built 2026-04-08. Trailing bot live-mode Alpaca order bugs fixed 2026-04-08. Alembic divergent-head conflict resolved 2026-04-08 — merge migration `5bafc0ec3474` joins `v6b_congress_trade_unique_fix` and `v7c_wheel_bot_credential` into single head. Run `alembic upgrade head` after pulling (applies all v5–v7c migrations + merge).
 
 ## Known Spec Deviations
 - Auth: Supabase magic links (not password-based JWT)
