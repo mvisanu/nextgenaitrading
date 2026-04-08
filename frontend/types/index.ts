@@ -860,3 +860,55 @@ export interface TrailingBotSetupRequest {
   ladder_rules: LadderRuleIn[];
   dry_run: boolean;
 }
+
+// ─── Copy Trading ─────────────────────────────────────────────────────────────
+
+export interface PoliticianRankingOut {
+  politician_id: string;
+  politician_name: string;
+  total_trades: number;
+  buy_trades: number;
+  win_rate: number;
+  avg_excess_return: number;
+  recent_trade_count: number;
+  score: number;
+  best_trades: string[];
+}
+
+export interface CreateCopySessionRequest {
+  copy_amount_usd: number;
+  dry_run: boolean;
+  target_politician_id: string | null;
+}
+
+export interface CopyTradingSessionOut {
+  id: number;
+  status: string;
+  dry_run: boolean;
+  copy_amount_usd: number;
+  target_politician_id: string | null;
+  target_politician_name: string | null;
+  activated_at: string;
+  cancelled_at: string | null;
+}
+
+export interface CopiedTradeOut {
+  id: number;
+  session_id: number;
+  trade_id: string;
+  politician_id: string;
+  politician_name: string;
+  ticker: string;
+  asset_type: string;
+  trade_type: string;
+  trade_date: string | null;
+  disclosure_date: string | null;
+  amount_low: number | null;
+  amount_high: number | null;
+  alpaca_order_id: string | null;
+  alpaca_status: string;
+  copy_amount_usd: number | null;
+  dry_run: boolean;
+  created_at: string;
+  notes: string | null;
+}
