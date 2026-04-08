@@ -1,17 +1,30 @@
 """
 Tests for politician_scraper_service.py — Quiver Quant trade parsing + caching.
+
+Uses importlib.util to load the module directly from its file path so that this
+test can run alongside the congress-copy-bot worktree tests (which load a
+different `app` namespace) without causing sys.modules collisions.
 """
 from __future__ import annotations
+import importlib.util
+import os
+import sys
 import time
 from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
 
-from app.services.politician_scraper_service import (
-    PoliticianTrade,
-    _parse_quiver_record,
-    _build_trade_id,
-    get_politician_trades,
-)
+_BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+_SERVICE_PATH = os.path.join(_BACKEND_DIR, "app", "services", "politician_scraper_service.py")
+
+_spec = importlib.util.spec_from_file_location("_politician_scraper_service", _SERVICE_PATH)
+_mod = importlib.util.module_from_spec(_spec)
+sys.modules["_politician_scraper_service"] = _mod  # must be registered before exec for @dataclass
+_spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+
+PoliticianTrade = _mod.PoliticianTrade
+_parse_quiver_record = _mod._parse_quiver_record
+_build_trade_id = _mod._build_trade_id
+get_politician_trades = _mod.get_politician_trades
 
 
 def _make_quiver_record(**overrides) -> dict:

@@ -1,16 +1,44 @@
-"""Tests for politician_ranker_service.py — scoring and ranking logic."""
+"""
+Tests for politician_ranker_service.py — scoring and ranking logic.
+
+Uses importlib.util to load modules directly from file paths so that this
+test can run alongside the congress-copy-bot worktree tests (which occupy
+the `app.*` namespace) without causing sys.modules collisions.
+"""
 from __future__ import annotations
+import importlib.util
+import os
+import sys
 import math
 from datetime import date, timedelta
 
 import pytest
 
-from app.services.politician_scraper_service import PoliticianTrade
-from app.services.politician_ranker_service import (
-    PoliticianScore,
-    rank_politicians,
-    get_best_politician,
+_BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+
+# Load politician_scraper_service directly and register it so the ranker can
+# import it via `from app.services.politician_scraper_service import ...`.
+_SCRAPER_PATH = os.path.join(_BACKEND_DIR, "app", "services", "politician_scraper_service.py")
+_scraper_spec = importlib.util.spec_from_file_location(
+    "app.services.politician_scraper_service", _SCRAPER_PATH
 )
+_scraper_mod = importlib.util.module_from_spec(_scraper_spec)
+sys.modules.setdefault("app.services.politician_scraper_service", _scraper_mod)
+_scraper_spec.loader.exec_module(_scraper_mod)  # type: ignore[union-attr]
+
+PoliticianTrade = _scraper_mod.PoliticianTrade
+
+# Now load the ranker; it will resolve `from app.services.politician_scraper_service`
+# from sys.modules above.
+_RANKER_PATH = os.path.join(_BACKEND_DIR, "app", "services", "politician_ranker_service.py")
+_ranker_spec = importlib.util.spec_from_file_location("_politician_ranker_service", _RANKER_PATH)
+_ranker_mod = importlib.util.module_from_spec(_ranker_spec)
+sys.modules["_politician_ranker_service"] = _ranker_mod  # register before exec for @dataclass
+_ranker_spec.loader.exec_module(_ranker_mod)  # type: ignore[union-attr]
+
+PoliticianScore = _ranker_mod.PoliticianScore
+rank_politicians = _ranker_mod.rank_politicians
+get_best_politician = _ranker_mod.get_best_politician
 
 
 def _trade(politician_id: str, ticker: str, excess_return: float, days_ago: int = 5) -> PoliticianTrade:

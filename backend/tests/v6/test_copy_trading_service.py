@@ -1,17 +1,121 @@
-"""Tests for copy_trading_service.py — session creation, trade execution, seeding."""
+"""
+Tests for copy_trading_service.py — session creation, trade execution, seeding.
+
+Uses importlib.util + sys.modules stubs to load the service module directly
+from its file path without triggering heavy ORM/DB imports, and without
+colliding with the congress-copy-bot worktree `app` namespace.
+"""
 from __future__ import annotations
+import importlib.util
+import os
+import sys
 from datetime import date
+from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.copy_trading_service import (
-    _execute_stock_trade,
-    _execute_options_trade,
-    _should_skip_sell,
-)
-from app.services.politician_scraper_service import PoliticianTrade
-from app.broker.base import OrderResult
+_BACKEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+
+
+def _ensure_module(name: str, mod: ModuleType) -> None:
+    """Register a module in sys.modules only if not already present."""
+    sys.modules.setdefault(name, mod)
+
+
+def _load_service() -> ModuleType:
+    """
+    Load copy_trading_service.py directly, stubbing out all heavy app.* imports
+    that would pull in SQLAlchemy, ORM models, etc.
+    """
+    # --- stub: app.broker.base ---
+    base_mod = ModuleType("app.broker.base")
+    from dataclasses import dataclass
+
+    @dataclass
+    class OrderResult:
+        broker_order_id: str
+        status: str
+        filled_price: object
+        filled_quantity: object
+        raw_response: dict
+
+    base_mod.OrderResult = OrderResult
+    base_mod.AbstractBrokerClient = object
+    _ensure_module("app.broker.base", base_mod)
+
+    # --- stub: app.broker.factory ---
+    factory_mod = ModuleType("app.broker.factory")
+    factory_mod.get_broker_client = MagicMock()
+    _ensure_module("app.broker.factory", factory_mod)
+
+    # --- stub: app.models.broker ---
+    broker_models = ModuleType("app.models.broker")
+    broker_models.BrokerCredential = MagicMock()
+    _ensure_module("app.models.broker", broker_models)
+
+    # --- stub: app.models.copy_trading ---
+    ct_models = ModuleType("app.models.copy_trading")
+    ct_models.CopiedPoliticianTrade = MagicMock()
+    ct_models.CopyTradingSession = MagicMock()
+    _ensure_module("app.models.copy_trading", ct_models)
+
+    # --- stub: app.models.user ---
+    user_models = ModuleType("app.models.user")
+    user_models.User = MagicMock()
+    _ensure_module("app.models.user", user_models)
+
+    # --- stub: app.schemas.copy_trading ---
+    ct_schemas = ModuleType("app.schemas.copy_trading")
+    ct_schemas.CreateSessionRequest = MagicMock()
+    _ensure_module("app.schemas.copy_trading", ct_schemas)
+
+    # --- load politician_scraper_service (pure Python, no DB) ---
+    scraper_path = os.path.join(_BACKEND_DIR, "app", "services", "politician_scraper_service.py")
+    scraper_spec = importlib.util.spec_from_file_location(
+        "app.services.politician_scraper_service", scraper_path
+    )
+    scraper_mod = importlib.util.module_from_spec(scraper_spec)
+    sys.modules["app.services.politician_scraper_service"] = scraper_mod
+    scraper_spec.loader.exec_module(scraper_mod)  # type: ignore[union-attr]
+
+    # --- load politician_ranker_service ---
+    ranker_path = os.path.join(_BACKEND_DIR, "app", "services", "politician_ranker_service.py")
+    ranker_spec = importlib.util.spec_from_file_location(
+        "app.services.politician_ranker_service", ranker_path
+    )
+    ranker_mod = importlib.util.module_from_spec(ranker_spec)
+    sys.modules["app.services.politician_ranker_service"] = ranker_mod
+    ranker_spec.loader.exec_module(ranker_mod)  # type: ignore[union-attr]
+
+    # --- load copy_trading_service ---
+    svc_path = os.path.join(_BACKEND_DIR, "app", "services", "copy_trading_service.py")
+    svc_spec = importlib.util.spec_from_file_location("_copy_trading_service", svc_path)
+    svc_mod = importlib.util.module_from_spec(svc_spec)
+    svc_spec.loader.exec_module(svc_mod)  # type: ignore[union-attr]
+    return svc_mod
+
+
+# Load once at module level
+_svc = _load_service()
+_execute_stock_trade = _svc._execute_stock_trade
+_execute_options_trade = _svc._execute_options_trade
+_should_skip_sell = _svc._should_skip_sell
+
+# PoliticianTrade from the loaded scraper module
+PoliticianTrade = sys.modules["app.services.politician_scraper_service"].PoliticianTrade
+
+# OrderResult from the stub
+from dataclasses import dataclass
+
+
+@dataclass
+class OrderResult:
+    broker_order_id: str
+    status: str
+    filled_price: object
+    filled_quantity: object
+    raw_response: dict
 
 
 def _make_trade(
