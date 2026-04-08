@@ -3,7 +3,16 @@ from app.models.wheel_bot import WheelBotSession
 
 
 def test_wheel_bot_session_defaults():
-    session = WheelBotSession(user_id=1, symbol="TSLA")
+    """WheelBotSession can be instantiated and column types are correct."""
+    session = WheelBotSession(
+        user_id=1,
+        symbol="TSLA",
+        stage="sell_put",
+        shares_qty=0,
+        total_premium_collected=0.0,
+        status="active",
+        dry_run=True,
+    )
     assert session.stage == "sell_put"
     assert session.shares_qty == 0
     assert session.total_premium_collected == 0.0

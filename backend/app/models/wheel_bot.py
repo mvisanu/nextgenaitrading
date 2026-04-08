@@ -11,7 +11,7 @@ from app.db.base import Base
 
 
 class WheelBotSession(Base):
-    __tablename__ = "wheel_bot_sessions_wheel"
+    __tablename__ = "wheel_bot_sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
@@ -50,39 +50,3 @@ class WheelBotSession(Base):
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), onupdate=func.now(), nullable=True
     )
-
-    def __init__(
-        self,
-        user_id: int,
-        symbol: str = "TSLA",
-        dry_run: bool = True,
-        stage: str = "sell_put",
-        active_contract_symbol: Optional[str] = None,
-        active_order_id: Optional[str] = None,
-        active_premium_received: Optional[float] = None,
-        active_strike: Optional[float] = None,
-        active_expiry: Optional[str] = None,
-        shares_qty: int = 0,
-        cost_basis_per_share: Optional[float] = None,
-        total_premium_collected: float = 0.0,
-        status: str = "active",
-        last_action: Optional[str] = None,
-        last_summary_json: Optional[str] = None,
-        **kwargs,
-    ) -> None:
-        super().__init__(**kwargs)
-        self.user_id = user_id
-        self.symbol = symbol
-        self.dry_run = dry_run
-        self.stage = stage
-        self.active_contract_symbol = active_contract_symbol
-        self.active_order_id = active_order_id
-        self.active_premium_received = active_premium_received
-        self.active_strike = active_strike
-        self.active_expiry = active_expiry
-        self.shares_qty = shares_qty
-        self.cost_basis_per_share = cost_basis_per_share
-        self.total_premium_collected = total_premium_collected
-        self.status = status
-        self.last_action = last_action
-        self.last_summary_json = last_summary_json
