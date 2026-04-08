@@ -231,6 +231,7 @@ from app.api.scanner import router as scanner_router
 from app.api.watchlist import router as watchlist_router
 from app.api.generated_ideas import router as generated_ideas_router
 from app.api.news_feed import router as news_feed_router
+from app.api.morning_brief import router as morning_brief_router
 # commodity signal engine
 from app.api.gold import router as gold_router
 from app.api.commodity_alert_prefs import router as commodity_alert_router
@@ -238,6 +239,10 @@ from app.api.commodity_alert_prefs import router as commodity_alert_router
 from app.api.v4.options import router as options_router
 # real-time stream (SSE proxy for Alpaca WebSocket)
 from app.api.v1.stream import router as stream_router
+# trailing stop bot
+from app.api.trailing_bot import router as trailing_bot_router
+# congress copy bot
+from app.api.congress_copy import router as congress_copy_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -257,6 +262,7 @@ app.include_router(scanner_router)
 app.include_router(watchlist_router)
 app.include_router(generated_ideas_router)
 app.include_router(news_feed_router)
+app.include_router(morning_brief_router)
 # commodity signal engine
 app.include_router(gold_router)
 app.include_router(commodity_alert_router)
@@ -264,6 +270,10 @@ app.include_router(commodity_alert_router)
 app.include_router(options_router, prefix="/api/v4/options", tags=["options"])
 # real-time stream
 app.include_router(stream_router)
+# trailing stop bot
+app.include_router(trailing_bot_router, prefix="/api/v1")
+# congress copy bot
+app.include_router(congress_copy_router, prefix="/api/v1")
 
 # Test-only utilities (only mounted in debug mode)
 if settings.debug:

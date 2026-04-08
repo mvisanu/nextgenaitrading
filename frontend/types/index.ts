@@ -799,3 +799,127 @@ export interface NewsItem {
   theme_tags: string[];
   relevance_score: number;
 }
+
+// ── Morning Brief ─────────────────────────────────────────────────────────────
+export interface MorningBriefRow {
+  symbol: string;
+  name: string;
+  price: number | null;
+  ema200: number | null;
+  price_vs_ema200: "Above" | "Below" | "Near" | "N/A";
+  rsi: number | null;
+  macd_bias: "Bullish" | "Bearish" | "N/A";
+  bias: "Bullish" | "Bearish" | "Neutral" | "N/A";
+  signal: string;
+}
+
+export interface MorningBriefResponse {
+  rows: MorningBriefRow[];
+  analyzed_at: string;
+  timeframe: string;
+}
+
+// ─── Trailing Bot ─────────────────────────────────────────────────────────────
+
+export interface LadderRuleOut {
+  price: number;
+  qty: number;
+  order_id: string;
+  filled: boolean;
+}
+
+export interface TrailingBotSessionOut {
+  id: number;
+  symbol: string;
+  initial_qty: number;
+  entry_price: number | null;
+  initial_order_id: string | null;
+  stop_order_id: string | null;
+  floor_price: number;
+  trailing_trigger_pct: number;
+  trailing_trail_pct: number;
+  trailing_step_pct: number;
+  trailing_active: boolean;
+  current_floor: number | null;
+  ladder_rules: LadderRuleOut[];
+  dry_run: boolean;
+  status: string;
+  created_at: string;
+}
+
+export interface LadderRuleIn {
+  price: number;
+  qty: number;
+}
+
+export interface TrailingBotSetupRequest {
+  credential_id: number;
+  symbol: string;
+  initial_qty: number;
+  floor_price: number;
+  ladder_rules: LadderRuleIn[];
+  dry_run: boolean;
+}
+
+// ── Congress Copy Bot ─────────────────────────────────────────────────────────
+
+export interface PoliticianSummary {
+  id: string;
+  name: string;
+  party: string | null;
+  chamber: string | null;
+  state: string | null;
+  trade_count_90d: number;
+}
+
+export interface CongressCopySetupRequest {
+  politician_id: string;
+  politician_name: string;
+  politician_party?: string | null;
+  dry_run: boolean;
+}
+
+export interface CongressCopySessionOut {
+  id: number;
+  user_id: number;
+  politician_id: string;
+  politician_name: string;
+  politician_party: string | null;
+  dry_run: boolean;
+  status: string;
+  last_checked_at: string | null;
+  last_trade_date: string | null;
+  created_at: string;
+}
+
+export interface CongressTradeOut {
+  id: number;
+  session_id: number;
+  capitol_trade_id: string;
+  politician_name: string;
+  ticker: string;
+  asset_name: string | null;
+  asset_type: string | null;
+  option_type: string | null;
+  trade_type: string;
+  size_range: string | null;
+  trade_date: string | null;
+  reported_at: string | null;
+  fetched_at: string;
+}
+
+export interface CongressCopiedOrderOut {
+  id: number;
+  session_id: number;
+  congress_trade_id: number;
+  alpaca_order_id: string | null;
+  symbol: string;
+  side: string;
+  qty: number;
+  order_type: string;
+  status: string;
+  filled_price: number | null;
+  dry_run: boolean;
+  error_message: string | null;
+  created_at: string;
+}

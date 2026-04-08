@@ -30,6 +30,8 @@ from app.scheduler.tasks.run_idea_generator import run_idea_generator_job
 from app.scheduler.tasks.run_live_scanner import run_live_scanner
 from app.scheduler.tasks.run_news_scanner import run_news_scanner
 from app.scheduler.tasks.scan_watchlist import scan_all_watchlists
+from app.scheduler.tasks.trailing_bot_monitor import monitor_trailing_bots
+from app.scheduler.tasks.congress_copy_monitor import run_congress_copy_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +121,28 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
+    # ── Trailing bot monitor ──────────────────────────────────────────────────
+    scheduler.add_job(
+        monitor_trailing_bots,
+        "interval",
+        minutes=5,
+        id="trailing_bot_monitor",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
+    )
+
+    # ── Congress copy bot monitor ─────────────────────────────────────────────
+    scheduler.add_job(
+        run_congress_copy_monitor,
+        "interval",
+        minutes=settings.congress_copy_poll_minutes,
+        id="congress_copy_monitor",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
+    )
+
     # ── Commodity alerts ──────────────────────────────────────────────────────
     scheduler.add_job(
         run_commodity_alerts,
@@ -131,7 +155,8 @@ def register_jobs() -> None:
 
     logger.info(
         "Scheduler jobs registered: buy_zone=%dm theme=%dm alerts=%dm auto_buy=%dm "
-        "scan=%dm live_scanner=%dm idea_gen=%dm prune_signals=daily commodity_alerts=%dm",
+        "scan=%dm live_scanner=%dm idea_gen=%dm prune_signals=daily commodity_alerts=%dm "
+        "trailing_bot_monitor=5m congress_copy=%dm",
         settings.buy_zone_refresh_minutes,
         settings.theme_score_refresh_minutes,
         settings.alert_eval_minutes,
@@ -140,4 +165,5 @@ def register_jobs() -> None:
         settings.live_scanner_minutes,
         settings.idea_generator_minutes,
         settings.commodity_alert_minutes,
+        settings.congress_copy_poll_minutes,
     )

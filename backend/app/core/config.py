@@ -85,6 +85,15 @@ class Settings(BaseSettings):
     alpaca_data_secret: str = Field(default="", description="Override secret for Alpaca market data only")
     alpaca_feed: str = Field(default="iex", description="Alpaca data feed: iex (free/delayed) or sip (paid/real-time)")
 
+    # ── Visanu Alpaca (dedicated account for Congress copy bot) ───────────────
+    visanu_alpaca_api_key: str = Field(default="", description="Visanu Alpaca API key")
+    visanu_alpaca_secret_key: str = Field(default="", description="Visanu Alpaca secret key")
+    visanu_alpaca_endpoint_url: str = Field(
+        default="https://paper-api.alpaca.markets",
+        description="Alpaca endpoint URL for Visanu account (paper or live)",
+    )
+    visanu_alpaca_paper: bool = Field(default=True, description="Use Alpaca paper trading for Visanu account")
+
     # ── Scheduler ──────────────────────────────────────────────────────────────
     scheduler_enable: bool = Field(default=True, description="Enable APScheduler background jobs")
     buy_zone_refresh_minutes: int = Field(default=120, description="Interval for buy zone snapshot refresh")
@@ -112,6 +121,11 @@ class Settings(BaseSettings):
 
     # ── Commodity alerts scheduler ─────────────────────────────────────────────
     commodity_alert_minutes: int = Field(default=30, description="Interval for commodity signal check (minutes)")
+
+    # ── Congress copy bot ──────────────────────────────────────────────────────
+    congress_copy_poll_minutes: int = Field(
+        default=30, description="How often (minutes) to poll Capitol Trades for new trades"
+    )
 
     # ── Options engine ────────────────────────────────────────────────────────
     risk_free_rate: float = Field(default=0.05, description="Risk-free rate for Black-Scholes Greeks")

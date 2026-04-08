@@ -36,6 +36,9 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Beginner-friendly Auto-Buy UI** — Define Targets panel (symbol, max order size, buy/sell price targets in a clear 2×2 grid) + Execution Timeframe pill selector (Live / 15 min / 30 min / 1 hr / 2 hrs) with plain-English labels; `DEFAULT_SETTINGS` fallback ensures the form always renders without a prior API call
 - **Options trading buy flow** — Pro mode P&L panel now includes a full-width "Place Paper/Live Trade" button that activates after selecting any contract from the chain table; Beginner mode empty state routes to Pro when signals are unavailable; `underlying_price` wired through to execute payload instead of hardcoded to 100
 - **Alpaca stream resilience** — 406 connection-limit error (free IEX tier: 1 connection per account) now triggers 60s backoff immediately instead of a 1s retry storm; `_hit_connection_limit` flag detected in message handler, consumed in reconnect loop
+- **Morning Brief page** — daily crypto watchlist TA snapshot at `/morning-brief`; computes EMA-200, RSI-14 (Wilder's EWM), and MACD 12/26/9 from yfinance daily data for BTC/ETH/SOL/XRP/LINK/PEPE; derives Bias and Signal labels; 1-hour in-process cache (single-worker safe); async-safe via `asyncio.to_thread`; auth-protected; sidebar nav link
+- **BTC trailing stop bot** — standalone `btc_trailing_bot.py` executes a $-denominated BTC/USD paper trade via Alpaca with three rules: hard floor (−10% stop loss), trailing floor (activates at +10%, steps every +5%, never moves down), and a 3-level DCA ladder re-entry (−20% → $1k, −30% → $1.5k, −40% → $2k — larger buys at deeper discounts); paired with a 24/7 hourly cloud-scheduled agent that automatically manages stop-limit orders and ladder re-entries on Alpaca's servers
+- **Trailing Stop Bot web page** — full-stack `/trailing-bot` feature (V5): buy any stock at market, set a hard floor stop loss, configure ladder-in limit buys at lower prices, then let an APScheduler background task raise the trailing stop every 5 minutes as the position gains; `TrailingBotSession` DB model tracks all orders + trailing state per user; dry-run default with explicit live-mode confirmation dialog; Sovereign Terminal card UI shows every placed order and active rule with live status badges
 
 ---
 
@@ -54,6 +57,7 @@ Screenshots coming soon. The platform includes the following main views:
 - **Portfolio** — editable holdings ledger, equity curve, asset allocation and sector exposure donuts, activity log with CSV export
 - **Multi-Chart** — 2×3 chart grid with watchlist sidebar
 - **Stock Detail** — financial KPIs, analyst consensus gauge, earnings history
+- **Morning Brief** — daily crypto watchlist TA table (EMA 200, RSI, MACD, Bias, Signal) for BTC/ETH/SOL/XRP/LINK/PEPE; 1-hour server-side cache; manual refresh button
 
 ---
 
@@ -69,7 +73,7 @@ Screenshots coming soon. The platform includes the following main views:
 │         opportunities, ideas, alerts, auto-buy, artifacts,       │
 │         portfolio, multi-chart, stock/[symbol],                  │
 │         gold (overview/signals/performance/risk),                │
-│         profile, faq (Thai/English i18n), learn                  │
+│         morning-brief, profile, faq (Thai/English i18n), learn   │
 │                                                                  │
 │  Lightweight Charts (candlestick) · Recharts (equity/KPIs)       │
 │  Plotly.js (optimisation scatter) · TanStack Query v5            │
@@ -263,6 +267,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Mobile responsiveness | All pages phone-friendly — hamburger menus, scrollable tables, Sheet overlays, responsive grids |
 | Thai/English i18n | FAQ page with full Thai translations + language toggle |
 | OWASP security hardening | CORS restricted, rate limiting (slowapi), account lockout (5 attempts / 15min), Swagger disabled in production, DOMPurify XSS sanitisation |
+| BTC trailing stop bot | `btc_trailing_bot.py` — paper trade BTC/USD via Alpaca; hard floor (−10%), trailing floor (activates +10%, steps every +5%), 3-level DCA ladder re-entry (−20%/$1k, −30%/$1.5k, −40%/$2k); 24/7 hourly cloud-scheduled agent manages stop-limit orders and ladders automatically |
 
 ---
 
@@ -317,6 +322,33 @@ The API is available at:
 | `http://localhost:8000/docs` | Swagger UI (interactive, debug mode only) |
 | `http://localhost:8000/redoc` | ReDoc (debug mode only) |
 | `http://localhost:8000/healthz` | Health check |
+
+### Optional: Run the BTC trailing stop bot
+
+```bash
+cd backend
+source .venv/Scripts/activate       # Windows PowerShell: .venv\Scripts\Activate.ps1
+# source .venv/bin/activate         # macOS/Linux
+
+export ALPACA_API_KEY=your-key
+export ALPACA_SECRET_KEY=your-secret
+
+# Buy $1,000 of BTC/USD on paper account and start monitoring
+python ../btc_trailing_bot.py
+
+# Custom entry size
+BTC_USD=500 python ../btc_trailing_bot.py
+```
+
+**Rules enforced automatically:**
+- Hard floor: sell all if −10% from entry
+- Trailing floor: activates at +10%, raises every +5%, never moves down
+- 3-level DCA ladder re-entry after stop-out: −20% → $1k · −30% → $1.5k · −40% → $2k
+
+Press `Ctrl+C` to stop monitoring — position and stop-limit order stay active on Alpaca.
+
+A **24/7 hourly cloud agent** (`trig_01FizcNHd7jy9JDyXDBPLfnE`) also runs automatically to raise the trailing stop and execute ladder entries — no terminal needed.  
+Manage: https://claude.ai/code/scheduled/trig_01FizcNHd7jy9JDyXDBPLfnE
 
 ### 3. Configure and start the frontend
 

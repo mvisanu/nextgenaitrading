@@ -30,4 +30,6 @@ from app.models import (  # noqa: F401, E402
     generated_idea,
     # commodity alert prefs
     commodity_alert_prefs,
+    # congress copy bot
+    congress_trade,
 )
