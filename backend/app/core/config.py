@@ -85,6 +85,14 @@ class Settings(BaseSettings):
     alpaca_data_secret: str = Field(default="", description="Override secret for Alpaca market data only")
     alpaca_feed: str = Field(default="iex", description="Alpaca data feed: iex (free/delayed) or sip (paid/real-time)")
 
+    # ── Wheel Bot Alpaca credentials ──────────────────────────────────────────
+    wheel_alpaca_api_key: str = Field(default="", description="Alpaca API key for Wheel Bot account")
+    wheel_alpaca_secret_key: str = Field(default="", description="Alpaca secret key for Wheel Bot account")
+    wheel_alpaca_base_url: str = Field(
+        default="https://paper-api.alpaca.markets",
+        description="Alpaca base URL for Wheel Bot (paper or live)",
+    )
+
     # ── Scheduler ──────────────────────────────────────────────────────────────
     scheduler_enable: bool = Field(default=True, description="Enable APScheduler background jobs")
     buy_zone_refresh_minutes: int = Field(default=120, description="Interval for buy zone snapshot refresh")
