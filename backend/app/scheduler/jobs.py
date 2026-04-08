@@ -31,7 +31,6 @@ from app.scheduler.tasks.run_live_scanner import run_live_scanner
 from app.scheduler.tasks.run_news_scanner import run_news_scanner
 from app.scheduler.tasks.scan_watchlist import scan_all_watchlists
 from app.scheduler.tasks.trailing_bot_monitor import monitor_trailing_bots
-from app.scheduler.tasks.copy_trading_monitor import monitor_copy_trading
 from app.scheduler.tasks.wheel_bot_monitor import monitor_wheel_bots, run_wheel_bot_daily_summary
 
 logger = logging.getLogger(__name__)
@@ -133,17 +132,6 @@ def register_jobs() -> None:
         replace_existing=True,
     )
 
-    # ── Copy trading monitor ──────────────────────────────────────────────────
-    scheduler.add_job(
-        monitor_copy_trading,
-        "interval",
-        minutes=15,
-        id="copy_trading_monitor",
-        coalesce=True,
-        max_instances=1,
-        replace_existing=True,
-    )
-
     # ── Wheel bot monitor ─────────────────────────────────────────────────────
     scheduler.add_job(
         monitor_wheel_bots,
@@ -180,7 +168,7 @@ def register_jobs() -> None:
     logger.info(
         "Scheduler jobs registered: buy_zone=%dm theme=%dm alerts=%dm auto_buy=%dm "
         "scan=%dm live_scanner=%dm idea_gen=%dm prune_signals=daily commodity_alerts=%dm "
-        "trailing_bot_monitor=5m copy_trading_monitor=15m wheel_bot_monitor=15m "
+        "trailing_bot_monitor=5m wheel_bot_monitor=15m "
         "wheel_bot_daily_summary=cron(21:05 UTC)",
         settings.buy_zone_refresh_minutes,
         settings.theme_score_refresh_minutes,
