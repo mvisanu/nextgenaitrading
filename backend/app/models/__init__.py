@@ -14,6 +14,7 @@ from app.models.auto_buy import AutoBuySettings, AutoBuyDecisionLog
 from app.models.user_watchlist import UserWatchlist
 from app.models.buy_signal import BuyNowSignal
 from app.models.generated_idea import GeneratedIdea
+from app.models.wheel_bot import WheelBotSession  # noqa: F401
 
 __all__ = [
     "User",
