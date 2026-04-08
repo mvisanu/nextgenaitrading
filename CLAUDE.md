@@ -482,6 +482,22 @@ pytest tests/
 ## Implementation Status
 All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Copy Trading (V6) added 2026-04-08 — uses Quiver Quant API, user's own broker credentials, broker account selector. Wheel Strategy Bot (V7) backend + frontend fully built 2026-04-08. Trailing bot live-mode Alpaca order bugs fixed 2026-04-08. Alembic divergent-head conflict resolved 2026-04-08 — merge migration `5bafc0ec3474` joins `v6b_congress_trade_unique_fix` and `v7c_wheel_bot_credential` into single head. Run `alembic upgrade head` after pulling (applies all v5–v7c migrations + merge).
 
+## Session Workflow
+
+At the end of every Claude Code session, write two files to the repo root:
+
+- **`status.md`** — current state snapshot: what's working, what's broken, what's pending. Overwrite each session.
+- **`_log.md`** — append-only session log. Each entry: date + bullet list of what was done. Never overwrite.
+
+Example `_log.md` entry:
+```
+## 2026-04-08
+- Fixed alembic multiple-heads error (merge migration 5bafc0ec3474)
+- Disabled copy_trading_monitor scheduler (Quiver API 401)
+- Removed congress-copy frontend (broken build — missing types)
+- Diagnosed Render backend 404s (caused by alembic failure preventing uvicorn start)
+```
+
 ## Known Spec Deviations
 - Auth: Supabase magic links (not password-based JWT)
 - `POST /strategies/ai-pick/run` → 202 Accepted (async)
