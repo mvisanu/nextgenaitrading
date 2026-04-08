@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,7 +78,7 @@ def _execute_options_trade(
     dry_run: bool,
 ) -> dict:
     """Attempt options trade; fall back to underlying stock if contract is unresolvable."""
-    if trade.option_strike and trade.option_expiry and trade.option_type:
+    if trade.option_strike is not None and trade.option_expiry and trade.option_type:
         try:
             exp = (trade.option_expiry or "").replace("-", "").replace("/", "")
             if len(exp) == 8:
@@ -102,7 +101,7 @@ def _execute_options_trade(
         except Exception as exc:
             logger.warning("Options order failed (%s), falling back to underlying %s", exc, trade.ticker)
 
-    logger.info("Falling back to underlying stock %s for options trade", trade.ticker)
+    logger.warning("Falling back to underlying stock %s for options trade", trade.ticker)
     return _execute_stock_trade(trade, broker, copy_amount_usd, dry_run)
 
 
@@ -120,6 +119,13 @@ async def create_session(
     Seeds all existing Quiver trades for the target politician as pre_existing
     so they are never bulk-copied on first poll.
     """
+    # Fetch once — used for name resolution and seeding
+    try:
+        all_trades = await fetch_congressional_trades()
+    except Exception as exc:
+        logger.warning("Could not fetch congressional trades on session creation: %s", exc)
+        all_trades = []
+
     session = CopyTradingSession(
         user_id=current_user.id,
         status="active",
@@ -129,20 +135,16 @@ async def create_session(
     )
 
     # Resolve politician name for display
-    if req.target_politician_id:
-        try:
-            all_trades = await fetch_congressional_trades()
-            politician_trades = get_politician_trades(req.target_politician_id, all_trades)
-            if politician_trades:
-                session.target_politician_name = politician_trades[0].politician_name
-        except Exception as exc:
-            logger.warning("Could not resolve politician name for %s: %s", req.target_politician_id, exc)
+    if req.target_politician_id and all_trades:
+        politician_trades = get_politician_trades(req.target_politician_id, all_trades)
+        if politician_trades:
+            session.target_politician_name = politician_trades[0].politician_name
 
     db.add(session)
     await db.flush()  # get session.id before seeding
 
     # Seed existing trades so they are never bulk-copied
-    await _seed_existing_trades(session, db)
+    await _seed_existing_trades(session, all_trades, db)
 
     await db.commit()
     await db.refresh(session)
@@ -153,13 +155,17 @@ async def create_session(
     return session
 
 
-async def _seed_existing_trades(session: CopyTradingSession, db: AsyncSession) -> None:
+async def _seed_existing_trades(
+    session: CopyTradingSession,
+    all_trades: list[PoliticianTrade],
+    db: AsyncSession,
+) -> None:
     """
     Mark all currently visible Quiver trades for the session's politician as pre_existing.
     Prevents historical disclosures from being bulk-copied when the session first activates.
+    Accepts already-fetched all_trades to avoid a redundant Quiver API call.
     """
     try:
-        all_trades = await fetch_congressional_trades()
         if session.target_politician_id:
             trades_to_seed = get_politician_trades(session.target_politician_id, all_trades)
         else:
@@ -304,7 +310,7 @@ async def _copy_one_trade(
             )
     except Exception as exc:
         logger.error("Trade execution error for %s: %s", trade.ticker, exc)
-        exec_result = {"order_id": None, "alpaca_status": f"error: {exc}"}
+        exec_result = {"order_id": None, "alpaca_status": f"error: {exc}"[:50]}
 
     record = CopiedPoliticianTrade(
         session_id=session.id,
