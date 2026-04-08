@@ -17,6 +17,11 @@ class WheelBotSession(Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
+    # Broker credential (optional — falls back to WHEEL_ALPACA_* env vars)
+    credential_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("broker_credentials.id", ondelete="SET NULL"), nullable=True
+    )
+
     # Config
     symbol: Mapped[str] = mapped_column(String(20), nullable=False, default="TSLA")
     dry_run: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

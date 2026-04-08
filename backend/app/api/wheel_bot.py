@@ -17,7 +17,7 @@ from app.schemas.wheel_bot import (
     WheelBotSetupRequest,
     WheelBotSummaryResponse,
 )
-from app.services.wheel_bot_service import generate_daily_summary, setup_wheel_bot
+from app.services.wheel_bot_service import generate_daily_summary, get_wheel_client, setup_wheel_bot
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ async def cancel_session(
     # Attempt to cancel any active Alpaca order
     if session.active_order_id and session.active_order_id != "dry-run":
         try:
-            client = WheelAlpacaClient()
+            client = await get_wheel_client(session, db)
             client.cancel_order(session.active_order_id)
         except Exception as exc:
             logger.warning(
@@ -140,5 +140,5 @@ async def get_session_summary(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
-    client = WheelAlpacaClient()
+    client = await get_wheel_client(session, db)
     return await generate_daily_summary(session, client, db)

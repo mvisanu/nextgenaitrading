@@ -23,11 +23,47 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.broker.wheel_alpaca_client import WheelAlpacaClient
+from app.core.security import decrypt_value
+from app.models.broker import BrokerCredential
 from app.models.user import User
 from app.models.wheel_bot import WheelBotSession
 from app.schemas.wheel_bot import WheelBotSetupRequest, WheelBotSummaryResponse
 
 logger = logging.getLogger(__name__)
+
+
+# ── Client factory ─────────────────────────────────────────────────────────────
+
+async def get_wheel_client(session: WheelBotSession, db: AsyncSession) -> WheelAlpacaClient:
+    """
+    Build a WheelAlpacaClient for the given session.
+
+    If session.credential_id is set, decrypt and use those Alpaca keys.
+    Otherwise fall back to WHEEL_ALPACA_* environment variables.
+    """
+    if session.credential_id:
+        result = await db.execute(
+            select(BrokerCredential).where(
+                BrokerCredential.id == session.credential_id,
+                BrokerCredential.user_id == session.user_id,
+            )
+        )
+        cred = result.scalars().first()
+        if cred:
+            api_key = decrypt_value(cred.api_key)
+            secret_key = decrypt_value(cred.encrypted_secret_key)
+            base_url = cred.base_url or (
+                "https://paper-api.alpaca.markets"
+                if cred.paper_trading
+                else "https://api.alpaca.markets"
+            )
+            return WheelAlpacaClient(api_key=api_key, secret_key=secret_key, base_url=base_url)
+        logger.warning(
+            "wheel_bot: session %d credential_id=%d not found — falling back to env vars",
+            session.id,
+            session.credential_id,
+        )
+    return WheelAlpacaClient()
 
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
@@ -60,6 +96,7 @@ async def setup_wheel_bot(
         user_id=user.id,
         symbol=req.symbol,
         dry_run=req.dry_run,
+        credential_id=req.credential_id,
         stage="sell_put",
         shares_qty=0,
         total_premium_collected=0.0,

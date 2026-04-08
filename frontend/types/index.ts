@@ -924,6 +924,7 @@ export interface CopiedTradeOut {
 export interface WheelBotSetupRequest {
   symbol: string;
   dry_run: boolean;
+  credential_id: number | null;
 }
 
 export interface WheelBotSessionResponse {
@@ -931,6 +932,7 @@ export interface WheelBotSessionResponse {
   user_id: number;
   symbol: string;
   dry_run: boolean;
+  credential_id: number | null;
   stage: string;
   active_contract_symbol: string | null;
   active_order_id: string | null;

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 class WheelBotSetupRequest(BaseModel):
     symbol: str = Field(default="TSLA", min_length=1, max_length=20)
     dry_run: bool = True
+    credential_id: Optional[int] = None
 
     @field_validator("symbol")
     @classmethod
@@ -22,6 +23,7 @@ class WheelBotSessionResponse(BaseModel):
     user_id: int
     symbol: str
     dry_run: bool
+    credential_id: Optional[int]
     stage: str
     active_contract_symbol: Optional[str]
     active_order_id: Optional[str]
@@ -45,6 +47,7 @@ class WheelBotSessionResponse(BaseModel):
             user_id=s.user_id,
             symbol=s.symbol,
             dry_run=s.dry_run,
+            credential_id=getattr(s, "credential_id", None),
             stage=s.stage,
             active_contract_symbol=s.active_contract_symbol,
             active_order_id=s.active_order_id,

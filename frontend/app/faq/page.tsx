@@ -26,6 +26,9 @@ import {
   ShoppingCart,
   BarChart4,
   KeyRound,
+  TrendingDown,
+  Users,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Lang, tr } from "./translations";
@@ -947,6 +950,136 @@ export default function FAQPage() {
 
             <FAQ q={tr("faqAlpacaRegion", lang)}>
               <HtmlP html={tr("faqAlpacaRegionAnswer", lang)} />
+            </FAQ>
+          </div>
+        </Section>
+
+        {/* ── Trailing Stop Bot ────────────────────────────────────────── */}
+        <Section
+          title={tr("sectionTrailBot", lang)}
+          icon={TrendingDown}
+          accentColor="text-cyan-400"
+        >
+          <div className="space-y-3">
+            <HtmlP html={tr("trailBotDesc", lang)} />
+
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
+              {tr("trailBotRulesTitle", lang)}
+            </h4>
+            <div className="space-y-2">
+              {(["trailBotRule1", "trailBotRule2", "trailBotRule3"] as const).map((key, i) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-cyan-400 text-sm">{i + 1}.</span>
+                  <p className="text-xs"><Html html={tr(key, lang)} /></p>
+                </div>
+              ))}
+            </div>
+
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
+              {tr("trailBotSetupTitle", lang)}
+            </h4>
+            <div className="space-y-2">
+              {(["trailBotSetup1", "trailBotSetup2", "trailBotSetup3"] as const).map((key, i) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-cyan-400 text-sm">{i + 1}.</span>
+                  <p className="text-xs"><Html html={tr(key, lang)} /></p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-0">
+            <FAQ q={tr("faqTrailBotLive", lang)}>
+              <HtmlP html={tr("faqTrailBotLiveAnswer", lang)} />
+            </FAQ>
+            <FAQ q={tr("faqTrailBotMultiple", lang)}>
+              <HtmlP html={tr("faqTrailBotMultipleAnswer", lang)} />
+            </FAQ>
+          </div>
+        </Section>
+
+        {/* ── Copy Trading ─────────────────────────────────────────────── */}
+        <Section
+          title={tr("sectionCopyTrading", lang)}
+          icon={Users}
+          accentColor="text-emerald-400"
+        >
+          <div className="space-y-3">
+            <HtmlP html={tr("copyTradingDesc", lang)} />
+
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
+              {tr("copyTradingRankTitle", lang)}
+            </h4>
+            <HtmlP html={tr("copyTradingRankDesc", lang)} />
+
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
+              {tr("copyTradingSetupTitle", lang)}
+            </h4>
+            <div className="space-y-2">
+              {(["copyTradingSetup1", "copyTradingSetup2", "copyTradingSetup3"] as const).map((key, i) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-emerald-400 text-sm">{i + 1}.</span>
+                  <p className="text-xs"><Html html={tr(key, lang)} /></p>
+                </div>
+              ))}
+            </div>
+
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
+              {tr("copyTradingDryRunTitle", lang)}
+            </h4>
+            <HtmlP html={tr("copyTradingDryRunDesc", lang)} />
+          </div>
+
+          <div className="mt-4 space-y-0">
+            <FAQ q={tr("faqCopyTradingData", lang)}>
+              <HtmlP html={tr("faqCopyTradingDataAnswer", lang)} />
+            </FAQ>
+            <FAQ q={tr("faqCopyTradingCredential", lang)}>
+              <HtmlP html={tr("faqCopyTradingCredentialAnswer", lang)} />
+            </FAQ>
+          </div>
+        </Section>
+
+        {/* ── Wheel Strategy Bot ───────────────────────────────────────── */}
+        <Section
+          title={tr("sectionWheelBot", lang)}
+          icon={RefreshCw}
+          accentColor="text-orange-400"
+        >
+          <div className="space-y-3">
+            <HtmlP html={tr("wheelBotDesc", lang)} />
+
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
+              {tr("wheelBotStagesTitle", lang)}
+            </h4>
+            <div className="space-y-2">
+              {(["wheelBotStage1", "wheelBotStage2", "wheelBotStage3", "wheelBotStage4"] as const).map((key, i) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-orange-400 text-sm">{i + 1}.</span>
+                  <p className="text-xs"><Html html={tr(key, lang)} /></p>
+                </div>
+              ))}
+            </div>
+
+            <h4 className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mt-4">
+              {tr("wheelBotRulesTitle", lang)}
+            </h4>
+            <div className="space-y-2">
+              {(["wheelBotRule1", "wheelBotRule2", "wheelBotRule3"] as const).map((key, i) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-orange-400 text-sm">{i + 1}.</span>
+                  <p className="text-xs"><Html html={tr(key, lang)} /></p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-0">
+            <FAQ q={tr("faqWheelBotAccount", lang)}>
+              <HtmlP html={tr("faqWheelBotAccountAnswer", lang)} />
+            </FAQ>
+            <FAQ q={tr("faqWheelBotDryRun", lang)}>
+              <HtmlP html={tr("faqWheelBotDryRunAnswer", lang)} />
             </FAQ>
           </div>
         </Section>

@@ -42,9 +42,17 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { wheelBotApi } from "@/lib/wheel-bot-api";
+import { brokerApi } from "@/lib/api";
 import { formatCurrency, formatDateTime, getErrorMessage, cn } from "@/lib/utils";
-import type { WheelBotSessionResponse, WheelBotSummaryResponse } from "@/types";
+import type { BrokerCredential, WheelBotSessionResponse, WheelBotSummaryResponse } from "@/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -391,6 +399,7 @@ export default function WheelBotPage() {
 
   // ── Form state ───────────────────────────────────────────────────────────────
   const [symbol, setSymbol] = useState("TSLA");
+  const [credentialId, setCredentialId] = useState<string>("");
   const [dryRun, setDryRun] = useState(true);
   const [liveConfirmOpen, setLiveConfirmOpen] = useState(false);
   const [liveConfirmed, setLiveConfirmed] = useState(false);
@@ -402,6 +411,17 @@ export default function WheelBotPage() {
   }, []);
 
   // ── Queries ──────────────────────────────────────────────────────────────────
+  const { data: brokerCredentials = [], isLoading: brokersLoading } = useQuery<BrokerCredential[]>({
+    queryKey: ["broker", "credentials"],
+    queryFn: brokerApi.list,
+    enabled: !!user,
+  });
+
+  const alpacaCredentials = useMemo(
+    () => brokerCredentials.filter((c) => c.provider === "alpaca" && c.is_active),
+    [brokerCredentials]
+  );
+
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery<
     WheelBotSessionResponse[]
   >({
@@ -414,13 +434,18 @@ export default function WheelBotPage() {
   // ── Mutations ────────────────────────────────────────────────────────────────
   const { mutate: setupBot, isPending: isSubmitting } = useMutation({
     mutationFn: () =>
-      wheelBotApi.setup({ symbol: symbol.trim().toUpperCase(), dry_run: dryRun }),
+      wheelBotApi.setup({
+        symbol: symbol.trim().toUpperCase(),
+        dry_run: dryRun,
+        credential_id: credentialId ? parseInt(credentialId, 10) : null,
+      }),
     onSuccess: (session) => {
       toast.success(
         `Wheel bot deployed for ${session.symbol}${session.dry_run ? " (dry run)" : ""}`
       );
       queryClient.invalidateQueries({ queryKey: ["wheel-bot", "sessions"] });
       setSymbol("TSLA");
+      setCredentialId("");
       setDryRun(true);
     },
     onError: (err: Error) => {
@@ -465,8 +490,13 @@ export default function WheelBotPage() {
   );
   const engineStatus = activeSessions.length > 0 ? "RUNNING" : "STANDBY";
   const isFormComplete = useMemo(
-    () => symbol.trim().length > 0,
-    [symbol]
+    () => symbol.trim().length > 0 && credentialId !== "",
+    [symbol, credentialId]
+  );
+
+  const selectedCredential = useMemo(
+    () => alpacaCredentials.find((c) => c.id === parseInt(credentialId, 10)) ?? null,
+    [alpacaCredentials, credentialId]
   );
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -562,11 +592,47 @@ export default function WheelBotPage() {
                 <p className="text-3xs text-muted-foreground leading-relaxed mt-1">
                   <strong className="text-foreground/70">New to this?</strong>{" "}
                   Keep <em>Dry Run ON</em> — no real options contracts are placed.
-                  Live mode requires a funded options-enabled Alpaca account
-                  configured via <code className="text-primary">WHEEL_ALPACA_*</code> env vars.
+                  Live mode requires a funded, options-enabled Alpaca account
+                  saved in Profile &rarr; Credentials.
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Broker account selector */}
+          <div>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+              Alpaca Account
+            </Label>
+            {brokersLoading ? (
+              <Skeleton className="h-9 w-full" />
+            ) : alpacaCredentials.length === 0 ? (
+              <div className="bg-surface-lowest border border-border/50 p-2.5 text-3xs text-muted-foreground">
+                No Alpaca credentials saved.{" "}
+                <a href="/profile" className="text-primary hover:underline">
+                  Add them in Profile &rarr; Credentials.
+                </a>
+              </div>
+            ) : (
+              <Select value={credentialId} onValueChange={setCredentialId}>
+                <SelectTrigger className="bg-surface-lowest border-border text-foreground">
+                  <SelectValue placeholder="Select Alpaca account…" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-mid border-border">
+                  {alpacaCredentials.map((cred) => (
+                    <SelectItem key={cred.id} value={String(cred.id)}>
+                      <span className="font-mono text-xs">{cred.profile_name}</span>
+                      {cred.base_url?.includes("paper") && (
+                        <span className="ml-2 text-3xs text-primary/70">[paper]</span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-3xs text-muted-foreground mt-1">
+              Uses the selected Alpaca account for options orders.
+            </p>
           </div>
 
           {/* Symbol input */}
@@ -605,8 +671,10 @@ export default function WheelBotPage() {
                 <p className="text-foreground font-bold font-mono">16:05 ET</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Dedicated account</p>
-                <p className="text-foreground font-bold font-mono">WHEEL_ALPACA_*</p>
+                <p className="text-muted-foreground">Account</p>
+                <p className="text-foreground font-bold font-mono truncate">
+                  {selectedCredential ? selectedCredential.profile_name : "—"}
+                </p>
               </div>
             </div>
           </div>
@@ -736,9 +804,10 @@ export default function WheelBotPage() {
             <DialogDescription className="text-2xs text-muted-foreground leading-relaxed pt-1">
               You are about to deploy the Wheel Bot in{" "}
               <strong className="text-destructive">LIVE mode</strong>. Real options
-              contracts will be sold through your dedicated Alpaca account
-              ({" "}
-              <code className="text-primary text-3xs">WHEEL_ALPACA_*</code>).
+              contracts will be sold through{" "}
+              <strong className="text-primary">
+                {selectedCredential?.profile_name ?? "your selected Alpaca account"}
+              </strong>.
             </DialogDescription>
           </DialogHeader>
 
@@ -748,6 +817,10 @@ export default function WheelBotPage() {
                 Order parameters:
               </p>
               <div className="grid grid-cols-2 gap-y-1.5 text-2xs font-mono">
+                <span className="text-muted-foreground">Account</span>
+                <span className="text-foreground font-bold">
+                  {selectedCredential?.profile_name ?? "—"}
+                </span>
                 <span className="text-muted-foreground">Symbol</span>
                 <span className="text-foreground font-bold">
                   {symbol.trim().toUpperCase() || "—"}

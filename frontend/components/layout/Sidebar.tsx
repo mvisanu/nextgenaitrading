@@ -33,6 +33,7 @@ import {
   Sun,
   TrendingDown,
   Users,
+  RefreshCw,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/auto-buy", label: "Auto-Buy", icon: Zap },
       { href: "/trailing-bot", label: "Trail Bot", icon: TrendingDown },
       { href: "/copy-trading", label: "Copy Trade", icon: Users },
+      { href: "/wheel-bot", label: "Wheel Bot", icon: RefreshCw },
       { href: "/options", label: "Options", icon: BarChart2 },
     ],
   },

@@ -13,10 +13,9 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from app.broker.wheel_alpaca_client import WheelAlpacaClient
 from app.db.session import AsyncSessionLocal
 from app.models.wheel_bot import WheelBotSession
-from app.services.wheel_bot_service import check_and_act, generate_daily_summary
+from app.services.wheel_bot_service import check_and_act, generate_daily_summary, get_wheel_client
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +61,11 @@ async def _run_monitor() -> None:
 
             logger.info("wheel_bot_monitor: checking %d active session(s)", len(sessions))
 
-            client = WheelAlpacaClient()
             errors = 0
 
             for session in sessions:
                 try:
+                    client = await get_wheel_client(session, db)
                     await check_and_act(session, client, db)
                 except Exception as exc:
                     errors += 1
@@ -118,11 +117,11 @@ async def _run_daily_summary() -> None:
                 logger.info("wheel_bot_daily_summary: no active sessions")
                 return
 
-            client = WheelAlpacaClient()
             errors = 0
 
             for session in sessions:
                 try:
+                    client = await get_wheel_client(session, db)
                     await generate_daily_summary(session, client, db)
                     logger.info(
                         "wheel_bot_daily_summary: session %d summary cached",

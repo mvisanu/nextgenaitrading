@@ -618,6 +618,137 @@ export const t = {
     en: 'Alpaca supports US-based and international accounts. US residents get full brokerage access. International users can trade US stocks through Alpaca\'s global offering. Check <strong class="text-foreground">alpaca.markets/supported-countries</strong> for the latest list of supported regions.',
     th: 'Alpaca รองรับบัญชีในสหรัฐฯ และต่างประเทศ ผู้อยู่อาศัยในสหรัฐฯ ได้รับการเข้าถึงโบรกเกอร์เต็มรูปแบบ ผู้ใช้ต่างชาติสามารถซื้อขายหุ้นสหรัฐฯ ผ่านบริการระดับโลกของ Alpaca ตรวจสอบ <strong class="text-foreground">alpaca.markets/supported-countries</strong> สำหรับรายชื่อภูมิภาคที่รองรับล่าสุด',
   },
+  // ── Trail Bot ────────────────────────────────────────────────────────────────
+  sectionTrailBot: { en: "Trailing Stop Bot", th: "บอทหยุดขาดทุนแบบ Trailing" },
+  trailBotDesc: {
+    en: 'The <strong class="text-foreground">Trailing Stop Bot</strong> automates a position\'s stop-loss so it rises automatically as the price climbs — locking in profit without manual intervention. After setup it monitors your position every 5 minutes and adjusts the stop order upward whenever a new milestone is hit.',
+    th: 'บอท <strong class="text-foreground">Trailing Stop</strong> อัตโนมัติการหยุดขาดทุนของตำแหน่ง โดยจะขยับขึ้นอัตโนมัติตามราคาที่สูงขึ้น — ล็อกกำไรโดยไม่ต้องดำเนินการด้วยตนเอง หลังจากตั้งค่าแล้ว จะตรวจสอบตำแหน่งของคุณทุก 5 นาทีและปรับคำสั่งหยุดขึ้นเมื่อถึงไมล์สโตนใหม่',
+  },
+  trailBotRulesTitle: { en: "How the Rules Work", th: "กฎการทำงาน" },
+  trailBotRule1: {
+    en: '<strong class="text-foreground">Floor stop (−10%)</strong> — a hard stop is placed at 10% below your fill price immediately after the buy. Your maximum loss per session is capped here.',
+    th: '<strong class="text-foreground">Floor stop (−10%)</strong> — วางหยุดขาดทุนแบบแข็งที่ 10% ต่ำกว่าราคาซื้อทันทีหลังจากซื้อ การขาดทุนสูงสุดต่อเซสชันถูกจำกัดไว้ที่นี่',
+  },
+  trailBotRule2: {
+    en: '<strong class="text-foreground">Trailing activates at +10%</strong> — once price rises 10% above fill, the bot switches to trailing mode. The stop is set at current price × 0.95 (5% below).',
+    th: '<strong class="text-foreground">Trailing เปิดใช้งานที่ +10%</strong> — เมื่อราคาสูงขึ้น 10% จากราคาซื้อ บอทจะเปลี่ยนเป็นโหมด trailing โดยตั้งหยุดที่ราคาปัจจุบัน × 0.95 (ต่ำกว่า 5%)',
+  },
+  trailBotRule3: {
+    en: '<strong class="text-foreground">Floor advances every +5%</strong> — each additional 5% gain (e.g. +15%, +20%, +25%) raises the stop again. The stop floor never moves down.',
+    th: '<strong class="text-foreground">Floor เลื่อนทุก +5%</strong> — กำไรเพิ่มขึ้นทุก 5% (เช่น +15%, +20%, +25%) จะยก stop ขึ้นอีกครั้ง ระดับ stop จะไม่เคยลดลง',
+  },
+  trailBotSetupTitle: { en: "Getting Started", th: "วิธีเริ่มต้น" },
+  trailBotSetup1: {
+    en: 'Save your Alpaca credentials in <strong class="text-foreground">Profile → Broker Credentials</strong>. Use paper keys (PK… prefix) to test safely.',
+    th: 'บันทึก Alpaca credentials ใน <strong class="text-foreground">Profile → Broker Credentials</strong> ใช้ paper keys (คำนำหน้า PK…) เพื่อทดสอบอย่างปลอดภัย',
+  },
+  trailBotSetup2: {
+    en: 'Go to <strong class="text-foreground">Trail Bot</strong> in the sidebar. Enter the symbol, dollar amount, and choose paper or live mode.',
+    th: 'ไปที่ <strong class="text-foreground">Trail Bot</strong> ในแถบด้านข้าง ป้อนสัญลักษณ์ จำนวนเงิน และเลือกโหมด paper หรือ live',
+  },
+  trailBotSetup3: {
+    en: '<strong class="text-foreground">Dry-run is on by default.</strong> In dry-run mode the bot simulates all logic and logs what it would do — no real orders are placed. Toggle live mode only when ready.',
+    th: '<strong class="text-foreground">Dry-run เปิดอยู่โดยค่าเริ่มต้น</strong> ในโหมด dry-run บอทจะจำลองตรรกะทั้งหมดและบันทึกสิ่งที่จะทำ — ไม่มีการสั่งซื้อขายจริง สลับโหมด live เมื่อพร้อมเท่านั้น',
+  },
+  faqTrailBotLive: { en: "Can I run the bot on a live account?", th: "ฉันสามารถรันบอทในบัญชีจริงได้ไหม?" },
+  faqTrailBotLiveAnswer: {
+    en: 'Yes. Toggle off dry-run and confirm the live-mode dialog. The bot then places real <strong class="text-foreground">GTC stop-market orders</strong> on Alpaca. Note: only whole-share quantities are supported for GTC orders, and stop prices are rounded to 2 decimal places per Alpaca requirements. Use paper mode first to validate behaviour.',
+    th: 'ใช่ ปิด dry-run และยืนยันกล่องโต้ตอบโหมด live บอทจะวางคำสั่ง <strong class="text-foreground">GTC stop-market</strong> จริงบน Alpaca หมายเหตุ: รองรับเฉพาะจำนวนหุ้นเต็มสำหรับคำสั่ง GTC และราคา stop จะถูกปัดเศษเป็น 2 ตำแหน่งทศนิยมตามข้อกำหนดของ Alpaca ใช้โหมด paper ก่อนเพื่อตรวจสอบพฤติกรรม',
+  },
+  faqTrailBotMultiple: { en: "Can I run multiple sessions at once?", th: "ฉันสามารถรันหลายเซสชันพร้อมกันได้ไหม?" },
+  faqTrailBotMultipleAnswer: {
+    en: 'You can have multiple sessions for <strong class="text-foreground">different symbols</strong>. Only one active session per symbol is allowed — creating a second for the same symbol returns a 409 error. Cancel the existing session first.',
+    th: 'คุณสามารถมีหลายเซสชันสำหรับ <strong class="text-foreground">สัญลักษณ์ต่างกัน</strong> อนุญาตให้มีเซสชันที่ใช้งานได้เพียงหนึ่งเซสชันต่อสัญลักษณ์ — การสร้างเซสชันที่สองสำหรับสัญลักษณ์เดียวกันจะส่งคืนข้อผิดพลาด 409 ยกเลิกเซสชันที่มีอยู่ก่อน',
+  },
+
+  // ── Copy Trading ─────────────────────────────────────────────────────────────
+  sectionCopyTrading: { en: "Copy Trading", th: "Copy Trading" },
+  copyTradingDesc: {
+    en: 'The <strong class="text-foreground">Copy Trading</strong> feature automatically mirrors trades made by top-ranked US politicians based on their public congressional trading disclosures (sourced via Quiver Quantitative). You select a politician, choose which saved Alpaca credential to trade with, and the bot checks for new disclosures every 15 minutes.',
+    th: 'ฟีเจอร์ <strong class="text-foreground">Copy Trading</strong> จะคัดลอกการซื้อขายโดยอัตโนมัติของนักการเมืองสหรัฐฯ ที่ได้รับการจัดอันดับสูงสุดโดยอิงจากการเปิดเผยการซื้อขายในรัฐสภาสาธารณะ (จาก Quiver Quantitative) คุณเลือกนักการเมือง เลือก Alpaca credential ที่บันทึกไว้เพื่อใช้เทรด และบอทจะตรวจสอบการเปิดเผยใหม่ทุก 15 นาที',
+  },
+  copyTradingRankTitle: { en: "How Politicians Are Ranked", th: "วิธีการจัดอันดับนักการเมือง" },
+  copyTradingRankDesc: {
+    en: 'The ranking score combines three factors: <strong class="text-foreground">win rate × 40%</strong> + <strong class="text-foreground">average excess return vs SPY × 35%</strong> + <strong class="text-foreground">recent activity × 25%</strong>. Only politicians with at least 5 trades in the last 90 days are ranked. The Rankings tab shows the top 20.',
+    th: 'คะแนนการจัดอันดับรวมสามปัจจัย: <strong class="text-foreground">win rate × 40%</strong> + <strong class="text-foreground">ผลตอบแทนส่วนเกินเฉลี่ยเทียบกับ SPY × 35%</strong> + <strong class="text-foreground">กิจกรรมล่าสุด × 25%</strong> เฉพาะนักการเมืองที่มีการซื้อขายอย่างน้อย 5 ครั้งใน 90 วันที่ผ่านมาเท่านั้นที่ได้รับการจัดอันดับ แท็บ Rankings แสดง 20 อันดับแรก',
+  },
+  copyTradingSetupTitle: { en: "Getting Started", th: "วิธีเริ่มต้น" },
+  copyTradingSetup1: {
+    en: 'Save your Alpaca credentials in <strong class="text-foreground">Profile → Broker Credentials</strong>.',
+    th: 'บันทึก Alpaca credentials ใน <strong class="text-foreground">Profile → Broker Credentials</strong>',
+  },
+  copyTradingSetup2: {
+    en: 'Go to <strong class="text-foreground">Copy Trade</strong> in the sidebar. Browse the Rankings table and pick a politician.',
+    th: 'ไปที่ <strong class="text-foreground">Copy Trade</strong> ในแถบด้านข้าง เรียกดูตาราง Rankings และเลือกนักการเมือง',
+  },
+  copyTradingSetup3: {
+    en: 'Select which broker credential to use, set dry-run preference, and click <strong class="text-foreground">Start Session</strong>.',
+    th: 'เลือก broker credential ที่ต้องการใช้ ตั้งค่าความชอบ dry-run และคลิก <strong class="text-foreground">Start Session</strong>',
+  },
+  copyTradingDryRunTitle: { en: "Dry-Run & Deduplication", th: "Dry-Run & การป้องกันซ้ำ" },
+  copyTradingDryRunDesc: {
+    en: '<strong class="text-foreground">Dry-run is on by default.</strong> In dry-run the system logs what it would copy but places no real orders. When you create a session, existing historical trades are marked as <em>pre-existing</em> and are never bulk-copied — only trades disclosed <em>after</em> your session starts are copied. Each trade is deduplicated by a unique trade ID so it can never be copied twice.',
+    th: '<strong class="text-foreground">Dry-run เปิดอยู่โดยค่าเริ่มต้น</strong> ใน dry-run ระบบจะบันทึกสิ่งที่จะคัดลอกแต่ไม่วางคำสั่งจริง เมื่อคุณสร้างเซสชัน การซื้อขายประวัติศาสตร์ที่มีอยู่จะถูกทำเครื่องหมายเป็น <em>pre-existing</em> และไม่เคยถูกคัดลอกเป็นกลุ่ม — เฉพาะการซื้อขายที่เปิดเผย <em>หลังจาก</em> เซสชันของคุณเริ่มต้นเท่านั้นที่จะถูกคัดลอก แต่ละการซื้อขายถูกลบซ้ำโดย trade ID เฉพาะ ดังนั้นจึงไม่สามารถคัดลอกซ้ำได้',
+  },
+  faqCopyTradingData: { en: "Where does the trade data come from?", th: "ข้อมูลการซื้อขายมาจากไหน?" },
+  faqCopyTradingDataAnswer: {
+    en: 'Trade disclosures come from <strong class="text-foreground">Quiver Quantitative</strong>, which aggregates public congressional trading filings. The data is cached for 5 minutes server-side. Politicians are required by law (STOCK Act) to disclose trades within 45 days, so there is inherent lag between when a trade occurs and when it appears.',
+    th: 'การเปิดเผยการซื้อขายมาจาก <strong class="text-foreground">Quiver Quantitative</strong> ซึ่งรวบรวมการยื่นฟอร์มการซื้อขายในรัฐสภาสาธารณะ ข้อมูลถูกแคชไว้ 5 นาทีทางฝั่งเซิร์ฟเวอร์ นักการเมืองถูกกำหนดโดยกฎหมาย (STOCK Act) ให้เปิดเผยการซื้อขายภายใน 45 วัน ดังนั้นจึงมีความล่าช้าระหว่างเมื่อเกิดการซื้อขายและเมื่อปรากฏ',
+  },
+  faqCopyTradingCredential: { en: "Which broker account does it use?", th: "ใช้บัญชีโบรกเกอร์ไหน?" },
+  faqCopyTradingCredentialAnswer: {
+    en: 'Copy Trading uses <strong class="text-foreground">your own saved Alpaca credentials</strong> — the same ones you save on the Profile page. You select which credential to use when creating each session. This means the trades execute in your personal Alpaca account, not a shared platform account.',
+    th: 'Copy Trading ใช้ <strong class="text-foreground">Alpaca credentials ที่บันทึกของคุณเอง</strong> — เหมือนกับที่คุณบันทึกในหน้า Profile คุณเลือก credential ที่จะใช้เมื่อสร้างแต่ละเซสชัน ซึ่งหมายความว่าการซื้อขายดำเนินการในบัญชี Alpaca ส่วนตัวของคุณ ไม่ใช่บัญชีแพลตฟอร์มที่ใช้ร่วมกัน',
+  },
+
+  // ── Wheel Bot ────────────────────────────────────────────────────────────────
+  sectionWheelBot: { en: "Wheel Strategy Bot", th: "บอท Wheel Strategy" },
+  wheelBotDesc: {
+    en: 'The <strong class="text-foreground">Wheel Strategy Bot</strong> automates the classic options Wheel Strategy on TSLA. The Wheel is a repeating options income cycle: sell a cash-secured put → get assigned shares → sell a covered call → shares get called away → repeat. The bot handles each stage transition automatically during market hours.',
+    th: 'บอท <strong class="text-foreground">Wheel Strategy</strong> อัตโนมัติ Wheel Strategy แบบคลาสสิกในตัวเลือก TSLA Wheel เป็นวงจรรายได้ตัวเลือกที่ซ้ำ: ขาย cash-secured put → รับหุ้นที่ถูก assigned → ขาย covered call → หุ้นถูกเรียกคืน → วนซ้ำ บอทจัดการการเปลี่ยนแต่ละขั้นตอนโดยอัตโนมัติในช่วงเวลาตลาด',
+  },
+  wheelBotStagesTitle: { en: "Stage Machine", th: "Stage Machine" },
+  wheelBotStage1: {
+    en: '<strong class="text-foreground">sell_put</strong> — Bot sells an out-of-the-money put at ~90% of current price, 14–28 days to expiry. If the put expires worthless, the premium is collected and a new put is sold.',
+    th: '<strong class="text-foreground">sell_put</strong> — บอทขาย put นอก-the-money ที่ ~90% ของราคาปัจจุบัน อายุ 14–28 วัน หาก put หมดอายุไร้ค่า premium จะถูกเก็บและขาย put ใหม่',
+  },
+  wheelBotStage2: {
+    en: '<strong class="text-foreground">assigned</strong> — If the stock price falls below the put strike at expiry, shares are assigned at the strike price. The bot records the cost basis and moves to the covered call stage.',
+    th: '<strong class="text-foreground">assigned</strong> — หากราคาหุ้นลดลงต่ำกว่าราคา put strike เมื่อหมดอายุ หุ้นจะถูก assigned ที่ราคา strike บอทบันทึกต้นทุนและย้ายไปยังขั้นตอน covered call',
+  },
+  wheelBotStage3: {
+    en: '<strong class="text-foreground">sell_call</strong> — Bot sells a covered call at ~110% of cost basis, 14–28 days out. The call strike is never below cost basis per share.',
+    th: '<strong class="text-foreground">sell_call</strong> — บอทขาย covered call ที่ ~110% ของต้นทุน อายุ 14–28 วัน ราคา call strike จะไม่ต่ำกว่าต้นทุนต่อหุ้น',
+  },
+  wheelBotStage4: {
+    en: '<strong class="text-foreground">called_away</strong> — If the stock price is above the call strike at expiry, shares are sold (called away) at the strike. All premium collected across the cycle is totalled, then the bot restarts from sell_put.',
+    th: '<strong class="text-foreground">called_away</strong> — หากราคาหุ้นสูงกว่าราคา call strike เมื่อหมดอายุ หุ้นจะถูกขาย (called away) ที่ราคา strike premium ทั้งหมดที่เก็บในวงจรจะถูกรวมรวม จากนั้นบอทจะเริ่มใหม่จาก sell_put',
+  },
+  wheelBotRulesTitle: { en: "Key Rules", th: "กฎสำคัญ" },
+  wheelBotRule1: {
+    en: '<strong class="text-foreground">Cash check</strong> — the bot will never sell a put if available cash is less than strike × 100 (the maximum assignment obligation).',
+    th: '<strong class="text-foreground">ตรวจสอบเงินสด</strong> — บอทจะไม่ขาย put หากเงินสดที่มีน้อยกว่า strike × 100 (ภาระผูกพัน assignment สูงสุด)',
+  },
+  wheelBotRule2: {
+    en: '<strong class="text-foreground">50% profit close</strong> — if the option\'s current price falls to ≤ 50% of the premium received, the bot buys to close early and reopens a new position, capturing the gain faster.',
+    th: '<strong class="text-foreground">ปิด 50% กำไร</strong> — หากราคาปัจจุบันของตัวเลือกลดลงเหลือ ≤ 50% ของ premium ที่ได้รับ บอทจะซื้อเพื่อปิดล่วงหน้าและเปิดตำแหน่งใหม่ รับกำไรได้เร็วขึ้น',
+  },
+  wheelBotRule3: {
+    en: '<strong class="text-foreground">Daily summary</strong> — a performance summary is generated at 4:05 PM ET on trading days and cached per session.',
+    th: '<strong class="text-foreground">สรุปรายวัน</strong> — สรุปประสิทธิภาพถูกสร้างที่ 16:05 น. ET ในวันซื้อขายและแคชต่อเซสชัน',
+  },
+  faqWheelBotAccount: { en: "Which Alpaca account does the Wheel Bot use?", th: "Wheel Bot ใช้บัญชี Alpaca ไหน?" },
+  faqWheelBotAccountAnswer: {
+    en: 'The Wheel Bot uses a <strong class="text-foreground">dedicated Alpaca account</strong> configured via the <code class="bg-secondary/60 px-1 rounded">WHEEL_ALPACA_*</code> environment variables on the server — separate from your personal trading credentials. This keeps the wheel strategy isolated from your other positions.',
+    th: 'Wheel Bot ใช้ <strong class="text-foreground">บัญชี Alpaca เฉพาะ</strong> ที่กำหนดค่าผ่านตัวแปรสภาพแวดล้อม <code class="bg-secondary/60 px-1 rounded">WHEEL_ALPACA_*</code> บนเซิร์ฟเวอร์ — แยกจาก credentials การซื้อขายส่วนตัวของคุณ ซึ่งทำให้ wheel strategy แยกออกจากตำแหน่งอื่นของคุณ',
+  },
+  faqWheelBotDryRun: { en: "Is dry-run safe to use?", th: "การใช้ dry-run ปลอดภัยไหม?" },
+  faqWheelBotDryRunAnswer: {
+    en: 'Yes. <strong class="text-foreground">Dry-run is on by default</strong> and simulates every stage transition, option selection, and cash check without placing any real orders on Alpaca. You can observe the full decision logic in the session detail view before switching to live mode.',
+    th: 'ใช่ <strong class="text-foreground">Dry-run เปิดอยู่โดยค่าเริ่มต้น</strong> และจำลองการเปลี่ยนขั้นตอน การเลือกตัวเลือก และการตรวจสอบเงินสดทุกครั้งโดยไม่วางคำสั่งจริงบน Alpaca คุณสามารถสังเกตตรรกะการตัดสินใจทั้งหมดในมุมมองรายละเอียดเซสชันก่อนเปลี่ยนเป็นโหมด live',
+  },
+
+  // ── BB Squeeze (existing, keep in place) ─────────────────────────────────────
   faqBbSqueeze: {
     en: "What is a Bollinger Band Squeeze and how does the platform use it?",
     th: "Bollinger Band Squeeze คืออะไรและแพลตฟอร์มใช้มันอย่างไร?",
