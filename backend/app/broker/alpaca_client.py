@@ -13,13 +13,13 @@ class AlpacaClient(AbstractBrokerClient):
     Supports stocks, ETFs, and crypto.
     """
 
-    def __init__(self, api_key: str, secret_key: str, paper: bool = False) -> None:
+    def __init__(self, api_key: str, secret_key: str, paper: bool = False, base_url: str | None = None) -> None:
         from alpaca.trading.client import TradingClient
 
-        base_url = (
+        resolved_url = base_url or (
             "https://paper-api.alpaca.markets" if paper else "https://api.alpaca.markets"
         )
-        self.client = TradingClient(api_key, secret_key, url_override=base_url)
+        self.client = TradingClient(api_key, secret_key, url_override=resolved_url)
 
     def ping(self) -> bool:
         try:

@@ -1,0 +1,105 @@
+//@version=5
+// ============================================================
+// ELITE BTC — Buy/Sell · BB Squeeze · Fair Value Gaps
+// Clean signals only: no clutter, no counts, no labels
+// ============================================================
+indicator("Elite BTC — Buy/Sell · BB Squeeze · FVG", overlay=true, max_bars_back=500, max_labels_count=500, max_boxes_count=300)
+
+// ============================================================
+// INPUTS
+// ============================================================
+grp_ema     = "EMAs & VWAP"
+show_ema21  = input.bool(true,  "EMA 21",                        group=grp_ema)
+show_ema50  = input.bool(true,  "EMA 50",                        group=grp_ema)
+show_ema200 = input.bool(true,  "EMA 200",                       group=grp_ema)
+show_vwap   = input.bool(true,  "VWAP",                          group=grp_ema)
+show_bg     = input.bool(true,  "EMA 200 Trend Background",      group=grp_ema)
+
+grp_sqz     = "BB Squeeze"
+sqz_len     = input.int(20,    "Length",                          minval=5,   group=grp_sqz)
+bb_mult     = input.float(2.0, "BB Multiplier",                   minval=0.5, group=grp_sqz)
+kc_mult     = input.float(1.5, "KC Multiplier",                   minval=0.5, group=grp_sqz)
+show_sqz_bg = input.bool(true, "Gray background when coiling",    group=grp_sqz)
+
+grp_fvg     = "Fair Value Gaps"
+show_fvg    = input.bool(true, "Show Fair Value Gaps",            group=grp_fvg)
+fvg_width   = input.int(40,   "FVG Width (bars)",  minval=5, maxval=300, group=grp_fvg)
+
+grp_sig     = "Signals"
+show_buy    = input.bool(true, "Show BUY signals",                group=grp_sig)
+show_sell   = input.bool(true, "Show SELL signals",               group=grp_sig)
+
+// ============================================================
+// EMAs + VWAP
+// ============================================================
+ema21    = ta.ema(close, 21)
+ema50    = ta.ema(close, 50)
+ema200   = ta.ema(close, 200)
+vwap_val = ta.vwap
+
+plot(ema21,    "EMA 21",  color=show_ema21  ? color.new(color.orange,  10) : na, linewidth=1)
+plot(ema50,    "EMA 50",  color=show_ema50  ? color.new(#4488FF, 10)       : na, linewidth=2)
+plot(ema200,   "EMA 200", color=show_ema200 ? color.new(color.red, 10)     : na, linewidth=3)
+plot(vwap_val, "VWAP",    color=show_vwap   ? color.new(color.fuchsia, 0)  : na, linewidth=2)
+
+// Trend background: green above EMA 200, red below
+bgcolor(show_bg ? (close > ema200 ? color.new(color.green, 96) : color.new(color.red, 96)) : na, title="EMA200 Trend Background")
+
+// ============================================================
+// BB SQUEEZE
+// Squeeze ON  = Bollinger Bands are inside Keltner Channel (coiling, gray bg)
+// Squeeze OFF = BBs break outside KC (momentum releasing = signal zone)
+// ============================================================
+basis    = ta.sma(close, sqz_len)
+bb_dev   = bb_mult  * ta.stdev(close, sqz_len)
+bb_upper = basis + bb_dev
+bb_lower = basis - bb_dev
+
+kc_mid   = ta.ema(close, sqz_len)
+kc_range = kc_mult * ta.atr(sqz_len)
+kc_upper = kc_mid + kc_range
+kc_lower = kc_mid - kc_range
+
+squeeze_on = bb_upper < kc_upper and bb_lower > kc_lower
+
+// Momentum direction (LazyBear-style linreg delta)
+sqz_delta = close - math.avg(math.avg(ta.highest(high, sqz_len), ta.lowest(low, sqz_len)), kc_mid)
+sqz_val   = ta.linreg(sqz_delta, sqz_len, 0)
+
+// Gray background while squeeze is active (coiling = potential breakout incoming)
+bgcolor(show_sqz_bg and squeeze_on ? color.new(color.gray, 88) : na, title="Squeeze Coiling")
+
+// ============================================================
+// FAIR VALUE GAPS (FVG / Imbalance Zones)
+// Bullish FVG: high[2] < low[0]  — price jumped up, unfilled gap below
+// Bearish FVG: low[2]  > high[0] — price dumped down, unfilled gap above
+// Drawn as colored boxes. Acts as magnet / support-resistance zones.
+// ============================================================
+bull_fvg = show_fvg and high[2] < low[0]
+bear_fvg = show_fvg and low[2]  > high[0]
+
+if bull_fvg
+    box.new(bar_index - 2, low[0], bar_index + fvg_width, high[2], border_color=color.new(color.green, 50), bgcolor=color.new(color.green, 82), border_width=1)
+
+if bear_fvg
+    box.new(bar_index - 2, high[0], bar_index + fvg_width, low[2], border_color=color.new(color.red, 50), bgcolor=color.new(color.red, 82), border_width=1)
+
+// ============================================================
+// BUY / SELL SIGNALS
+// Trigger: squeeze just released (was ON last bar, OFF now)
+// BUY:  momentum up + price above EMA 21 + EMA 21 above EMA 50
+// SELL: momentum down + price below EMA 21 + EMA 21 below EMA 50
+// ============================================================
+sqz_released = not squeeze_on and squeeze_on[1]
+
+buy_signal  = sqz_released and sqz_val > 0 and close > ema21 and ema21 > ema50
+sell_signal = sqz_released and sqz_val < 0 and close < ema21 and ema21 < ema50
+
+plotshape(buy_signal,  "BUY",  shape.triangleup,   location.belowbar, show_buy  ? color.new(color.lime, 0) : na, size=size.normal, text="BUY",  textcolor=color.white)
+plotshape(sell_signal, "SELL", shape.triangledown, location.abovebar, show_sell ? color.new(color.red,  0) : na, size=size.normal, text="SELL", textcolor=color.white)
+
+// ============================================================
+// ALERTS
+// ============================================================
+alertcondition(buy_signal,  "BUY Signal",  "BB Squeeze BUY — trend confirmed above EMA 21/50")
+alertcondition(sell_signal, "SELL Signal", "BB Squeeze SELL — trend confirmed below EMA 21/50")

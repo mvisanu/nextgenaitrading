@@ -824,6 +824,8 @@ export interface MorningBriefResponse {
 export interface LadderRuleOut {
   price: number;
   qty: number;
+  drop_pct: number;
+  buy_amount_usd: number;
   order_id: string;
   filled: boolean;
 }
@@ -831,11 +833,13 @@ export interface LadderRuleOut {
 export interface TrailingBotSessionOut {
   id: number;
   symbol: string;
+  buy_amount_usd: number;
   initial_qty: number;
   entry_price: number | null;
   initial_order_id: string | null;
   stop_order_id: string | null;
   floor_price: number;
+  floor_pct: number;
   trailing_trigger_pct: number;
   trailing_trail_pct: number;
   trailing_step_pct: number;
@@ -848,15 +852,15 @@ export interface TrailingBotSessionOut {
 }
 
 export interface LadderRuleIn {
-  price: number;
-  qty: number;
+  drop_pct: number;
+  buy_amount_usd: number;
 }
 
 export interface TrailingBotSetupRequest {
   credential_id: number;
   symbol: string;
-  initial_qty: number;
-  floor_price: number;
+  buy_amount_usd: number;
+  floor_pct: number;
   ladder_rules: LadderRuleIn[];
   dry_run: boolean;
 }
@@ -879,6 +883,7 @@ export interface CreateCopySessionRequest {
   copy_amount_usd: number;
   dry_run: boolean;
   target_politician_id: string | null;
+  credential_id?: number | null;
 }
 
 export interface CopyTradingSessionOut {
@@ -890,6 +895,7 @@ export interface CopyTradingSessionOut {
   target_politician_name: string | null;
   activated_at: string;
   cancelled_at: string | null;
+  credential_id: number | null;
 }
 
 export interface CopiedTradeOut {
@@ -911,4 +917,41 @@ export interface CopiedTradeOut {
   dry_run: boolean;
   created_at: string;
   notes: string | null;
+}
+
+// ─── Wheel Strategy Bot (V7) ──────────────────────────────────────────────────
+
+export interface WheelBotSetupRequest {
+  symbol: string;
+  dry_run: boolean;
+}
+
+export interface WheelBotSessionResponse {
+  id: number;
+  user_id: number;
+  symbol: string;
+  dry_run: boolean;
+  stage: string;
+  active_contract_symbol: string | null;
+  active_order_id: string | null;
+  active_premium_received: number | null;
+  active_strike: number | null;
+  active_expiry: string | null;
+  shares_qty: number;
+  cost_basis_per_share: number | null;
+  total_premium_collected: number;
+  status: string;
+  last_action: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface WheelBotSummaryResponse {
+  symbol: string;
+  stage: string;
+  total_premium_collected: number;
+  shares_qty: number;
+  cost_basis_per_share: number | null;
+  last_action: string | null;
+  summary: string | null;
 }

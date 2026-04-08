@@ -5,7 +5,10 @@ btc_trailing_bot.py — Standalone BTC trailing stop bot using Alpaca paper trad
 Rules:
   FLOOR:          Sell all if price drops 10% below fill price
   TRAILING FLOOR: Activates at +10% gain; stop = current * 0.95; advances every +5%; never goes down
-  LADDER IN:      Buy BTC_LADDER_USD more if price drops 20% from entry (once per session)
+  LADDER IN:      2-level DCA re-entry (larger buys at deeper discounts):
+                    Level 1: -20% from original entry  → $1,000
+                    Level 2: -30% from original entry  → $2,000
+                  Each level fires once per session. Floor never moves down.
 
 Usage:
   cd backend && source .venv/Scripts/activate
@@ -15,7 +18,6 @@ Config (environment variables):
   ALPACA_API_KEY        — Alpaca API key (required)
   ALPACA_SECRET_KEY     — Alpaca secret key (required)
   BTC_USD=1000          — dollar amount to buy initially (default 1000)
-  BTC_LADDER_USD=1000   — dollar amount for ladder-in (default: same as BTC_USD)
   POLL_INTERVAL_SEC=30  — polling interval in seconds (default 30)
 """
 import os
@@ -25,12 +27,18 @@ import uuid as _uuid
 from decimal import Decimal, ROUND_DOWN
 
 # --- Config ---
-API_KEY = os.environ.get("ALPACA_API_KEY", "")
-SECRET_KEY = os.environ.get("ALPACA_SECRET_KEY", "")
+API_KEY    = os.environ.get("VISANU_ALPACA_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
+SECRET_KEY = os.environ.get("VISANU_ALPACA_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
 BTC_USD = float(os.environ.get("BTC_USD", "1000"))
-BTC_LADDER_USD = float(os.environ.get("BTC_LADDER_USD", str(BTC_USD)))
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL_SEC", "30"))
 PAPER_URL = "https://paper-api.alpaca.markets"
+
+# Ladder levels: (drop_pct_from_entry, buy_usd)
+# Fires once per session at each level; floor never moves down after a ladder fill.
+LADDER_LEVELS = [
+    (0.20, 1000.0),   # Level 1: -20% → $1,000  (normal correction)
+    (0.30, 2000.0),   # Level 2: -30% → $2,000  (deep pullback, max conviction)
+]
 
 # --- Logging ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -69,8 +77,9 @@ def buy_btc(usd_amount: float) -> tuple[float, float]:
         time_in_force=TimeInForce.GTC,
     )
     order = trading.submit_order(req)
-    # Poll until filled
-    while True:
+    # Poll until filled — give up after 60 retries (60 s) to avoid infinite hang
+    max_retries = 60
+    for attempt in range(max_retries):
         o = trading.get_order_by_id(_uuid.UUID(str(order.id)))
         if o.status.value in ("filled", "partially_filled"):
             filled_qty = float(o.filled_qty or qty)
@@ -78,6 +87,9 @@ def buy_btc(usd_amount: float) -> tuple[float, float]:
             log.info("Filled: %.8f BTC @ $%.2f", filled_qty, filled_price)
             return filled_qty, filled_price
         time.sleep(1)
+    raise TimeoutError(
+        f"Order {order.id} did not fill within {max_retries} seconds (status={o.status.value})"
+    )
 
 
 def sell_all_btc(qty: float, reason: str) -> None:
@@ -108,7 +120,7 @@ def main() -> None:
     trailing_active = False
     trailing_high = entry_price
     current_floor = floor_price
-    ladder_fired = False
+    ladder_next = 0          # index into LADDER_LEVELS; 0 = none fired yet
     total_qty = qty
     blended_entry = entry_price
 
@@ -117,7 +129,9 @@ def main() -> None:
     log.info("  Qty:            %.8f BTC", total_qty)
     log.info("  FLOOR:          $%.2f (-10%%)", floor_price)
     log.info("  Trailing floor: activates at $%.2f (+10%%)", round(entry_price * 1.10, 2))
-    log.info("  Ladder in:      at $%.2f (-20%%)", round(entry_price * 0.80, 2))
+    for i, (drop, usd) in enumerate(LADDER_LEVELS):
+        log.info("  Ladder L%d:      $%.2f (-%d%%) -> $%.0f buy", i + 1,
+                 round(entry_price * (1 - drop), 2), int(drop * 100), usd)
     log.info("  Poll interval:  %ds", POLL_INTERVAL)
 
     # ── Monitoring loop ──────────────────────────────────────────────────────────
@@ -158,35 +172,40 @@ def main() -> None:
                                 current_floor, price,
                             )
 
-            # ── LADDER IN ─────────────────────────────────────────────────────────
-            if not ladder_fired:
-                ladder_trigger = round(blended_entry * 0.80, 2)
+            # ── LADDER IN (3 levels) ──────────────────────────────────────────────
+            if ladder_next < len(LADDER_LEVELS):
+                drop_pct, buy_usd = LADDER_LEVELS[ladder_next]
+                ladder_trigger = round(entry_price * (1 - drop_pct), 2)
                 if price <= ladder_trigger:
-                    log.info("LADDER IN triggered at $%.2f", price)
-                    ladder_qty, ladder_price = buy_btc(BTC_LADDER_USD)
-                    # Recalculate blended entry
+                    log.info(
+                        "LADDER L%d triggered at $%.2f (-%d%% from original entry $%.2f) — buying $%.0f",
+                        ladder_next + 1, price, int(drop_pct * 100), entry_price, buy_usd,
+                    )
+                    ladder_qty, ladder_price = buy_btc(buy_usd)
                     total_cost = (total_qty * blended_entry) + (ladder_qty * ladder_price)
                     total_qty += ladder_qty
                     blended_entry = round(total_cost / total_qty, 2)
-                    ladder_fired = True
-                    # Update floor based on new blended entry; never move floor down
+                    ladder_next += 1
+                    # Floor only moves up — never down
                     new_floor = round(blended_entry * 0.90, 2)
                     if new_floor > current_floor:
                         current_floor = new_floor
+                    remaining = len(LADDER_LEVELS) - ladder_next
                     log.info(
-                        "Ladder filled. Blended entry: $%.2f | New floor: $%.2f | Total qty: %.8f",
-                        blended_entry, current_floor, total_qty,
+                        "Ladder L%d filled. Blended entry: $%.2f | Floor: $%.2f | "
+                        "Total qty: %.8f | Ladders remaining: %d",
+                        ladder_next, blended_entry, current_floor, total_qty, remaining,
                     )
 
     except KeyboardInterrupt:
         log.info("=== Bot stopped by user ===")
 
     log.info("=== Final summary ===")
-    log.info("  Total BTC held: %.8f", total_qty)
-    log.info("  Blended entry:  $%.2f", blended_entry)
-    log.info("  Current floor:  $%.2f", current_floor)
-    log.info("  Trailing:       %s", "ON" if trailing_active else "OFF")
-    log.info("  Ladder fired:   %s", ladder_fired)
+    log.info("  Total BTC held:   %.8f", total_qty)
+    log.info("  Blended entry:    $%.2f", blended_entry)
+    log.info("  Current floor:    $%.2f", current_floor)
+    log.info("  Trailing:         %s", "ON" if trailing_active else "OFF")
+    log.info("  Ladders fired:    %d / %d", ladder_next, len(LADDER_LEVELS))
     log.info("  (Position remains open on Alpaca — manage manually or re-run bot)")
 
 

@@ -22,6 +22,8 @@ class TrailingBotSession(Base):
 
     # Position basics
     symbol: Mapped[str] = mapped_column(String(20), nullable=False)
+    buy_amount_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    floor_pct: Mapped[float] = mapped_column(Float, default=10.0, nullable=False)
     initial_qty: Mapped[float] = mapped_column(Float, nullable=False)
     entry_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 

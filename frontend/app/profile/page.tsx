@@ -78,6 +78,9 @@ const credentialSchema = z.object({
 });
 type CredentialFormValues = z.infer<typeof credentialSchema>;
 
+const PAPER_URL = "https://paper-api.alpaca.markets";
+const LIVE_URL  = "https://api.alpaca.markets";
+
 // ─── Vertical Nav Tabs ────────────────────────────────────────────────────────
 
 type TabId = "identity" | "credentials" | "api-keys" | "preferences" | "security";
@@ -151,7 +154,7 @@ export default function ProfilePage() {
     formState: { errors: credErrors },
   } = useForm<CredentialFormValues>({
     resolver: zodResolver(credentialSchema),
-    defaultValues: { provider: "alpaca", paper_trading: false },
+    defaultValues: { provider: "alpaca", paper_trading: true, base_url: PAPER_URL },
   });
 
   const provider = watchCred("provider");
@@ -211,10 +214,9 @@ export default function ProfilePage() {
       profile_name: values.profile_name,
       api_key: values.api_key,
       secret_key: values.secret_key,
+      paper_trading: values.paper_trading,
+      base_url: values.base_url || undefined,
     };
-    if (values.paper_trading && values.provider === "alpaca") {
-      body.base_url = "https://paper-api.alpaca.markets";
-    }
     createCredential(body);
   }
 
@@ -463,8 +465,8 @@ export default function ProfilePage() {
                         <thead>
                           <tr className="bg-surface-mid/50 text-3xs uppercase tracking-widest text-muted-foreground">
                             <th className="px-6 py-3 font-bold">Label</th>
-                            <th className="px-6 py-3 font-bold">Key Fragment</th>
                             <th className="px-6 py-3 font-bold">Provider</th>
+                            <th className="px-6 py-3 font-bold">Endpoint</th>
                             <th className="px-6 py-3 font-bold text-right">Actions</th>
                           </tr>
                         </thead>
@@ -480,9 +482,6 @@ export default function ProfilePage() {
                               <td className="px-6 py-4 text-xs font-semibold text-foreground">
                                 {cred.profile_name}
                               </td>
-                              <td className="px-6 py-4 text-xs text-muted-foreground tabular-nums font-mono">
-                                {cred.api_key}
-                              </td>
                               <td className="px-6 py-4">
                                 {cred.provider === "alpaca" ? (
                                   <span className="text-3xs bg-surface-high px-1.5 py-0.5 rounded-sm text-muted-foreground uppercase tracking-wider font-bold">
@@ -493,6 +492,12 @@ export default function ProfilePage() {
                                     Robinhood
                                   </span>
                                 )}
+                              </td>
+                              <td className="px-6 py-4 text-xs text-muted-foreground font-mono max-w-[200px] truncate">
+                                {cred.base_url
+                                  ? cred.base_url.replace("https://", "")
+                                  : <span className="text-muted-foreground/40 italic">default</span>
+                                }
                               </td>
                               <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
@@ -721,14 +726,36 @@ export default function ProfilePage() {
                 <Switch
                   id="paper-trading"
                   checked={paperTrading ?? false}
-                  onCheckedChange={(v) => setCredValue("paper_trading", v)}
+                  onCheckedChange={(v) => {
+                    setCredValue("paper_trading", v);
+                    setCredValue("base_url", v ? PAPER_URL : LIVE_URL);
+                  }}
                 />
                 <Label htmlFor="paper-trading">
                   Paper Trading
-                  <span className="ml-1 text-muted-foreground text-xs">
-                    (uses paper-api.alpaca.markets)
+                </Label>
+              </div>
+            )}
+
+            {/* Base URL — always visible for Alpaca */}
+            {provider === "alpaca" && (
+              <div className="space-y-1.5">
+                <Label>
+                  API Base URL
+                  <span className="ml-1 text-muted-foreground text-xs font-normal">
+                    (paper or live endpoint)
                   </span>
                 </Label>
+                <Input
+                  placeholder={PAPER_URL}
+                  {...regCred("base_url")}
+                  className="font-mono text-xs"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Paper: <code className="text-primary">{PAPER_URL}</code>
+                  {"  "}·{"  "}
+                  Live: <code className="text-primary">{LIVE_URL}</code>
+                </p>
               </div>
             )}
 

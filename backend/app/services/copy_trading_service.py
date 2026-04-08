@@ -132,6 +132,7 @@ async def create_session(
         dry_run=req.dry_run,
         copy_amount_usd=req.copy_amount_usd,
         target_politician_id=req.target_politician_id,
+        credential_id=req.credential_id,
     )
 
     # Resolve politician name for display
@@ -146,7 +147,12 @@ async def create_session(
     # Seed existing trades so they are never bulk-copied
     await _seed_existing_trades(session, all_trades, db)
 
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        logger.error("create_session commit failed: %s", exc)
+        raise
     await db.refresh(session)
     logger.info(
         "Created copy-trading session id=%d user=%d politician=%s dry_run=%s",
@@ -174,8 +180,25 @@ async def _seed_existing_trades(
                 return
             trades_to_seed = get_politician_trades(best.politician_id, all_trades)
 
-        now = datetime.now(timezone.utc)
+        # Deduplicate by trade_id — Quiver can return duplicate records for the same event
+        seen: set[str] = set()
+        unique_trades: list[PoliticianTrade] = []
         for t in trades_to_seed:
+            if t.trade_id not in seen:
+                seen.add(t.trade_id)
+                unique_trades.append(t)
+
+        # Skip trade_ids already persisted for this user (e.g. from a prior session)
+        existing_result = await db.execute(
+            select(CopiedPoliticianTrade.trade_id).where(
+                CopiedPoliticianTrade.user_id == session.user_id
+            )
+        )
+        already_in_db: set[str] = {row[0] for row in existing_result}
+        new_trades = [t for t in unique_trades if t.trade_id not in already_in_db]
+
+        now = datetime.now(timezone.utc)
+        for t in new_trades:
             row = CopiedPoliticianTrade(
                 session_id=session.id,
                 user_id=session.user_id,
@@ -198,7 +221,8 @@ async def _seed_existing_trades(
             )
             db.add(row)
         logger.info(
-            "Seeded %d pre-existing trades for session id=%d", len(trades_to_seed), session.id
+            "Seeded %d pre-existing trades for session id=%d (skipped %d duplicates)",
+            len(new_trades), session.id, len(trades_to_seed) - len(new_trades),
         )
     except Exception as exc:
         logger.warning("Seeding failed for session id=%d: %s", session.id, exc)
@@ -239,14 +263,22 @@ async def _process_one_session(
     all_trades: list[PoliticianTrade],
     db: AsyncSession,
 ) -> None:
-    # Load broker credential for this user
-    cred_result = await db.execute(
-        select(BrokerCredential).where(
-            BrokerCredential.user_id == session.user_id,
-            BrokerCredential.provider == "alpaca",
-            BrokerCredential.is_active == True,
+    # Load broker credential for this user — prefer pinned credential_id if set
+    if session.credential_id:
+        cred_result = await db.execute(
+            select(BrokerCredential).where(
+                BrokerCredential.id == session.credential_id,
+                BrokerCredential.user_id == session.user_id,
+            )
         )
-    )
+    else:
+        cred_result = await db.execute(
+            select(BrokerCredential).where(
+                BrokerCredential.user_id == session.user_id,
+                BrokerCredential.provider == "alpaca",
+                BrokerCredential.is_active == True,
+            )
+        )
     cred = cred_result.scalars().first()
     if cred is None:
         logger.warning(

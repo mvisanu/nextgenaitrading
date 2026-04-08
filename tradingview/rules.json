@@ -1,0 +1,489 @@
+{
+  "watchlist": ["BTCUSD", "ETHUSD", "SOLUSD"],
+  "default_timeframe": "240",
+
+  "bias_criteria": {
+    "bullish": [
+      "Ribbon direction is up (bullish colour)",
+      "Price is above the 20 EMA on the 4H",
+      "RSI is below 60 (room to run)"
+    ],
+    "bearish": [
+      "Ribbon direction is down (bearish colour)",
+      "Price is below the 20 EMA on the 4H",
+      "RSI is above 40 (room to drop)"
+    ],
+    "neutral": [
+      "Ribbon is flat or mixed",
+      "Price is chopping around the 20 EMA",
+      "RSI is between 45 and 55"
+    ]
+  },
+
+  "risk_rules": [
+    "Only take trades where R:R is at least 1:2",
+    "No trading in the first 15 minutes of the NY session open",
+    "Maximum 2 open positions at once",
+    "If I have 2 losing trades in a row, stop for the day"
+  ],
+  "meta": {
+    "title": "Elite BTC Trader Strategy Rules",
+    "description": "Publicly documented strategies, indicators and rules from 5 top Bitcoin traders",
+    "compiled": "2026-04-05",
+    "btc_live_snapshot": {
+      "price": 66842.15,
+      "bias_weekly": "Bearish",
+      "bias_daily": "Bearish",
+      "bias_4h": "Bearish",
+      "ema200_daily": 84259.08,
+      "rsi_1h": 40.95,
+      "vix": 23.87,
+      "note": "Price below all major EMAs. Death cross active. Wait for reversal confirmation."
+    }
+  },
+
+  "traders": [
+    {
+      "id": "van_de_poppe",
+      "name": "Michaël van de Poppe",
+      "alias": "CryptoMichNL",
+      "style": "Swing Trader",
+      "preferred_timeframes": ["1W", "1D", "4H", "1H"],
+
+      "indicators": {
+        "emas": [
+          { "period": 21, "role": "Short-term momentum", "color": "orange" },
+          { "period": 50, "role": "Intermediate trend", "color": "blue" },
+          { "period": 200, "role": "Macro trend dividing line", "color": "red" }
+        ],
+        "fibonacci": {
+          "golden_pocket": {
+            "low": 0.618,
+            "high": 0.65,
+            "description": "Primary buy zone on pullbacks in uptrend"
+          },
+          "key_levels": [0.236, 0.382, 0.5, 0.618, 0.65, 0.786, 1.0],
+          "tp_extensions": [1.272, 1.618],
+          "invalidation": 0.786
+        },
+        "rsi": {
+          "period": 14,
+          "overbought": 70,
+          "oversold": 30,
+          "usage": "Momentum filter. Entry when RSI 40-60 at Golden Pocket. Bullish divergence on 4H = confirmation."
+        },
+        "macd": {
+          "fast": 12,
+          "slow": 26,
+          "signal": 9,
+          "usage": "Secondary confirmation only. Bullish crossover confirms long bias."
+        }
+      },
+
+      "entry_rules": [
+        "Price retraces into 0.618-0.65 Fibonacci Golden Pocket",
+        "Golden Pocket aligns with EMA 21 or EMA 50 (confluence)",
+        "Bullish reversal candle at zone (engulfing, hammer, or pin bar)",
+        "Volume expansion on reversal candle",
+        "RSI between 40-60 at entry (not deeply oversold = not a knife catch)"
+      ],
+
+      "exit_rules": [
+        "Scale out 50% at 0.786 recovery and prior swing high",
+        "Scale out another portion at Fib 1.272 extension",
+        "Let final portion run to 1.618 extension"
+      ],
+
+      "stop_loss": {
+        "placement": "1-2% below the 0.786 Fibonacci level",
+        "logic": "A confirmed close below 0.786 fully invalidates the retracement setup",
+        "max_risk_per_trade_pct": 2
+      },
+
+      "key_rules_summary": [
+        "EMA 200 weekly = macro bull/bear dividing line",
+        "Golden Pocket (0.618-0.65) is the ONLY high-probability buy zone",
+        "Never buy into falling RSI below 30 — that is a breakdown, not a correction",
+        "Trail stop to EMA 21 once in significant profit"
+      ]
+    },
+
+    {
+      "id": "scott_melker",
+      "name": "Scott Melker",
+      "alias": "Wolf of All Streets",
+      "style": "Swing Trader — Minimalist",
+      "preferred_timeframes": ["1M", "1W", "1D", "4H"],
+
+      "philosophy": "Less is more. TA is a risk management tool, not a crystal ball. Every trade needs a clean invalidation before entry.",
+
+      "indicators": {
+        "emas": [
+          {
+            "period": 200,
+            "role": "Primary macro bull/bear line",
+            "color": "red"
+          },
+          {
+            "period": 8,
+            "role": "Fibonacci EMA (Melker custom set)",
+            "color": "lime"
+          },
+          { "period": 21, "role": "Fibonacci EMA", "color": "orange" },
+          { "period": 55, "role": "Fibonacci EMA", "color": "blue" }
+        ],
+        "rsi": {
+          "period": 14,
+          "overbought": 70,
+          "oversold": 30,
+          "primary_usage": "DIVERGENCE — bullish divergence at support = primary entry signal",
+          "key_rule": "RSI divergence at a pre-identified support zone is his highest-conviction setup"
+        },
+        "macd": {
+          "fast": 12,
+          "slow": 26,
+          "signal": 9,
+          "usage": "Secondary direction confirmation. Not a primary entry trigger."
+        },
+        "support_resistance": {
+          "type": "Horizontal levels",
+          "rule": "Fibonacci levels are ONLY actionable when they align with horizontal S/R — pure confluence"
+        }
+      },
+
+      "entry_rules": [
+        "Price reaches pre-identified horizontal support zone",
+        "RSI divergence present at that support (price lower low, RSI higher low)",
+        "Price is above EMA 200 for any long setup",
+        "Clean stop-loss invalidation level must be identifiable BEFORE entry — if you can't identify the stop, don't trade"
+      ],
+
+      "exit_rules": [
+        "Prior swing high or horizontal resistance = TP1",
+        "Fibonacci extension 1.272 = TP2",
+        "Fibonacci extension 1.618 = TP3",
+        "Scale out at each resistance zone — never try to pick the exact top"
+      ],
+
+      "stop_loss": {
+        "placement": "Just below the support zone / below the swing low that defines the trade",
+        "philosophy": "The 'clean invalidation' is non-negotiable. If no clean stop exists, skip the trade.",
+        "max_risk_per_trade_pct": 2
+      },
+
+      "portfolio_allocation": {
+        "long_term_btc_eth": "60-70%",
+        "cash_reserve": "15%",
+        "active_trading": "15%"
+      },
+
+      "key_rules_summary": [
+        "EMA 200 daily = the only line that matters for macro bias",
+        "RSI divergence at structure = highest-conviction entry",
+        "No clean invalidation level = no trade",
+        "50/200 EMA Golden Cross on daily = major bull signal",
+        "50/200 EMA Death Cross on daily = move to cash or short"
+      ]
+    },
+
+    {
+      "id": "crypto_face",
+      "name": "Crypto Face",
+      "alias": "CryptoFace / Cactus",
+      "style": "Intraday Day Trader / Scalper",
+      "preferred_timeframes": ["5m", "15m", "1H", "4H"],
+
+      "indicators": {
+        "vwap": {
+          "type": "Session VWAP (resets daily)",
+          "role": "PRIMARY directional anchor — most important indicator in his toolkit",
+          "rules": [
+            "Price above VWAP = bullish intraday bias — only look for LONGS",
+            "Price below VWAP = bearish intraday bias — only look for SHORTS",
+            "VWAP = the mean-reversion target and dynamic S/R level",
+            "Do NOT take a long if price is significantly below VWAP"
+          ]
+        },
+        "emas": [
+          {
+            "period": 9,
+            "role": "Short-term momentum ribbon",
+            "color": "yellow"
+          },
+          {
+            "period": 21,
+            "role": "Short-term momentum ribbon",
+            "color": "orange"
+          },
+          { "period": 50, "role": "1H context level", "color": "blue" },
+          { "period": 200, "role": "4H/1H context level", "color": "red" }
+        ],
+        "volume": {
+          "role": "PRIMARY confirming indicator alongside VWAP",
+          "rules": [
+            "Volume spike on VWAP breakout = valid breakout",
+            "Low volume on VWAP retest = weak signal — avoid",
+            "Volume dry-up during consolidation = compression before move",
+            "Compare current volume vs 20-period average"
+          ]
+        },
+        "rsi": {
+          "period": 14,
+          "overbought": 70,
+          "oversold": 30,
+          "usage": "Momentum filter. Long when RSI pulls back to 40-50. Short when RSI rises to 50-60 and rolls over."
+        },
+        "macd": {
+          "fast": 12,
+          "slow": 26,
+          "signal": 9,
+          "usage": "Histogram direction confirms trade bias. Positive and rising = long. Negative and falling = short."
+        }
+      },
+
+      "entry_rules": {
+        "long": [
+          "Price pulls back to VWAP from above (uptrend session)",
+          "9 EMA is above 21 EMA (confirming bullish momentum)",
+          "Volume contracts on the pullback (healthy retest, not breakdown)",
+          "RSI pulls back to 40-50 zone",
+          "Bullish reversal candle forms at VWAP"
+        ],
+        "short": [
+          "Price bounces up to VWAP from below (downtrend session)",
+          "9 EMA is below 21 EMA",
+          "Volume expands on the bounce (distribution)",
+          "RSI rises to 50-60 and rolls over"
+        ]
+      },
+
+      "exit_rules": [
+        "Previous swing high/low = primary TP",
+        "Opposite VWAP standard deviation band = TP target",
+        "Scale 50% at first resistance, trail remainder",
+        "Minimum 2:1 risk-reward on every trade"
+      ],
+
+      "stop_loss": {
+        "placement": "Below VWAP for longs; above VWAP for shorts. 0.5-1% below entry candle low.",
+        "invalidation": "Clean close back through VWAP in wrong direction = immediate exit"
+      },
+
+      "key_rules_summary": [
+        "VWAP position determines trade direction for the entire session",
+        "9/21 EMA crossover on 5m = primary momentum signal",
+        "Volume must confirm the move — no volume = no trade",
+        "Minimum 2:1 R:R on every scalp"
+      ]
+    },
+
+    {
+      "id": "tone_vays",
+      "name": "Tone Vays",
+      "alias": "ToneVays",
+      "background": "Former Wall Street derivatives trader (Bear Stearns, JP Morgan)",
+      "style": "Position Trader — Weekly/Daily timeframes only",
+      "preferred_timeframes": ["1W", "1D"],
+
+      "important_note": "Tone Vays is NOT a day trader. He trades multi-week to multi-month swings on weekly charts.",
+
+      "indicators": {
+        "td_sequential": {
+          "name": "TI Indicator (Time Indicator) — custom built, inspired by Tom DeMark TD Sequential",
+          "setup_count": "9 consecutive closes. Setup 9 = potential reversal zone.",
+          "countdown": "After Setup 9, Countdown 1-13 begins. Countdown 13 = full exhaustion, high-probability reversal.",
+          "perfected_9": "Bar 8 or 9 closes at/beyond prior high (buy setup) = stronger signal",
+          "primary_timeframe": "Weekly chart — most reliable",
+          "rule": "TD9/Countdown13 does NOT mean blindly trade. Used within a confluence framework.",
+          "modes": ["Sequential", "Aggressive", "Combo"]
+        },
+        "rsi": {
+          "period": 14,
+          "primary_usage": "DIVERGENCE — his most documented usage",
+          "overbought": 70,
+          "oversold": 30,
+          "rules": [
+            "Bullish divergence (price lower low, RSI higher low) + TD Countdown 13 = max conviction long",
+            "Bearish divergence (price higher high, RSI lower high) + TD9 = max conviction short/exit",
+            "RSI at 40-60 normal levels with MACD confluence = buying opportunity"
+          ]
+        },
+        "macd": {
+          "fast": 12,
+          "slow": 26,
+          "signal": 9,
+          "usage": "DIVERGENCE co-indicator. MACD + RSI BOTH showing divergence = 'very powerful message'",
+          "key_rule": "MACD and RSI divergence together = highest conviction signal"
+        },
+        "chaikin_money_flow": {
+          "period": 20,
+          "role": "Third primary indicator alongside RSI and MACD",
+          "rules": [
+            "CMF crossing above zero = bullish money flow confirmation",
+            "CMF below zero = selling pressure active",
+            "CMF above zero + RSI bullish + MACD bullish = 'super bullish confluence'"
+          ]
+        },
+        "ichimoku": {
+          "used": false,
+          "reason": "Tone Vays explicitly does NOT use Ichimoku — describes it as 'too convoluted'"
+        }
+      },
+
+      "entry_rules_high_conviction_long": [
+        "TD Sequential Countdown 13 reached on WEEKLY chart",
+        "RSI shows bullish divergence simultaneously",
+        "MACD shows bullish divergence simultaneously",
+        "CMF crossing above zero or rising toward zero from below",
+        "All four signals aligning = MAXIMUM conviction long"
+      ],
+
+      "entry_rules_partial_signal": [
+        "TD9 + RSI divergence alone = lower confidence trade (still valid)",
+        "Each additional confluence indicator adds conviction"
+      ],
+
+      "exit_rules": [
+        "Opposing TD Sequential setup appears (TD9 on the upside)",
+        "RSI divergence appears at the profit side",
+        "CMF begins declining below zero after a strong run"
+      ],
+
+      "stop_loss": {
+        "placement": "Below the swing low that triggered the TD Sequential signal",
+        "philosophy": "If TD Sequential signal fails (price continues past invalidation), setup is wrong — exit immediately"
+      },
+
+      "key_rules_summary": [
+        "Weekly chart only — daily secondary",
+        "TD Countdown 13 = primary reversal signal",
+        "RSI + MACD + CMF divergence = highest conviction stack",
+        "Never use Ichimoku",
+        "Be patient — waits weeks/months for the perfect setup"
+      ]
+    },
+
+    {
+      "id": "credible_crypto",
+      "name": "Credible Crypto",
+      "alias": "CrediBULL Crypto",
+      "style": "Swing Trader — Elliott Wave purist",
+      "preferred_timeframes": ["1W", "1D", "4H"],
+
+      "indicators": {
+        "elliott_wave": {
+          "primary_framework": true,
+          "description": "Elliott Wave Theory is the FOUNDATION of his entire methodology",
+          "wave_rules": [
+            "Wave 2 cannot retrace below the start of Wave 1 (hard invalidation rule)",
+            "Wave 3 cannot be the shortest impulse wave",
+            "Wave 4 cannot enter Wave 1 price territory"
+          ],
+          "tradeable_waves": {
+            "wave_2": "Best risk/reward entry — buy the Wave 2 correction for Wave 3 ride",
+            "wave_4": "Secondary entry — shallower correction, smaller move target",
+            "wave_3": "Most powerful wave — highest volume, RSI above 50"
+          }
+        },
+        "fibonacci": {
+          "integration": "Used to MEASURE and VALIDATE Elliott Wave levels",
+          "wave_2_entry_zone": {
+            "low": 0.5,
+            "high": 0.618,
+            "deep_valid": 0.786
+          },
+          "wave_4_entry_zone": { "low": 0.236, "high": 0.382 },
+          "wave_3_target": [1.618, 2.618],
+          "wave_5_target": [0.618, 1.0],
+          "key_rule": "Enter Wave 2 correction in the 0.5-0.618 Fib zone with stop below Wave 1 origin"
+        },
+        "rsi": {
+          "period": 14,
+          "overbought": 70,
+          "oversold": 30,
+          "wave_integration": {
+            "wave_3": "RSI reaches 70+ and stays above 50 — confirms Wave 3 is genuine",
+            "wave_5_top": "RSI bearish divergence at Wave 5 high = EXIT signal",
+            "wave_2_4": "RSI drops to 40-55 — normal correction, not breakdown",
+            "key_rule": "RSI bearish divergence on Wave 5 = close the long"
+          }
+        },
+        "volume": {
+          "wave_rules": [
+            "Wave 3 must have the HIGHEST volume of any impulse wave",
+            "Declining volume on Wave 5 (while price makes new high) = exhaustion warning",
+            "Volume expands on breakout from Wave 2/4 consolidation = confirms new impulse"
+          ]
+        },
+        "macd": {
+          "fast": 12,
+          "slow": 26,
+          "signal": 9,
+          "usage": "Secondary confirmation. Positive during impulse waves, flat/negative during corrections."
+        }
+      },
+
+      "entry_rules_wave_2_long": [
+        "Identify completed Wave 1 impulse (5 sub-waves visible)",
+        "Price retraces to 0.5-0.618 Fibonacci zone of Wave 1",
+        "Zone aligns with prior Wave 1 high as support",
+        "RSI normalizes to 40-55 range (healthy correction, not breakdown)",
+        "Volume contracts during Wave 2 pullback",
+        "Bullish reversal candle at Fibonacci zone"
+      ],
+
+      "stop_loss": {
+        "wave_2_trade": "Below the origin point of Wave 1 — any close below fully invalidates the EWT structure",
+        "wave_4_trade": "Below the top of Wave 1 (Wave 4 cannot enter Wave 1 territory)",
+        "philosophy": "Stop placement is RULE-BASED per Elliott Wave rules, NOT a percentage. This defines the risk."
+      },
+
+      "exit_rules": [
+        "RSI bearish divergence at projected Wave 5 / Wave C target zone = close",
+        "Price hits Fibonacci extension targets (1.618 for Wave 3, 0.618-1.0 for Wave 5)",
+        "If wave count is INVALIDATED by a rule violation — exit immediately regardless of P&L"
+      ],
+
+      "key_rules_summary": [
+        "Elliott Wave + Fibonacci is the entire system",
+        "Wave 2 retracement to 0.5-0.618 = best entry zone",
+        "Wave 3 = highest volume, RSI above 50 — ride it",
+        "Wave 5 RSI divergence = exit signal",
+        "EWT rule violations are HARD stops — no exceptions"
+      ]
+    }
+  ],
+
+  "composite_confluence": {
+    "description": "Signals that appear across 3+ traders simultaneously — highest conviction setups",
+    "universal_indicators": {
+      "rsi": {
+        "period": 14,
+        "ob": 70,
+        "os": 30,
+        "note": "Every trader uses standard 14-period RSI with 70/30 thresholds"
+      },
+      "macd": {
+        "fast": 12,
+        "slow": 26,
+        "signal": 9,
+        "note": "Every trader uses standard MACD settings — no custom parameters documented"
+      },
+      "fib_618": {
+        "note": "0.618 Fibonacci level is referenced by ALL five traders as key support/resistance"
+      }
+    },
+    "highest_conviction_long_checklist": [
+      "Price above EMA 200 (Melker + van de Poppe)",
+      "Price in Fibonacci Golden Pocket 0.618-0.65 (van de Poppe)",
+      "Price above VWAP (Crypto Face)",
+      "RSI bullish divergence (Melker + Tone Vays + Credible Crypto)",
+      "MACD bullish divergence (Tone Vays)",
+      "TD Sequential buy count approaching 9 on daily (Tone Vays)",
+      "CMF rising toward / crossing above zero (Tone Vays)",
+      "EMA 9 crossing above EMA 21 (Crypto Face)",
+      "Elliott Wave 2 or 4 correction completing at Fib zone (Credible Crypto)",
+      "Volume contracting on pullback then expanding on reversal (Crypto Face + Credible Crypto)"
+    ]
+  }
+}

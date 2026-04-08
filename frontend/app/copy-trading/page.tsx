@@ -51,8 +51,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { copyTradingApi } from "@/lib/copy-trading-api";
+import { brokerApi } from "@/lib/api";
 import { formatCurrency, formatDateTime, getErrorMessage, cn } from "@/lib/utils";
 import type {
+  BrokerCredential,
   CopiedTradeOut,
   CopyTradingSessionOut,
   CreateCopySessionRequest,
@@ -336,6 +338,7 @@ export default function CopyTradingPage() {
 
   const [copyAmount, setCopyAmount] = useState("300");
   const [selectedPolitician, setSelectedPolitician] = useState<string>("auto");
+  const [credentialId, setCredentialId] = useState<string>("");
   const [dryRun, setDryRun] = useState(true);
   const [liveConfirmOpen, setLiveConfirmOpen] = useState(false);
   const [liveConfirmed, setLiveConfirmed] = useState(false);
@@ -345,6 +348,12 @@ export default function CopyTradingPage() {
   useEffect(() => {
     setInstanceId("CT_UNIT_" + Math.floor(Math.random() * 90 + 10));
   }, []);
+
+  const { data: brokerCredentials = [], isLoading: brokersLoading } = useQuery<BrokerCredential[]>({
+    queryKey: ["broker", "credentials"],
+    queryFn: brokerApi.list,
+    enabled: !!user,
+  });
 
   const { data: rankings = [], isLoading: rankingsLoading } = useQuery<PoliticianRankingOut[]>({
     queryKey: ["copy-trading", "rankings"],
@@ -393,13 +402,14 @@ export default function CopyTradingPage() {
   function resetForm() {
     setCopyAmount("300");
     setSelectedPolitician("auto");
+    setCredentialId("");
     setDryRun(true);
   }
 
   const isFormValid = useMemo(() => {
     const amount = parseFloat(copyAmount);
-    return !isNaN(amount) && amount > 0;
-  }, [copyAmount]);
+    return !isNaN(amount) && amount > 0 && credentialId !== "";
+  }, [copyAmount, credentialId]);
 
   function handleActivate() {
     if (!dryRun) {
@@ -414,6 +424,7 @@ export default function CopyTradingPage() {
       copy_amount_usd: parseFloat(copyAmount),
       dry_run: dryRun,
       target_politician_id: selectedPolitician === "auto" ? null : selectedPolitician,
+      credential_id: credentialId ? parseInt(credentialId, 10) : null,
     };
     createSession(payload);
   }
@@ -550,6 +561,32 @@ export default function CopyTradingPage() {
                       {rankings.map((r) => (
                         <SelectItem key={r.politician_id} value={r.politician_id}>
                           {r.politician_name} — {r.win_rate.toFixed(0)}% win · +{r.avg_excess_return.toFixed(1)}% vs SPY
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <div>
+                <Label className="text-2xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+                  Broker Account
+                </Label>
+                {brokersLoading ? (
+                  <Skeleton className="h-9 w-full" />
+                ) : brokerCredentials.length === 0 ? (
+                  <p className="text-2xs text-destructive">
+                    No broker credentials saved. Add them in Profile &rarr; Credentials.
+                  </p>
+                ) : (
+                  <Select value={credentialId} onValueChange={setCredentialId}>
+                    <SelectTrigger className="bg-surface-lowest border-border text-foreground">
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {brokerCredentials.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.profile_name} ({c.provider})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -708,6 +745,12 @@ export default function CopyTradingPage() {
                     ? "Auto-ranked"
                     : rankings.find((r) => r.politician_id === selectedPolitician)
                         ?.politician_name ?? selectedPolitician}
+                </span>
+                <span className="text-muted-foreground">Account</span>
+                <span className="text-foreground font-bold truncate">
+                  {brokerCredentials.find((c) => String(c.id) === credentialId)?.profile_name ||
+                   brokerCredentials.find((c) => String(c.id) === credentialId)?.provider ||
+                   "—"}
                 </span>
               </div>
             </div>

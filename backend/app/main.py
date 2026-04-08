@@ -242,6 +242,8 @@ from app.api.v1.stream import router as stream_router
 # trailing stop bot
 from app.api.trailing_bot import router as trailing_bot_router
 from app.api.copy_trading import router as copy_trading_router
+# wheel strategy bot
+from app.api.wheel_bot import router as wheel_bot_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -272,6 +274,7 @@ app.include_router(stream_router)
 # trailing stop bot
 app.include_router(trailing_bot_router, prefix="/api/v1")
 app.include_router(copy_trading_router, prefix="/api/v1")
+app.include_router(wheel_bot_router, prefix="/api/v1")
 
 # Test-only utilities (only mounted in debug mode)
 if settings.debug:

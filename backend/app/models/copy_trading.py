@@ -25,6 +25,9 @@ class CopyTradingSession(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    credential_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("broker_credentials.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class CopiedPoliticianTrade(Base):

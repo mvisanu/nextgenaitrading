@@ -43,6 +43,7 @@ class CredentialOut(BaseModel):
     profile_name: str = Field(description="Human-readable profile name")
     api_key_masked: str = Field(description="Masked API key (last 4 chars visible)")
     paper_trading: bool = Field(description="Whether paper trading is enabled")
+    base_url: str | None = Field(default=None, description="Custom broker endpoint URL")
     is_active: bool = Field(description="Whether credential is active")
     created_at: datetime = Field(description="Creation timestamp")
     updated_at: datetime = Field(description="Last update timestamp")
@@ -61,6 +62,7 @@ class CredentialOut(BaseModel):
             profile_name=cred.profile_name,
             api_key_masked="****(encrypted)",
             paper_trading=cred.paper_trading,
+            base_url=cred.base_url,
             is_active=cred.is_active,
             created_at=cred.created_at,
             updated_at=cred.updated_at,

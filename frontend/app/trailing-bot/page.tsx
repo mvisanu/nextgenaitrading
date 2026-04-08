@@ -3,10 +3,7 @@
 /**
  * /trailing-bot — Trailing Stop Bot (Sovereign Terminal design)
  *
- * Follows the "Sovereign Terminal" design system from /auto-buy:
- * - Terminal-style header with engine instance + status/mode badges
- * - Form section: symbol, qty, floor, broker, ladder rules, dry-run toggle
- * - Session history cards with cancel actions and full state breakdown
+ * UX: dollar-based entry + auto floor% + ladder rules by drop% and dollar amount.
  */
 
 import { useEffect, useState, useMemo } from "react";
@@ -25,10 +22,9 @@ import {
   Layers,
   Activity,
   StopCircle,
-  PlusCircle,
   DollarSign,
-  Hash,
   Cpu,
+  Percent,
 } from "lucide-react";
 import { AppShell, useAuth } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +63,7 @@ import type {
   BrokerCredential,
 } from "@/types";
 
-// ─── Section header (matches auto-buy design) ─────────────────────────────────
+// ─── Section header ───────────────────────────────────────────────────────────
 
 function SectionHeader({
   icon: Icon,
@@ -86,7 +82,7 @@ function SectionHeader({
   );
 }
 
-// ─── Status badge config ──────────────────────────────────────────────────────
+// ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
@@ -117,22 +113,22 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-// ─── Ladder row form subcomponent ─────────────────────────────────────────────
+// ─── Ladder row (drop% + dollar amount) ──────────────────────────────────────
 
 interface LadderRowProps {
   index: number;
-  price: string;
-  qty: string;
-  onPriceChange: (val: string) => void;
-  onQtyChange: (val: string) => void;
+  dropPct: string;
+  buyAmount: string;
+  onDropPctChange: (val: string) => void;
+  onBuyAmountChange: (val: string) => void;
 }
 
 function LadderRow({
   index,
-  price,
-  qty,
-  onPriceChange,
-  onQtyChange,
+  dropPct,
+  buyAmount,
+  onDropPctChange,
+  onBuyAmountChange,
 }: LadderRowProps) {
   return (
     <div className="flex items-center gap-2">
@@ -141,31 +137,38 @@ function LadderRow({
       </span>
       <div className="flex-1">
         <Label className="text-3xs uppercase tracking-wider text-muted-foreground mb-1 block">
-          Price
+          Drop %
         </Label>
-        <Input
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="0.00"
-          value={price}
-          onChange={(e) => onPriceChange(e.target.value)}
-          className="bg-surface-lowest border-border text-foreground placeholder:text-muted-foreground/60 text-xs h-8"
-        />
+        <div className="relative">
+          <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
+            type="number"
+            min="1"
+            max="90"
+            step="1"
+            placeholder="20"
+            value={dropPct}
+            onChange={(e) => onDropPctChange(e.target.value)}
+            className="bg-surface-lowest border-border text-foreground placeholder:text-muted-foreground/60 text-xs h-8 pl-7"
+          />
+        </div>
       </div>
       <div className="flex-1">
         <Label className="text-3xs uppercase tracking-wider text-muted-foreground mb-1 block">
-          Qty
+          Buy Amount
         </Label>
-        <Input
-          type="number"
-          min="1"
-          step="1"
-          placeholder="0"
-          value={qty}
-          onChange={(e) => onQtyChange(e.target.value)}
-          className="bg-surface-lowest border-border text-foreground placeholder:text-muted-foreground/60 text-xs h-8"
-        />
+        <div className="relative">
+          <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            placeholder="1000"
+            value={buyAmount}
+            onChange={(e) => onBuyAmountChange(e.target.value)}
+            className="bg-surface-lowest border-border text-foreground placeholder:text-muted-foreground/60 text-xs h-8 pl-7"
+          />
+        </div>
       </div>
     </div>
   );
@@ -231,15 +234,17 @@ function SessionCard({ session, onCancel, isCancelling }: SessionCardProps) {
             Initial Buy
           </p>
           <div className="flex items-baseline gap-1.5 flex-wrap">
-            <span className="text-sm font-black text-foreground font-mono">
-              {session.initial_qty}
+            <span className="text-sm font-black text-green-400 font-mono">
+              {formatCurrency(session.buy_amount_usd)}
             </span>
-            <span className="text-2xs text-muted-foreground">shares</span>
             {session.entry_price !== null && (
               <>
                 <span className="text-2xs text-muted-foreground">@</span>
-                <span className="text-sm font-black text-green-400 font-mono">
+                <span className="text-sm font-black text-foreground font-mono">
                   {formatCurrency(session.entry_price)}
+                </span>
+                <span className="text-2xs text-muted-foreground">
+                  = {session.initial_qty.toFixed(4)} units
                 </span>
               </>
             )}
@@ -258,7 +263,7 @@ function SessionCard({ session, onCancel, isCancelling }: SessionCardProps) {
           </p>
           <div className="flex items-center gap-3 flex-wrap">
             <div>
-              <p className="text-3xs text-muted-foreground">Hard Floor</p>
+              <p className="text-3xs text-muted-foreground">Hard Floor ({session.floor_pct}%)</p>
               <p className="text-xs font-black text-red-400 font-mono">
                 {formatCurrency(session.floor_price)}
               </p>
@@ -296,19 +301,19 @@ function SessionCard({ session, onCancel, isCancelling }: SessionCardProps) {
             <div>
               <p className="text-3xs text-muted-foreground">Trigger</p>
               <p className="text-xs font-bold text-foreground font-mono">
-                {(session.trailing_trigger_pct * 100).toFixed(1)}%
+                +{session.trailing_trigger_pct.toFixed(1)}%
               </p>
             </div>
             <div>
               <p className="text-3xs text-muted-foreground">Trail</p>
               <p className="text-xs font-bold text-foreground font-mono">
-                {(session.trailing_trail_pct * 100).toFixed(1)}%
+                {session.trailing_trail_pct.toFixed(1)}% below
               </p>
             </div>
             <div>
               <p className="text-3xs text-muted-foreground">Step</p>
               <p className="text-xs font-bold text-foreground font-mono">
-                {(session.trailing_step_pct * 100).toFixed(1)}%
+                every +{session.trailing_step_pct.toFixed(1)}%
               </p>
             </div>
           </div>
@@ -336,14 +341,17 @@ function SessionCard({ session, onCancel, isCancelling }: SessionCardProps) {
                 <span className="text-3xs font-black text-primary">
                   {String(i + 1).padStart(2, "0")}
                 </span>
+                <span className="text-2xs text-amber-400 font-bold font-mono">
+                  -{rule.drop_pct > 0 ? rule.drop_pct.toFixed(0) : "?"}%
+                </span>
                 <span className="text-2xs font-mono text-foreground">
                   {formatCurrency(rule.price)}
                 </span>
                 <span className="text-2xs text-muted-foreground">
-                  {rule.qty} sh
+                  {rule.buy_amount_usd > 0 ? formatCurrency(rule.buy_amount_usd) : `${rule.qty.toFixed(4)} units`}
                 </span>
                 {rule.order_id && (
-                  <span className="text-3xs font-mono text-muted-foreground truncate max-w-[100px]">
+                  <span className="text-3xs font-mono text-muted-foreground truncate max-w-[80px]">
                     {rule.order_id}
                   </span>
                 )}
@@ -369,20 +377,20 @@ export default function TrailingBotPage() {
 
   // ── Form state ───────────────────────────────────────────────────────────────
   const [symbol, setSymbol] = useState("");
-  const [initialQty, setInitialQty] = useState("");
-  const [floorPrice, setFloorPrice] = useState("");
+  const [buyAmount, setBuyAmount] = useState("");
+  const [floorPct, setFloorPct] = useState("10");
   const [credentialId, setCredentialId] = useState<string>("");
   const [dryRun, setDryRun] = useState(true);
   const [liveConfirmOpen, setLiveConfirmOpen] = useState(false);
   const [liveConfirmed, setLiveConfirmed] = useState(false);
 
-  // Two ladder rows
+  // Two ladder rows: drop % + dollar amount
   const [ladder, setLadder] = useState([
-    { price: "", qty: "" },
-    { price: "", qty: "" },
+    { dropPct: "20", buyAmount: "1000" },
+    { dropPct: "30", buyAmount: "2000" },
   ]);
 
-  // SSR-safe instance ID (hydration guard)
+  // SSR-safe instance ID
   const [instanceId, setInstanceId] = useState<string | null>(null);
   useEffect(() => {
     setInstanceId("BOT_UNIT_" + Math.floor(Math.random() * 90 + 10));
@@ -436,45 +444,43 @@ export default function TrailingBotPage() {
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function resetForm() {
     setSymbol("");
-    setInitialQty("");
-    setFloorPrice("");
+    setBuyAmount("");
+    setFloorPct("10");
     setCredentialId("");
     setDryRun(true);
     setLadder([
-      { price: "", qty: "" },
-      { price: "", qty: "" },
+      { dropPct: "20", buyAmount: "1000" },
+      { dropPct: "30", buyAmount: "2000" },
     ]);
   }
 
-  function updateLadderPrice(index: number, val: string) {
+  function updateLadderDropPct(index: number, val: string) {
     setLadder((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], price: val };
+      next[index] = { ...next[index], dropPct: val };
       return next;
     });
   }
 
-  function updateLadderQty(index: number, val: string) {
+  function updateLadderBuyAmount(index: number, val: string) {
     setLadder((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], qty: val };
+      next[index] = { ...next[index], buyAmount: val };
       return next;
     });
   }
 
   const isFormComplete = useMemo(() => {
     const sym = symbol.trim();
-    const qty = parseFloat(initialQty);
-    const floor = parseFloat(floorPrice);
+    const amount = parseFloat(buyAmount);
+    const floor = parseFloat(floorPct);
     return (
       sym.length > 0 &&
-      !isNaN(qty) &&
-      qty > 0 &&
-      !isNaN(floor) &&
-      floor > 0 &&
+      !isNaN(amount) && amount > 0 &&
+      !isNaN(floor) && floor > 0 && floor <= 50 &&
       credentialId !== ""
     );
-  }, [symbol, initialQty, floorPrice, credentialId]);
+  }, [symbol, buyAmount, floorPct, credentialId]);
 
   // ── Submit handler ────────────────────────────────────────────────────────────
   function handleDeploy() {
@@ -487,18 +493,22 @@ export default function TrailingBotPage() {
 
   function submitDeploy() {
     const validLadder = ladder
-      .filter((row) => row.price !== "" && row.qty !== "")
+      .filter((row) => row.dropPct !== "" && row.buyAmount !== "")
       .map((row) => ({
-        price: parseFloat(row.price),
-        qty: parseFloat(row.qty),
+        drop_pct: parseFloat(row.dropPct),
+        buy_amount_usd: parseFloat(row.buyAmount),
       }))
-      .filter((row) => !isNaN(row.price) && !isNaN(row.qty) && row.qty > 0);
+      .filter(
+        (row) =>
+          !isNaN(row.drop_pct) && row.drop_pct > 0 &&
+          !isNaN(row.buy_amount_usd) && row.buy_amount_usd > 0
+      );
 
     const payload: TrailingBotSetupRequest = {
       credential_id: parseInt(credentialId, 10),
       symbol: symbol.trim().toUpperCase(),
-      initial_qty: parseFloat(initialQty),
-      floor_price: parseFloat(floorPrice),
+      buy_amount_usd: parseFloat(buyAmount),
+      floor_pct: parseFloat(floorPct),
       ladder_rules: validLadder,
       dry_run: dryRun,
     };
@@ -516,10 +526,10 @@ export default function TrailingBotPage() {
   }
 
   // ── Derived display ───────────────────────────────────────────────────────────
-  const activeSessions = useMemo(() => {
-    return sessions.filter((s) => s.status === "active");
-  }, [sessions]);
-
+  const activeSessions = useMemo(
+    () => sessions.filter((s) => s.status === "active"),
+    [sessions]
+  );
   const engineStatus = activeSessions.length > 0 ? "RUNNING" : "STANDBY";
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -585,14 +595,13 @@ export default function TrailingBotPage() {
                 <p className="text-3xs text-muted-foreground leading-relaxed mt-1">
                   <strong className="text-foreground/70">New to this?</strong>{" "}
                   Keep <em>Dry Run ON</em> — the bot simulates order flow without
-                  placing real trades. Only disable when you understand the
-                  trailing stop mechanics.
+                  placing real trades.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Symbol + Shares row */}
+          {/* Symbol + Buy Amount */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-2xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
@@ -601,47 +610,74 @@ export default function TrailingBotPage() {
               <Input
                 placeholder="AAPL"
                 value={symbol}
-                onChange={(e) =>
-                  setSymbol(e.target.value.toUpperCase())
-                }
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
                 className="bg-surface-lowest border-border text-foreground placeholder:text-primary/40 font-mono uppercase"
               />
             </div>
             <div>
               <Label className="text-2xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                Shares to Buy
+                Buy Amount
               </Label>
-              <Input
-                type="number"
-                min="1"
-                step="1"
-                placeholder="100"
-                value={initialQty}
-                onChange={(e) => setInitialQty(e.target.value)}
-                className="bg-surface-lowest border-border text-foreground placeholder:text-muted-foreground/60 font-mono"
-              />
+              <div className="relative">
+                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="1000"
+                  value={buyAmount}
+                  onChange={(e) => setBuyAmount(e.target.value)}
+                  className="bg-surface-lowest border-border text-foreground placeholder:text-muted-foreground/60 pl-7 font-mono"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Floor price */}
+          {/* Floor % — auto-calculated hint */}
           <div>
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
-              Hard Floor Price (stop loss)
+              Hard Floor — Stop Loss %
             </Label>
             <div className="relative">
-              <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                value={floorPrice}
-                onChange={(e) => setFloorPrice(e.target.value)}
+                min="1"
+                max="50"
+                step="1"
+                placeholder="10"
+                value={floorPct}
+                onChange={(e) => setFloorPct(e.target.value)}
                 className="bg-surface-lowest border-border text-foreground placeholder:text-muted-foreground/60 pl-7 font-mono"
               />
             </div>
             <p className="text-3xs text-muted-foreground mt-1">
-              Bot will exit if price drops to or below this level.
+              Sell everything if price drops <strong className="text-foreground/70">{floorPct || "10"}%</strong> below your fill price. Stop-loss order placed automatically at fill.
+            </p>
+          </div>
+
+          {/* Trailing rules info block */}
+          <div className="bg-surface-lowest border border-border/50 p-3">
+            <p className="text-2xs font-bold uppercase tracking-wider text-foreground mb-2 flex items-center gap-1.5">
+              <Shield className="h-3 w-3 text-primary" />
+              Auto Trailing Rules
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <p className="text-3xs text-muted-foreground">Trigger</p>
+                <p className="text-xs font-bold text-green-400 font-mono">+10%</p>
+              </div>
+              <div>
+                <p className="text-3xs text-muted-foreground">Trail</p>
+                <p className="text-xs font-bold text-amber-400 font-mono">5% below</p>
+              </div>
+              <div>
+                <p className="text-3xs text-muted-foreground">Step</p>
+                <p className="text-xs font-bold text-foreground font-mono">every +5%</p>
+              </div>
+            </div>
+            <p className="text-3xs text-muted-foreground mt-2 leading-relaxed">
+              When price rises 10%, the floor advances to 5% below current price. It only moves up, never down.
             </p>
           </div>
 
@@ -675,27 +711,27 @@ export default function TrailingBotPage() {
 
           {/* Ladder-in rules */}
           <div className="bg-surface-lowest p-3">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-1">
               <Layers className="h-3 w-3 text-primary" />
               <p className="text-2xs font-bold uppercase tracking-wider text-foreground">
                 Ladder-In Rules (optional)
               </p>
             </div>
+            <p className="text-3xs text-muted-foreground mb-3">
+              Buy more at set drop levels. Price calculated automatically from your fill.
+            </p>
             <div className="flex flex-col gap-3">
               {ladder.map((row, i) => (
                 <LadderRow
                   key={i}
                   index={i}
-                  price={row.price}
-                  qty={row.qty}
-                  onPriceChange={(val) => updateLadderPrice(i, val)}
-                  onQtyChange={(val) => updateLadderQty(i, val)}
+                  dropPct={row.dropPct}
+                  buyAmount={row.buyAmount}
+                  onDropPctChange={(val) => updateLadderDropPct(i, val)}
+                  onBuyAmountChange={(val) => updateLadderBuyAmount(i, val)}
                 />
               ))}
             </div>
-            <p className="text-3xs text-muted-foreground mt-2">
-              Leave rows empty to skip. Bot will add shares at each price level.
-            </p>
           </div>
 
           {/* Dry-run toggle */}
@@ -794,9 +830,7 @@ export default function TrailingBotPage() {
       <Dialog
         open={liveConfirmOpen}
         onOpenChange={(open) => {
-          if (!open) {
-            setLiveConfirmed(false);
-          }
+          if (!open) setLiveConfirmed(false);
           setLiveConfirmOpen(open);
         }}
       >
@@ -808,9 +842,8 @@ export default function TrailingBotPage() {
             </DialogTitle>
             <DialogDescription className="text-2xs text-muted-foreground leading-relaxed pt-1">
               You are about to deploy a trailing bot in{" "}
-              <strong className="text-destructive">LIVE mode</strong>. This will
-              place real market and stop orders through your broker. Only proceed
-              if you have tested this setup in dry-run mode first.
+              <strong className="text-destructive">LIVE mode</strong>. Real market
+              and stop orders will be placed through your broker.
             </DialogDescription>
           </DialogHeader>
 
@@ -824,13 +857,13 @@ export default function TrailingBotPage() {
                 <span className="text-foreground font-bold">
                   {symbol.trim().toUpperCase() || "—"}
                 </span>
-                <span className="text-muted-foreground">Shares</span>
-                <span className="text-foreground font-bold">
-                  {initialQty || "—"}
+                <span className="text-muted-foreground">Buy Amount</span>
+                <span className="text-green-400 font-bold">
+                  {buyAmount ? formatCurrency(parseFloat(buyAmount)) : "—"}
                 </span>
-                <span className="text-muted-foreground">Floor</span>
+                <span className="text-muted-foreground">Floor Stop</span>
                 <span className="text-destructive font-bold">
-                  {floorPrice ? formatCurrency(parseFloat(floorPrice)) : "—"}
+                  {floorPct || "10"}% below fill
                 </span>
               </div>
             </div>

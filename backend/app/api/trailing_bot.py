@@ -12,7 +12,7 @@ from app.db.session import get_db
 from app.models.trailing_bot import TrailingBotSession
 from app.models.user import User
 from app.schemas.trailing_bot import TrailingBotSessionOut, TrailingBotSetupRequest
-from app.services.trailing_bot_service import setup_trailing_bot
+from app.services.trailing_bot_service import setup_trailing_bot, _cancel_order_alpaca
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,16 @@ async def setup_bot(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TrailingBotSessionOut:
     """Buy shares at market and set up floor + trailing stop + ladder-in rules."""
-    session = await setup_trailing_bot(payload, db, current_user)
+    try:
+        session = await setup_trailing_bot(payload, db, current_user)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("setup_trailing_bot failed for user %s: %s", current_user.id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Broker order failed. Check credentials and try again.",
+        ) from exc
     return TrailingBotSessionOut.from_orm_session(session)
 
 
@@ -79,6 +88,31 @@ async def cancel_session(
     session = result.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    # Cancel active Alpaca orders before marking session cancelled
+    try:
+        from app.broker.factory import get_broker_client
+        from app.services import credential_service
+
+        cred = await credential_service.get_credential(session.credential_id, db, current_user)
+        broker = get_broker_client(cred)
+
+        if session.stop_order_id:
+            _cancel_order_alpaca(broker, session.stop_order_id, session.dry_run)
+
+        import json as _json
+        ladder_rows = []
+        try:
+            ladder_rows = _json.loads(session.ladder_rules_json or "[]")
+        except _json.JSONDecodeError:
+            pass
+        for row in ladder_rows:
+            order_id = row.get("order_id", "")
+            if order_id:
+                _cancel_order_alpaca(broker, order_id, session.dry_run)
+    except Exception as exc:
+        logger.warning("Could not cancel Alpaca orders for session %d: %s", session_id, exc)
+
     session.status = "cancelled"
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

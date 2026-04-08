@@ -19,7 +19,12 @@ def get_broker_client(
 
     if credential.provider == "alpaca":
         use_paper = paper if paper is not None else credential.paper_trading
-        return AlpacaClient(api_key=api_key, secret_key=secret_key, paper=use_paper)
+        return AlpacaClient(
+            api_key=api_key,
+            secret_key=secret_key,
+            paper=use_paper,
+            base_url=credential.base_url or None,
+        )
     elif credential.provider == "robinhood":
         return RobinhoodClient(api_key=api_key, private_key=secret_key)
     else:

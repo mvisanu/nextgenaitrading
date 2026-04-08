@@ -1,0 +1,223 @@
+//@version=5
+// ============================================================
+// ELITE BTC STRATEGIES -- All-In-One Indicator
+// van de Poppe  -- EMA 21/50/200 + Fibonacci Golden Pocket
+// Scott Melker  -- EMA 200 macro line + RSI Divergence
+// Crypto Face   -- VWAP + EMA 9/21 ribbon
+// Tone Vays     -- TD Sequential
+// Credible Crypto -- Fibonacci + RSI divergence
+// ============================================================
+indicator("Elite BTC - van de Poppe + Melker + CryptoFace + ToneVays + CredibleCrypto", overlay=true, max_bars_back=500, max_labels_count=500)
+
+// ============================================================
+// INPUTS
+// ============================================================
+grp_ema           = "EMAs"
+show_ema9         = input.bool(true,  "EMA 9  (Crypto Face)",       group=grp_ema)
+show_ema21        = input.bool(true,  "EMA 21 (van de Poppe)",      group=grp_ema)
+show_ema50        = input.bool(true,  "EMA 50 (van de Poppe)",      group=grp_ema)
+show_ema200       = input.bool(true,  "EMA 200 (Melker)",           group=grp_ema)
+show_ema55        = input.bool(false, "EMA 55 (Melker Fib EMA)",    group=grp_ema)
+
+grp_vwap          = "VWAP"
+show_vwap         = input.bool(true, "Show VWAP (Crypto Face)",     group=grp_vwap)
+
+grp_fib           = "Fibonacci Golden Pocket"
+show_fib          = input.bool(true, "Show Golden Pocket 0.618-0.65", group=grp_fib)
+fib_lookback      = input.int(50,    "Swing Lookback Bars", minval=10, maxval=300, group=grp_fib)
+show_fib_786      = input.bool(true, "Show 0.786 Invalidation",     group=grp_fib)
+show_fib_50       = input.bool(true, "Show 0.5 Level",              group=grp_fib)
+
+grp_rsi           = "RSI Divergence"
+show_bull_div     = input.bool(true, "Show Bullish RSI Divergence", group=grp_rsi)
+show_bear_div     = input.bool(true, "Show Bearish RSI Divergence", group=grp_rsi)
+rsi_period        = input.int(14,    "RSI Period", minval=5, maxval=30, group=grp_rsi)
+rsi_ob            = input.int(70,    "RSI Overbought",              group=grp_rsi)
+rsi_os            = input.int(30,    "RSI Oversold",                group=grp_rsi)
+div_lookback      = input.int(14,    "Pivot Lookback", minval=3, maxval=30, group=grp_rsi)
+
+grp_td            = "TD Sequential"
+show_td           = input.bool(true, "Show TD Counts (Tone Vays)", group=grp_td)
+show_td9          = input.bool(true, "Highlight TD9 Completion",   group=grp_td)
+
+grp_vis           = "Visuals"
+show_bg           = input.bool(true, "EMA 200 Trend Background",   group=grp_vis)
+show_crosses      = input.bool(true, "EMA 50/200 Golden/Death Cross", group=grp_vis)
+show_ribbon       = input.bool(true, "EMA 9/21 Cross (Crypto Face)", group=grp_vis)
+
+// ============================================================
+// EMA CALCULATIONS
+// ============================================================
+ema9   = ta.ema(close, 9)
+ema21  = ta.ema(close, 21)
+ema50  = ta.ema(close, 50)
+ema55  = ta.ema(close, 55)
+ema200 = ta.ema(close, 200)
+
+plot(ema9,   "EMA 9",   color=show_ema9   ? color.new(color.yellow, 10) : na, linewidth=1)
+plot(ema21,  "EMA 21",  color=show_ema21  ? color.new(color.orange, 10) : na, linewidth=1)
+plot(ema50,  "EMA 50",  color=show_ema50  ? color.new(#4488FF, 10)      : na, linewidth=2)
+plot(ema55,  "EMA 55",  color=show_ema55  ? color.new(color.aqua, 40)   : na, linewidth=1)
+plot(ema200, "EMA 200", color=show_ema200 ? color.new(color.red, 10)    : na, linewidth=3)
+
+// ============================================================
+// TREND BACKGROUND (Melker -- price vs EMA 200)
+// ============================================================
+bull_bias = close > ema200
+bear_bias = close < ema200
+var color bg_col = na
+bg_col := bull_bias ? color.new(color.green, 96) : bear_bias ? color.new(color.red, 96) : na
+bgcolor(show_bg ? bg_col : na, title="EMA200 Trend Background")
+
+// ============================================================
+// VWAP (Crypto Face)
+// ============================================================
+vwap_val = ta.vwap
+plot(vwap_val, "VWAP", color=show_vwap ? color.new(color.fuchsia, 0) : na, linewidth=2)
+
+// ============================================================
+// EMA CROSS SIGNALS
+// ============================================================
+golden_cross = ta.crossover(ema50,  ema200)
+death_cross  = ta.crossunder(ema50, ema200)
+plotshape(golden_cross, "Golden Cross", shape.diamond,   location.belowbar, show_crosses ? color.new(color.yellow, 0) : na, size=size.large)
+plotshape(death_cross,  "Death Cross",  shape.xcross, location.abovebar, show_crosses ? color.new(color.red,    0) : na, size=size.large)
+
+ribbon_bull = ta.crossover(ema9,  ema21)
+ribbon_bear = ta.crossunder(ema9, ema21)
+plotshape(ribbon_bull, "EMA 9/21 Bull", shape.triangleup,   location.belowbar, show_ribbon ? color.new(color.aqua,    20) : na, size=size.tiny)
+plotshape(ribbon_bear, "EMA 9/21 Bear", shape.triangledown, location.abovebar, show_ribbon ? color.new(color.fuchsia, 20) : na, size=size.tiny)
+
+// ============================================================
+// TD SEQUENTIAL BUY/SELL SETUP COUNT (Tone Vays)
+// 9 consecutive closes below close[4] = buy setup
+// 9 consecutive closes above close[4] = sell setup
+// ============================================================
+var int td_buy  = 0
+var int td_sell = 0
+td_buy  := close < close[4] ? math.min(td_buy  + 1, 9) : 0
+td_sell := close > close[4] ? math.min(td_sell + 1, 9) : 0
+
+atr14 = ta.atr(14)
+
+if show_td and td_buy > 0 and td_buy < 9
+    label.new(bar_index, low - atr14 * 0.5, str.tostring(td_buy),
+              color=color.new(color.black, 100), textcolor=color.lime, style=label.style_none, size=size.small)
+
+if show_td and td_sell > 0 and td_sell < 9
+    label.new(bar_index, high + atr14 * 0.5, str.tostring(td_sell),
+              color=color.new(color.black, 100), textcolor=color.red, style=label.style_none, size=size.small)
+
+plotshape(td_buy  == 9, "TD9 Buy",  shape.triangleup,   location.belowbar, show_td9 ? color.new(color.lime, 0) : na, size=size.normal, text="TD9", textcolor=color.lime)
+plotshape(td_sell == 9, "TD9 Sell", shape.triangledown, location.abovebar, show_td9 ? color.new(color.red,  0) : na, size=size.normal, text="TD9", textcolor=color.red)
+
+// ============================================================
+// RSI DIVERGENCE (Melker + Tone Vays + Credible Crypto)
+// All ta.valuewhen() calls at global scope -- no nesting inside if blocks
+// ============================================================
+rsi = ta.rsi(close, rsi_period)
+
+pivot_lo = ta.pivotlow(low,   div_lookback, div_lookback)
+pivot_hi = ta.pivothigh(high, div_lookback, div_lookback)
+
+// RSI and price at last two confirmed pivot lows
+rsi_lo_0   = ta.valuewhen(not na(pivot_lo), rsi[div_lookback],  0)
+rsi_lo_1   = ta.valuewhen(not na(pivot_lo), rsi[div_lookback],  1)
+price_lo_0 = ta.valuewhen(not na(pivot_lo), low[div_lookback],  0)
+price_lo_1 = ta.valuewhen(not na(pivot_lo), low[div_lookback],  1)
+
+// RSI and price at last two confirmed pivot highs
+rsi_hi_0   = ta.valuewhen(not na(pivot_hi), rsi[div_lookback],  0)
+rsi_hi_1   = ta.valuewhen(not na(pivot_hi), rsi[div_lookback],  1)
+price_hi_0 = ta.valuewhen(not na(pivot_hi), high[div_lookback], 0)
+price_hi_1 = ta.valuewhen(not na(pivot_hi), high[div_lookback], 1)
+
+// Bullish: price lower low + RSI higher low (Melker / Tone Vays)
+bull_div = not na(pivot_lo) and price_lo_0 < price_lo_1 and rsi_lo_0 > rsi_lo_1 and rsi_lo_0 < 55
+// Bearish: price higher high + RSI lower high (Credible Crypto Wave 5 exit)
+bear_div = not na(pivot_hi) and price_hi_0 > price_hi_1 and rsi_hi_0 < rsi_hi_1 and rsi_hi_0 > 45
+
+plotshape(bull_div, "Bull RSI Div", shape.labelup,   location.belowbar, show_bull_div ? color.new(color.lime, 10) : na, size=size.small, text="RSI DIV", textcolor=color.white)
+plotshape(bear_div, "Bear RSI Div", shape.labeldown, location.abovebar, show_bear_div ? color.new(color.red,  10) : na, size=size.small, text="RSI DIV", textcolor=color.white)
+
+// ============================================================
+// FIBONACCI GOLDEN POCKET (van de Poppe + Credible Crypto)
+// 0.618-0.65 retracement = primary buy zone
+// ============================================================
+swing_hi = ta.pivothigh(high, fib_lookback, fib_lookback)
+swing_lo = ta.pivotlow(low,   fib_lookback, fib_lookback)
+
+var float last_hi     = na
+var float last_lo     = na
+var float fib_range   = na
+var float gp_top      = na
+var float gp_bot      = na
+var float fib_786_lvl = na
+var float fib_50_lvl  = na
+var float fib_382_lvl = na
+
+if not na(swing_hi)
+    last_hi := swing_hi
+if not na(swing_lo)
+    last_lo := swing_lo
+
+if not na(last_hi) and not na(last_lo)
+    fib_range   := last_hi - last_lo
+    gp_top      := last_hi - fib_range * 0.618
+    gp_bot      := last_hi - fib_range * 0.650
+    fib_786_lvl := last_hi - fib_range * 0.786
+    fib_50_lvl  := last_hi - fib_range * 0.500
+    fib_382_lvl := last_hi - fib_range * 0.382
+
+// Use color=na to hide lines when show_fib is off (valid in Pine v5)
+p_gp_top = plot(gp_top, "GP 0.618", color=show_fib ? color.new(color.yellow, 50) : na, linewidth=1, style=plot.style_linebr)
+p_gp_bot = plot(gp_bot, "GP 0.65",  color=show_fib ? color.new(color.yellow, 50) : na, linewidth=1, style=plot.style_linebr)
+fill(p_gp_top, p_gp_bot, color=show_fib ? color.new(color.yellow, 82) : na, title="Golden Pocket Fill")
+
+plot(fib_786_lvl, "Fib 0.786", color=show_fib and show_fib_786 ? color.new(color.red,  55) : na, linewidth=1, style=plot.style_linebr)
+plot(fib_50_lvl,  "Fib 0.500", color=show_fib and show_fib_50  ? color.new(color.blue, 55) : na, linewidth=1, style=plot.style_linebr)
+plot(fib_382_lvl, "Fib 0.382", color=show_fib ? color.new(color.teal, 55) : na,                   linewidth=1, style=plot.style_linebr)
+
+// ============================================================
+// CONFLUENCE SIGNAL -- price in golden pocket + EMA bull + above VWAP
+// ============================================================
+above_vwap      = close > vwap_val
+ema_bull        = ema9 > ema21 and close > ema50
+in_golden       = not na(gp_top) and not na(gp_bot) and close >= gp_bot and close <= gp_top
+confluence_long = above_vwap and ema_bull and in_golden
+
+plotshape(confluence_long, "Confluence Long", shape.diamond, location.belowbar, color.new(color.yellow, 0), size=size.large, text="BUY", textcolor=color.black)
+
+// ============================================================
+// INFO TABLE -- top-right corner status dashboard
+// ============================================================
+var table info = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 70), border_color=color.new(color.gray, 50), border_width=1)
+
+if barstate.islast
+    ema_pos    = close > ema200    ? "BULL"  : "BEAR"
+    ema_col    = close > ema200    ? color.lime   : color.red
+    vwap_pos   = close > vwap_val  ? "ABOVE" : "BELOW"
+    vwap_col   = close > vwap_val  ? color.lime   : color.red
+    ribbon_pos = ema9 > ema21      ? "BULL"  : "BEAR"
+    ribbon_col = ema9 > ema21      ? color.lime   : color.red
+    rsi_col    = rsi >= rsi_ob     ? color.red    : rsi <= rsi_os ? color.lime : color.gray
+    rsi_txt    = str.tostring(math.round(rsi, 1))
+    td_txt     = td_buy  > 0 ? "BUY "  + str.tostring(td_buy)  + "/9" : td_sell > 0 ? "SELL " + str.tostring(td_sell) + "/9" : "-"
+    td_col     = td_buy  > 0 ? color.lime : td_sell > 0 ? color.red : color.gray
+    conf_txt   = confluence_long   ? "LONG *" : "-"
+    conf_col   = confluence_long   ? color.yellow : color.gray
+
+    table.cell(info, 0, 0, "INDICATOR", text_color=color.gray,  bgcolor=color.new(color.black, 50))
+    table.cell(info, 1, 0, "STATUS",    text_color=color.gray,  bgcolor=color.new(color.black, 50))
+    table.cell(info, 0, 1, "EMA 200",   text_color=color.white, bgcolor=color.new(color.black, 70))
+    table.cell(info, 1, 1, ema_pos,     text_color=ema_col,     bgcolor=color.new(color.black, 70))
+    table.cell(info, 0, 2, "VWAP",      text_color=color.white, bgcolor=color.new(color.black, 70))
+    table.cell(info, 1, 2, vwap_pos,    text_color=vwap_col,    bgcolor=color.new(color.black, 70))
+    table.cell(info, 0, 3, "EMA 9/21",  text_color=color.white, bgcolor=color.new(color.black, 70))
+    table.cell(info, 1, 3, ribbon_pos,  text_color=ribbon_col,  bgcolor=color.new(color.black, 70))
+    table.cell(info, 0, 4, "RSI(14)",   text_color=color.white, bgcolor=color.new(color.black, 70))
+    table.cell(info, 1, 4, rsi_txt,     text_color=rsi_col,     bgcolor=color.new(color.black, 70))
+    table.cell(info, 0, 5, "TD Count",  text_color=color.white, bgcolor=color.new(color.black, 70))
+    table.cell(info, 1, 5, td_txt,      text_color=td_col,      bgcolor=color.new(color.black, 70))
+    table.cell(info, 0, 6, "Confluenc", text_color=color.white, bgcolor=color.new(color.black, 70))
+    table.cell(info, 1, 6, conf_txt,    text_color=conf_col,    bgcolor=color.new(color.black, 70))

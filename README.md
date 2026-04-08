@@ -38,7 +38,9 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Alpaca stream resilience** — 406 connection-limit error (free IEX tier: 1 connection per account) now triggers 60s backoff immediately instead of a 1s retry storm; `_hit_connection_limit` flag detected in message handler, consumed in reconnect loop
 - **Morning Brief page** — daily crypto watchlist TA snapshot at `/morning-brief`; computes EMA-200, RSI-14 (Wilder's EWM), and MACD 12/26/9 from yfinance daily data for BTC/ETH/SOL/XRP/LINK/PEPE; derives Bias and Signal labels; 1-hour in-process cache (single-worker safe); async-safe via `asyncio.to_thread`; auth-protected; sidebar nav link
 - **BTC trailing stop bot** — standalone `btc_trailing_bot.py` executes a $-denominated BTC/USD paper trade via Alpaca with three rules: hard floor (−10% stop loss), trailing floor (activates at +10%, steps every +5%, never moves down), and a 3-level DCA ladder re-entry (−20% → $1k, −30% → $1.5k, −40% → $2k — larger buys at deeper discounts); paired with a 24/7 hourly cloud-scheduled agent that automatically manages stop-limit orders and ladder re-entries on Alpaca's servers
-- **Trailing Stop Bot web page** — full-stack `/trailing-bot` feature (V5): buy any stock at market, set a hard floor stop loss, configure ladder-in limit buys at lower prices, then let an APScheduler background task raise the trailing stop every 5 minutes as the position gains; `TrailingBotSession` DB model tracks all orders + trailing state per user; dry-run default with explicit live-mode confirmation dialog; Sovereign Terminal card UI shows every placed order and active rule with live status badges
+- **Trailing Stop Bot web page (V5)** — full-stack `/trailing-bot` feature: buy any stock at market, set a hard floor stop loss, configure ladder-in limit buys at lower prices, then let an APScheduler background task raise the trailing stop every 5 minutes as the position gains; `TrailingBotSession` DB model tracks all orders + trailing state per user; dry-run default with explicit live-mode confirmation dialog; Sovereign Terminal card UI shows every placed order and active rule with live status badges; live mode enforces whole-share GTC orders, 2dp price rounding, fill-poll before stop placement to avoid wash-trade errors, and full rollback on failure
+- **Politician Copy Trading (V6)** — `/copy-trading` page scrapes Quiver Quantitative congressional trading API (1000 recent disclosures, 5-min cache); ranks politicians by composite score (win rate vs SPY × excess return × recent activity); user selects which saved Alpaca credential to use per session; scheduler polls every 15 min, seeds existing trades as `pre_existing` on session creation to prevent bulk-copying history; dry-run default with live confirmation dialog
+- **Wheel Strategy Bot (V7)** — `/wheel-bot` page automates the Wheel Strategy (sell cash-secured put → assignment → sell covered call → called away) using a dedicated `WHEEL_ALPACA_*` paper account; stage machine persisted in `wheel_bot_sessions`; put strike = current\_price × 0.90, call strike = cost\_basis × 1.10, 14–28 day expiry window; 50% profit early-close logic; APScheduler monitor every 15 min (market hours only) + daily summary cron at 16:05 ET
 
 ---
 
@@ -58,6 +60,9 @@ Screenshots coming soon. The platform includes the following main views:
 - **Multi-Chart** — 2×3 chart grid with watchlist sidebar
 - **Stock Detail** — financial KPIs, analyst consensus gauge, earnings history
 - **Morning Brief** — daily crypto watchlist TA table (EMA 200, RSI, MACD, Bias, Signal) for BTC/ETH/SOL/XRP/LINK/PEPE; 1-hour server-side cache; manual refresh button
+- **Trailing Bot** — form with symbol, dollar amount, floor %, ladder rules; session cards with order status, floor/trailing state, ladder rule progress
+- **Copy Trading** — politician rankings table with score/win rate/best trades; broker account selector; session card + copied trades table with disclosure dates
+- **Wheel Bot** — stage machine visualization (SELL PUT → ASSIGNED → SELL CALL → CALLED AWAY); session card with active contract, premium, cost basis; daily summary panel
 
 ---
 
@@ -134,7 +139,7 @@ Screenshots coming soon. The platform includes the following main views:
 ┌─────────────────────────▼────────────────────────────────────────┐
 │              PostgreSQL 16 (Supabase / Docker)                   │
 │                                                                  │
-│  24 tables across 3 schema generations                           │
+│  31 tables across 7 schema generations                           │
 │  V1 (14): User, UserSession, BrokerCredential, StrategyRun,      │
 │           TradeDecision, BrokerOrder, PositionSnapshot,          │
 │           CooldownState, TrailingStopState,                      │
@@ -144,7 +149,11 @@ Screenshots coming soon. The platform includes the following main views:
 │           WatchlistIdea, WatchlistIdeaTicker,                    │
 │           PriceAlertRule, AutoBuySettings, AutoBuyDecisionLog    │
 │  V3 (3):  UserWatchlist, BuyNowSignal, GeneratedIdea             │
+│  V4 (3):  OptionsPosition, OptionsExecution, IVHistory           │
 │  Commodity (1): CommodityAlertPrefs (email+SMS per user)         │
+│  V5 (1):  TrailingBotSession                                     │
+│  V6 (2):  CopyTradingSession, CopiedPoliticianTrade              │
+│  V7 (1):  WheelBotSession                                        │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -268,6 +277,9 @@ Screenshots coming soon. The platform includes the following main views:
 | Thai/English i18n | FAQ page with full Thai translations + language toggle |
 | OWASP security hardening | CORS restricted, rate limiting (slowapi), account lockout (5 attempts / 15min), Swagger disabled in production, DOMPurify XSS sanitisation |
 | BTC trailing stop bot | `btc_trailing_bot.py` — paper trade BTC/USD via Alpaca; hard floor (−10%), trailing floor (activates +10%, steps every +5%), 3-level DCA ladder re-entry (−20%/$1k, −30%/$1.5k, −40%/$2k); 24/7 hourly cloud-scheduled agent manages stop-limit orders and ladders automatically |
+| Trailing Stop Bot web (V5) | `/trailing-bot` — buy any stock at market, configure hard floor + ladder-in rules, APScheduler raises trailing stop every 5 min; `TrailingBotSession` per user; live mode enforces whole-share GTC orders, 2dp rounding, fill-poll to avoid wash-trade errors, full rollback on failure |
+| Politician Copy Trading (V6) | `/copy-trading` — Quiver Quant congressional disclosures ranked by win rate × excess return vs SPY; user selects broker account per session; seeds existing trades as `pre_existing`; scheduler polls every 15 min; dry-run default |
+| Wheel Strategy Bot (V7) | `/wheel-bot` — automates sell put → assignment → sell covered call → called away on configurable symbol; dedicated `WHEEL_ALPACA_*` paper account; 50% profit early-close; APScheduler monitor every 15 min + daily summary at 16:05 ET |
 
 ---
 
@@ -409,6 +421,9 @@ npm run lint
 | `TWILIO_AUTH_TOKEN` | No | — | Twilio Auth Token |
 | `TWILIO_FROM_NUMBER` | No | — | Twilio sender number in E.164 format (`+1XXXXXXXXXX`) |
 | `COMMODITY_ALERT_MINUTES` | No | `15` | How often (minutes) to check commodity signals and fire alerts |
+| `WHEEL_ALPACA_API_KEY` | No | — | Alpaca API key for the dedicated Wheel Bot paper account |
+| `WHEEL_ALPACA_SECRET_KEY` | No | — | Alpaca secret key for the Wheel Bot account |
+| `WHEEL_ALPACA_BASE_URL` | No | `https://paper-api.alpaca.markets` | Wheel Bot broker endpoint (paper or live) |
 
 ### Frontend environment variables
 
@@ -470,6 +485,33 @@ No secrets belong in the frontend environment. The Supabase anon key is designed
 | Table | Purpose |
 |---|---|
 | `commodity_alert_prefs` | Per-user notification prefs: alert_email, alert_phone (E.164), symbols (JSON), min_confidence, cooldown_minutes, last_alerted_at. UNIQUE on user_id. |
+
+### V4 — 3 tables
+
+| Table | Purpose |
+|---|---|
+| `options_positions` | Open options positions per user |
+| `options_executions` | Execution audit trail |
+| `iv_history` | 52-week IV history per symbol (IV rank/percentile calculation) |
+
+### V5 — 1 table
+
+| Table | Purpose |
+|---|---|
+| `trailing_bot_sessions` | Per-user trailing stop session: symbol, entry price, floor price, current floor, trailing state, ladder rules JSON, all order IDs |
+
+### V6 — 2 tables
+
+| Table | Purpose |
+|---|---|
+| `copy_trading_sessions` | Per-user copy session: target politician, copy amount, credential_id (selected broker account), dry_run flag |
+| `copied_politician_trades` | Each trade copied (or seeded as pre_existing); unique on `(user_id, trade_id)` |
+
+### V7 — 1 table
+
+| Table | Purpose |
+|---|---|
+| `wheel_bot_sessions` | Stage machine state: stage, active contract/order/premium/strike/expiry, shares_qty, cost_basis, total_premium_collected, last_action, last_summary_json |
 
 ---
 
@@ -551,6 +593,28 @@ Authentication is handled entirely by Supabase on the frontend (magic link login
 |---|---|---|---|
 | `GET` | `/api/v1/stream/quotes?symbols=AAPL,MSFT` | Bearer | SSE stream of live bid/ask/trade events; up to 10 symbols per client |
 | `GET` | `/api/v1/stream/status` | None | Stream diagnostics: connected, subscribed symbols, client count, queue depths |
+
+### Copy Trading (V6)
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/copy-trading/rankings` | Top politicians ranked by score (15-min cached) |
+| `POST` | `/api/v1/copy-trading/sessions` | Create copy session (`credential_id` selects broker account) |
+| `GET` | `/api/v1/copy-trading/sessions` | List user's sessions |
+| `GET` | `/api/v1/copy-trading/sessions/{id}` | Session detail |
+| `DELETE` | `/api/v1/copy-trading/sessions/{id}` | Cancel session (204) |
+| `GET` | `/api/v1/copy-trading/sessions/{id}/trades` | Trades copied in this session |
+| `GET` | `/api/v1/copy-trading/trades` | All copied trades across all sessions (excludes pre_existing) |
+
+### Wheel Strategy Bot (V7)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/wheel-bot/setup` | Create session, set symbol + dry_run (201) |
+| `GET` | `/api/v1/wheel-bot/sessions` | List user's sessions |
+| `GET` | `/api/v1/wheel-bot/sessions/{id}` | Session detail with full stage state |
+| `DELETE` | `/api/v1/wheel-bot/sessions/{id}` | Cancel session (204) |
+| `GET` | `/api/v1/wheel-bot/sessions/{id}/summary` | Daily summary (today-cached or live fetch) |
 
 Event types emitted by `/api/v1/stream/quotes`:
 

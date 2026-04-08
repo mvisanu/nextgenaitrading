@@ -43,7 +43,7 @@ npx playwright test --config=e2e/playwright.config.ts
 ```
 backend/app/
   main.py, core/, auth/                   # app entry, config, Supabase JWT auth
-  api/                                    # v1: profile,broker,backtests,strategies,live,artifacts,morning_brief,congress_copy
+  api/                                    # v1: profile,broker,backtests,strategies,live,artifacts,morning_brief,copy_trading,wheel_bot,trailing_bot
                                           # v2: buy_zone,alerts,ideas,auto_buy,opportunities
                                           # v3: watchlist,scanner,generated_ideas
                                           # v4: options
@@ -56,9 +56,9 @@ backend/app/
     yfinance_cache.py                     # 30-min TTL cache; use get_ticker_info(t) — never yf.Ticker(t).info directly
   strategies/                             # conservative, aggressive, bollinger_squeeze
   optimizers/                             # ai_pick, buy_low_sell_high
-  scheduler/tasks/                        # APScheduler: buy-zone, alerts, auto-buy, live-scanner, idea-gen, commodity-alerts, trailing-bot, congress-copy, wheel-bot
+  scheduler/tasks/                        # APScheduler: buy-zone, alerts, auto-buy, live-scanner, idea-gen, commodity-alerts, trailing-bot, copy-trading, wheel-bot
   db/session.py                           # async engine (lazy init, pool_recycle=3600)
-  broker/                                 # AlpacaClient, RobinhoodClient (stub), factory, VisanuAlpacaClient (congress copy), WheelAlpacaClient (wheel bot)
+  broker/                                 # AlpacaClient, RobinhoodClient (stub), factory, WheelAlpacaClient (wheel bot; WHEEL_ALPACA_* env vars)
   options/                                # broker/, greeks.py, iv.py, scanner.py, signals.py, risk.py, calendar.py, executor.py
   backtesting/engine.py
   alembic/                                # v1+v2+v3+v4+v5+v6+v7 migrations
@@ -68,7 +68,7 @@ frontend/
                                           #   artifacts, profile, faq, learn, opportunities, ideas, alerts,
                                           #   auto-buy, portfolio, multi-chart, stock/[symbol],
                                           #   gold/, options/, commodities-guide/, morning-brief/,
-                                          #   trailing-bot/, congress-copy/, wheel-bot/)
+                                          #   trailing-bot/, copy-trading/, wheel-bot/)
   components/ui/, charts/, layout/, strategy/, buy-zone/, alerts/, ideas/, opportunities/, options/
   components/dashboard/MorningBriefTable.tsx  # watchlist TA table (EMA200/RSI/MACD/Bias/Signal)
   lib/api.ts                              # typed fetch wrappers, Bearer token auth
@@ -77,10 +77,10 @@ frontend/
   lib/market-stream.ts                    # useMarketStream hook — fetch-based SSE, exponential backoff, QuoteData type
   lib/options-api.ts                      # typed wrappers for all 10 options endpoints
   lib/trailing-bot-api.ts                 # typed wrappers for trailing bot endpoints
-  lib/congress-copy-api.ts               # typed wrappers for congress copy bot endpoints
+  lib/copy-trading-api.ts                 # typed wrappers for copy trading endpoints
   lib/wheel-bot-api.ts                    # typed wrappers for wheel bot endpoints
   app/auth/callback/                      # magic link code exchange
-  middleware.ts                           # route protection (Supabase SSR); protected prefixes include /portfolio,/options,/gold,/multi-chart,/stock,/morning-brief,/trailing-bot,/congress-copy,/wheel-bot
+  middleware.ts                           # route protection (Supabase SSR); protected prefixes include /portfolio,/options,/gold,/multi-chart,/stock,/morning-brief,/trailing-bot,/copy-trading,/wheel-bot
 ```
 
 ### Request Flow
@@ -121,9 +121,9 @@ frontend/
 
 **V5 (1):** TrailingBotSession (`trailing_bot_sessions`)
 
-**V6 (3):** CongressCopySession, CongressTrade (composite unique `session_id+capitol_trade_id`), CongressCopiedOrder
+**V6 (2):** `CopyTradingSession` (`copy_trading_sessions`; has `credential_id` FK added in `v6b_copy_trading_credential` migration), `CopiedPoliticianTrade` (`copied_politician_trades`; unique on `user_id+trade_id`)
 
-**V7 (1):** WheelBotSession (`wheel_bot_sessions`)
+**V7 (1):** `WheelBotSession` (`wheel_bot_sessions`)
 
 **Commodity (1):** `CommodityAlertPrefs` (unique per user; stores alert_email, alert_phone, symbols JSON, min_confidence, cooldown_minutes, last_alerted_at)
 
@@ -171,12 +171,6 @@ OPTIONS_MIN_POP=0.60
 OPTIONS_SCANNER_SYMBOLS=AAPL,TSLA,NVDA,SPY,QQQ,AMZN,MSFT,META,GOOGL,AMD
 OPTIONS_ACTIVE_BROKER=alpaca
 
-# Congress Copy Bot (V6)
-VISANU_ALPACA_API_KEY=your-visanu-api-key
-VISANU_ALPACA_SECRET_KEY=your-visanu-secret-key
-VISANU_ALPACA_ENDPOINT_URL=https://paper-api.alpaca.markets
-CONGRESS_COPY_POLL_MINUTES=30
-
 # Wheel Bot (V7)
 WHEEL_ALPACA_API_KEY=your-wheel-alpaca-api-key
 WHEEL_ALPACA_SECRET_KEY=your-wheel-alpaca-secret-key
@@ -195,7 +189,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - **DB pool:** `pool_size=2`, `max_overflow=3` (5 max connections). Never raise these.
 - **uvicorn:** `--workers 1 --limit-concurrency 20 --backlog 64`. Single worker (APScheduler singleton).
 - **yfinance:** Hard cap at 750 rows after download. Weekly/monthly intervals limited to `"1825d"` (5 years).
-- **Scheduler intervals:** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min, trailing-bot=5min, congress-copy=30min, wheel-bot=15min.
+- **Scheduler intervals:** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min, trailing-bot=5min, copy-trading=15min, wheel-bot=15min.
 - **Scheduler gc:** Every scheduler task must have `gc.collect()` in its `finally` block.
 - **`chart-data` endpoint:** Never add `db: Depends(get_db)` unless actually used — dashboard fires 15+ concurrent polls per symbol.
 
@@ -343,6 +337,14 @@ Frontend page at `/trailing-bot`. Full backend + scheduler integration.
 
 **Dry-run default:** `True` — live mode requires explicit toggle + confirmation dialog.
 
+**Live-mode order constraints (Alpaca paper/live):**
+- GTC orders (stop-market, limit) require **whole shares** — `_whole_shares()` floors fractional qty (min 1).
+- Stop/limit prices must be **rounded to 2 decimal places** — Alpaca rejects sub-penny increments.
+- Cannot place a stop-sell while a pending buy for the same symbol is open → **wash-trade error**. Fix: `_poll_order_fill()` waits up to 14s for fill; if partially filled, cancels remainder + waits 3s before placing stop.
+- Cannot create a second active session for the same symbol → **409 guard** in `setup_trailing_bot()`.
+- **Full rollback contract**: if anything fails after the market buy (stop placement, ladder orders, DB commit), the service cancels all placed orders before re-raising so no orphaned orders remain on Alpaca.
+- Broker credentials are stored encrypted in `broker_credentials` DB table — must be saved via Profile → Credentials before using the bot. Use **paper keys** (`PK…` prefix) for testing.
+
 **Key files:**
 - `backend/app/models/trailing_bot.py` — `TrailingBotSession` ORM model
 - `backend/app/schemas/trailing_bot.py` — Pydantic DTOs
@@ -352,41 +354,42 @@ Frontend page at `/trailing-bot`. Full backend + scheduler integration.
 - `frontend/app/trailing-bot/page.tsx` — Sovereign Terminal design, form + session cards
 - `frontend/lib/trailing-bot-api.ts` — typed API wrappers
 
-## Congress Copy Bot (V6)
+## Copy Trading (V6)
 
-Frontend page at `/congress-copy`. Scrapes Capitol Trades public API and copies politician trades into the Visanu Alpaca account.
+Frontend page at `/copy-trading`. Scrapes Quiver Quantitative congressional trading API and copies politician trades using the user's own saved Alpaca broker credentials.
 
-**API routes** (`/api/v1/congress-copy/`):
-- `GET /politicians` — ranked list of politicians by 90-day trade volume (limit=20, le=200)
-- `POST /setup` — create copy session for a politician (201)
-- `GET /sessions` — list user's sessions (newest first)
+**API routes** (`/api/v1/copy-trading/`):
+- `GET /rankings` — top politicians ranked by score (win rate × excess return vs SPY × recent activity); 15-min in-process cache
+- `POST /sessions` — create copy session; seeds existing trades as `pre_existing` so history is never bulk-copied (201)
+- `GET /sessions` — list user's sessions (newest first, limit 200)
 - `GET /sessions/{id}` — single session detail
 - `DELETE /sessions/{id}` — cancel session (204)
-- `GET /sessions/{id}/trades` — trades fetched from Capitol Trades for this session
-- `GET /sessions/{id}/orders` — Alpaca orders placed for this session
+- `GET /sessions/{id}/trades` — trades copied in this session
+- `GET /trades` — all copied trades across all user sessions (excludes pre_existing)
 
-**Capitol Trades API:** `https://api.capitoltrades.com` — public JSON API; no auth required. Politicians ranked by `trade_count_90d` descending.
+**Data source:** Quiver Quant API (`https://api.quiverquant.com/beta/live/congresstrading`) — free public JSON; 1000 recent disclosures; 5-min in-process cache.
 
-**Deduplication:** `CongressTrade` has composite unique constraint `(session_id, capitol_trade_id)` — safe for multiple users copying the same politician simultaneously.
+**Ranking algorithm** (`politician_ranker_service.py`): filters politicians with ≥ `min_trades` (default 5) in the last `lookback_days` (default 90). Score = `win_rate × 0.40 + avg_excess_return × 0.35 + recent_activity × 0.25`.
 
-**Broker:** `VisanuAlpacaClient` singleton in `backend/app/broker/visanu_alpaca.py` — uses `VISANU_ALPACA_*` env vars; completely separate from the main Alpaca account.
+**Broker:** Uses the **user's own Alpaca credentials** stored in `broker_credentials` table. The user selects which saved credential to use via `credential_id` in the setup request. Scheduler falls back to the first active Alpaca credential if none is pinned.
+
+**Deduplication:** `CopiedPoliticianTrade` has unique constraint `(user_id, trade_id)` — safe across sessions for the same user.
 
 **Dry-run default:** `True` — live mode requires explicit toggle + confirmation dialog.
 
-**Scheduler:** `congress_copy_monitor` runs every `CONGRESS_COPY_POLL_MINUTES` (default 30). Uses `asyncio.to_thread` for blocking httpx calls from async context. Single `AsyncSessionLocal` outside loop, one commit after loop, `gc.collect()` in `finally`.
+**Scheduler:** `copy_trading_monitor` runs every 15 min. Fetches Quiver once, processes all active sessions, commits once after the loop, `gc.collect()` in `finally`.
 
 **Key files:**
-- `backend/alembic/versions/v6_congress_copy.py` — DB migration (3 tables)
-- `backend/alembic/versions/v6b_congress_trade_unique_fix.py` — composite unique constraint fix
-- `backend/app/models/congress_trade.py` — ORM models
-- `backend/app/schemas/congress_trade.py` — Pydantic v2 DTOs
-- `backend/app/broker/visanu_alpaca.py` — `VisanuAlpacaClient` singleton
-- `backend/app/services/capitol_trades_service.py` — `fetch_politicians()`, `fetch_trades_for_politician()`, `pick_best_politician()`
-- `backend/app/services/congress_copy_service.py` — `setup_congress_copy()`, `process_new_trades()`
-- `backend/app/api/congress_copy.py` — FastAPI router (7 endpoints)
-- `backend/app/scheduler/tasks/congress_copy_monitor.py` — APScheduler task
-- `frontend/app/congress-copy/page.tsx` — Sovereign Terminal design, full dashboard
-- `frontend/lib/congress-copy-api.ts` — typed API wrappers
+- `backend/alembic/versions/v6_copy_trading.py` — DB migration (2 tables)
+- `backend/alembic/versions/v6b_copy_trading_credential.py` — adds `credential_id` FK to `copy_trading_sessions`
+- `backend/app/models/copy_trading.py` — `CopyTradingSession`, `CopiedPoliticianTrade` ORM models
+- `backend/app/schemas/copy_trading.py` — Pydantic v2 DTOs (includes `credential_id`)
+- `backend/app/services/politician_scraper_service.py` — `fetch_congressional_trades()`, `get_politician_trades()`
+- `backend/app/services/politician_ranker_service.py` — `rank_politicians()`, `get_best_politician()`
+- `backend/app/services/copy_trading_service.py` — `create_session()`, `process_active_sessions()`, `_copy_one_trade()`
+- `backend/app/api/copy_trading.py` — FastAPI router (7 endpoints)
+- `frontend/app/copy-trading/page.tsx` — Sovereign Terminal design; rankings table, broker selector, session card, trade history
+- `frontend/lib/copy-trading-api.ts` — typed API wrappers
 
 ## Wheel Strategy Bot (V7)
 
@@ -437,7 +440,7 @@ pytest tests/v4/
 # V5 tests — trailing bot + morning brief (run from backend/)
 pytest tests/v5/
 
-# V6 tests — congress copy bot (run from backend/ STANDALONE — namespace collision with main app)
+# V6 tests — copy trading service (run from backend/ STANDALONE)
 pytest tests/v6/
 
 # Full V1–V5 suite (v6 auto-skipped when run together with v5)
@@ -450,37 +453,34 @@ pytest tests/
 |-----------|-------|----------------|
 | `tests/v5/test_trailing_bot_service.py` | 18 tests | `adjust_trailing_stop()` logic, schema `from_orm_session()`, `TrailingBotSetupRequest` validation |
 | `tests/v5/test_morning_brief.py` | 17 tests | EMA-200/RSI/MACD helpers, `_analyze_coin()` bias logic, cache key format, error-row fallback |
-| `tests/v6/test_capitol_trades_service.py` | 22 tests | `_parse_trade()`, `_parse_option_type()`, `fetch_politicians()`, `fetch_trades_for_politician()`, `pick_best_politician()` |
-| `tests/v6/test_congress_copy_service.py` | 16 tests | `_estimate_qty()`, `process_new_trades()` deduplication/watermark/error handling, `setup_congress_copy()` |
+| `tests/v6/test_capitol_trades_service.py` | 22 tests | `_parse_quiver_record()`, `_parse_range()`, `fetch_congressional_trades()`, `rank_politicians()`, `get_best_politician()` |
+| `tests/v6/test_congress_copy_service.py` | 16 tests | `create_session()`, `_seed_existing_trades()`, `process_active_sessions()` deduplication/credential selection/error handling |
 | `tests/v7/test_wheel_bot_model.py` | 2 tests | `WheelBotSession` instantiation and field assignment |
 | `tests/v7/test_wheel_bot_schemas.py` | 4 tests | `WheelBotSetupRequest` validation, `WheelBotSessionResponse` ORM mode, `WheelBotSummaryResponse` fields |
 | `tests/v7/test_wheel_alpaca_client.py` | 6 tests | `get_account`, 404 position, `pick_expiration`, `closest_strike`, `mid_price` |
 | `tests/v7/test_wheel_bot_service.py` | 7 tests | State machine: sell new put, insufficient cash, assignment transition, 50% early close, called-away transition, cost-basis guard, daily summary |
 
-**V6 isolation:** `tests/v6/` uses the congress-copy-bot worktree backend (`app.*` namespace). Run it with `pytest tests/v6/` — do NOT include with v5 in the same invocation.
+**V6 isolation:** `tests/v6/` tests copy-trading service logic in isolation. Run with `pytest tests/v6/` — do NOT include with v5 in the same invocation.
 
-## Known Bugs (found 2026-04-07)
-
-### CRITICAL
-- **`trailing_bot_service.py:188-216`** Race condition — if `_cancel_order_alpaca` fails silently, a new stop is placed on top of the old one (double orders on Alpaca). Fix: check cancel success before placing new stop.
-- **`btc_trailing_bot.py:83-87`** No timeout on fill-wait loop — infinite hang if order never fills. Fix: add `max_retries` counter.
-- **`congress_trade.py:79,82`** `Mapped[float]` on `Numeric(12,4)` columns should be `Mapped[Decimal]` — silent precision loss and JSON serialization failure.
+## Known Bugs
 
 ### HIGH
-- **`schemas/trailing_bot.py:58`** `json.loads()` on malformed `ladder_rules_json` raises `JSONDecodeError`, crashing any API endpoint that returns a session. Fix: wrap in `try/except json.JSONDecodeError`.
-- **`api/trailing_bot.py:82`** `DELETE /sessions/{id}` sets DB status to "cancelled" but does NOT cancel active Alpaca orders. Fix: call `_cancel_order_alpaca` for `stop_order_id` + each ladder `order_id` before status update.
-- **`frontend/app/trailing-bot/page.tsx:299`** Percentages multiplied by 100 again in UI — `trailing_trigger_pct=10.0` (stored as 0–100) displays as "1000%". Fix: remove `* 100`.
 - **`morning_brief.py:154`** `ZeroDivisionError` if `ema200 == 0` (e.g. all-zero close data). Fix: `if ema200 == 0: return error_row`.
 - **`morning_brief.py:170-175`** Bias logic gap — `bullish_count=2` + `price_vs_ema200="Below"` falls through to `"Neutral"` instead of `"Bearish"`. Fix: reorder conditions so `price_vs_ema200 == "Below"` is checked first regardless of bullish_count.
 
 ### MEDIUM
-- **`congress_copy_service.py:188-195`** Watermark date comparison is plain string (`>`) — breaks for non-zero-padded dates like `"2026-4-1"`. Fix: `datetime.strptime(date, "%Y-%m-%d")` before comparison.
-- **`congress_copy_service.py:31`** Hardcoded `$100/share` estimate → wrong qty for high-priced stocks (NVDA ~$900 → 5 shares = $4500 notional, not $500). Fix: fetch live price from Alpaca/yfinance before order placement.
-- **`capitol_trades_service.py:124,174`** `fetch_politicians()` and `fetch_trades_for_politician()` silently return `[]` on any exception — callers cannot distinguish "no data" from "API down". Fix: raise a custom `CapitolTradesError` or return a `(list, error)` tuple.
-- **`frontend/app/congress-copy/page.tsx:343`** Non-null assertion `selectedPolitician!.id` can crash if race condition clears selection before mutation fires. Fix: guard with early return.
+- **`politician_scraper_service.py`** `_fetch_raw()` returns stale cache on any exception — callers cannot distinguish "no data" from "Quiver API down". Fix: raise a custom error or return a `(list, error)` tuple so the scheduler can log degraded state.
+- **`copy_trading_service.py`** Options fallback builds OCC contract symbol from raw description text — will produce an invalid symbol if Quiver's `Description` field is missing or malformatted. Fix: validate the resulting symbol before sending to Alpaca; fall back to underlying stock.
+
+### Fixed (2026-04-08)
+- ~~`trailing_bot_service.py` Race condition — double stop orders if cancel fails~~ → `_cancel_order_alpaca` return value checked; abort if cancel fails.
+- ~~`btc_trailing_bot.py` Infinite fill-wait loop~~ → 60-attempt max with `TimeoutError`.
+- ~~`schemas/trailing_bot.py` `JSONDecodeError` on malformed `ladder_rules_json`~~ → already wrapped in try/except.
+- ~~`api/trailing_bot.py` DELETE session didn't cancel Alpaca orders~~ → cancels stop + ladder orders before DB update.
+- ~~Trailing bot 502 on live mode~~ → fixed: whole-share GTC orders, 2dp price rounding, fill-poll + partial-cancel to avoid wash trade, full rollback contract, 409 guard for duplicate symbol sessions.
 
 ## Implementation Status
-All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Congress Copy Bot (V6) added 2026-04-07 (PR open: feature/congress-copy-bot). Wheel Strategy Bot (V7) added 2026-04-08 (PR open: feature/wheel-bot). Run `alembic upgrade head` after pulling (applies v6 + v6b + v7).
+All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Copy Trading (V6) added 2026-04-08 — uses Quiver Quant API, user's own broker credentials, broker account selector. Wheel Strategy Bot (V7) backend + frontend fully built 2026-04-08. Trailing bot live-mode Alpaca order bugs fixed 2026-04-08. Run `alembic upgrade head` after pulling (applies v5 → v6 → v7 → v7b → v6b migrations).
 
 ## Known Spec Deviations
 - Auth: Supabase magic links (not password-based JWT)

@@ -12,6 +12,7 @@ class CreateSessionRequest(BaseModel):
         default=None,
         description="BioGuideID to pin; null = auto-rank",
     )
+    credential_id: Optional[int] = None
 
 
 class CopyTradingSessionOut(BaseModel):
@@ -25,6 +26,7 @@ class CopyTradingSessionOut(BaseModel):
     target_politician_name: Optional[str]
     activated_at: str
     cancelled_at: Optional[str]
+    credential_id: Optional[int]
 
     @classmethod
     def from_orm(cls, s: object) -> "CopyTradingSessionOut":
@@ -37,6 +39,7 @@ class CopyTradingSessionOut(BaseModel):
             target_politician_name=s.target_politician_name,
             activated_at=s.activated_at.isoformat() if s.activated_at else "",
             cancelled_at=s.cancelled_at.isoformat() if s.cancelled_at else None,
+            credential_id=s.credential_id,
         )
 
 

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "skills": {
+    "alpaca-trading": {
+      "source": "lacymorrow/openclaw-alpaca-trading-skill",
+      "sourceType": "github",
+      "computedHash": "792b0d27e83e5ea96e9ee0bffb8790fe6614dae21ba75ef9cad63a65a4a5e9d3"
+    },
+    "backtesting-frameworks": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "1cd4ff5bb3666e044cec839c0923ec2b9801f9c902c082452fa78657e6dc87dc"
+    },
+    "backtesting-trading-strategies": {
+      "source": "jeremylongshore/claude-code-plugins-plus-skills",
+      "sourceType": "github",
+      "computedHash": "f064f9f133522bbde6193c888c1f0f32a1892621b459dd92e3840724de26b00c"
+    },
+    "derivatives-trading-usds-futures": {
+      "source": "binance/binance-skills-hub",
+      "sourceType": "github",
+      "computedHash": "e001ad01132b2822b1a96378e7b4cff3fd2e22b600c3064ccad3dff07e768a14"
+    },
+    "fastapi-python": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "computedHash": "4521c6090735152b7b8df670cefe5c1c6d1dcaa115de67bb96e74ebf802d4f24"
+    },
+    "nextjs-react-typescript": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "computedHash": "52067402daf8388ba7970478e0ba1f350f1868a65a62ae2bf6f4dc1ac3cf3e88"
+    },
+    "nextjs-shadcn": {
+      "source": "laguagu/claude-code-nextjs-skills",
+      "sourceType": "github",
+      "computedHash": "e8cb79842143937725c4466f5a14c3321fab450074f254890908f9a78b3b74fb"
+    },
+    "nextjs-supabase-auth": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "e391fc26e14e89c19ac26b7ae3f431848356a4f98b0f7aea02f87394549209e5"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "abf015aafed757edaf2a329299fc106abebdc53bc7f089e92e1f762ed3d8f117"
+    },
+    "trading-signal": {
+      "source": "binance/binance-skills-hub",
+      "sourceType": "github",
+      "computedHash": "dcca8b0728bad09df707803d04a1d38e155b06a29b292cf42071bbe556c09d18"
+    }
+  }
+}
