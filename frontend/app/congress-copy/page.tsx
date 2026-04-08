@@ -36,6 +36,7 @@ import type {
   PoliticianSummary,
   CongressCopySessionOut,
   CongressTradeOut,
+  CongressCopiedOrderOut,
 } from "@/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -186,6 +187,14 @@ function SessionCard({
     queryKey: ["congress-copy", "trades", session.id],
     queryFn: () => congressCopyApi.listTrades(session.id),
     enabled: expanded,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: orders = [], isLoading: ordersLoading } = useQuery<CongressCopiedOrderOut[]>({
+    queryKey: ["congress-copy", "orders", session.id],
+    queryFn: () => congressCopyApi.listOrders(session.id),
+    enabled: expanded,
+    staleTime: 2 * 60 * 1000,
   });
 
   return (
@@ -259,6 +268,39 @@ function SessionCard({
               trades.map((t) => <TradeRow key={t.id} trade={t} />)
             )}
           </div>
+          {/* Orders summary */}
+          {orders.length > 0 && (
+            <div className="border-t border-border/30 bg-surface-lowest p-3">
+              <p className="text-3xs uppercase tracking-wider text-muted-foreground mb-2 font-bold">
+                Copied Orders ({orders.length})
+              </p>
+              <div className="flex flex-col gap-1">
+                {orders.slice(0, 5).map((o) => (
+                  <div key={o.id} className="flex items-center justify-between text-3xs font-mono">
+                    <span className={cn("font-bold", o.side === "buy" ? "text-green-400" : "text-red-400")}>
+                      {o.side.toUpperCase()} {o.symbol}
+                    </span>
+                    <span className="text-muted-foreground">×{o.qty}</span>
+                    <span
+                      className={cn(
+                        "px-1 border text-3xs",
+                        o.status === "dry_run"
+                          ? "text-primary border-primary/30 bg-primary/5"
+                          : o.status === "error"
+                          ? "text-red-400 border-red-500/30 bg-red-500/5"
+                          : "text-green-400 border-green-500/30 bg-green-500/5"
+                      )}
+                    >
+                      {o.status.toUpperCase().replace("_", " ")}
+                    </span>
+                  </div>
+                ))}
+                {orders.length > 5 && (
+                  <p className="text-3xs text-muted-foreground">+{orders.length - 5} more</p>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -291,7 +333,7 @@ export default function CongressCopyPage() {
 
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery<CongressCopySessionOut[]>({
     queryKey: ["congress-copy", "sessions"],
-    queryFn: congressCopyApi.listSessions,
+    queryFn: () => congressCopyApi.listSessions(),
     enabled: !!user,
     refetchInterval: 60_000,
   });
@@ -431,7 +473,7 @@ export default function CongressCopyPage() {
               <p className="text-3xs text-muted-foreground mt-0.5">
                 {dryRun
                   ? "Simulating — no real orders placed"
-                  : "LIVE — real Visanu Alpaca orders will execute"}
+                  : "LIVE — real broker orders will execute"}
               </p>
             </div>
             <Switch
@@ -526,13 +568,12 @@ export default function CongressCopyPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-4 w-4" />
-              Live Mode — Real Orders on Visanu Account
+              Live Mode — Real Orders
             </DialogTitle>
             <DialogDescription className="text-2xs text-muted-foreground leading-relaxed pt-1">
               You are about to mirror{" "}
               <strong className="text-foreground">{selectedPolitician?.name}</strong>&apos;s trades
-              in <strong className="text-destructive">LIVE mode</strong> on the Visanu Alpaca
-              account. Disclosures can be 30–45 days delayed — you may be copying stale
+              in <strong className="text-destructive">LIVE mode</strong> on your Alpaca account. Disclosures can be 30–45 days delayed — you may be copying stale
               information.
             </DialogDescription>
           </DialogHeader>

@@ -17,8 +17,8 @@ export const congressCopyApi = {
       body: JSON.stringify(payload),
     }),
 
-  listSessions: (): Promise<CongressCopySessionOut[]> =>
-    apiFetch("/api/v1/congress-copy/sessions"),
+  listSessions: (limit = 50): Promise<CongressCopySessionOut[]> =>
+    apiFetch(`/api/v1/congress-copy/sessions?limit=${limit}`),
 
   getSession: (id: number): Promise<CongressCopySessionOut> =>
     apiFetch(`/api/v1/congress-copy/sessions/${id}`),
