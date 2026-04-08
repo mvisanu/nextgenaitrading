@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -27,28 +28,39 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/copy-trading", tags=["copy-trading"])
 
+# In-process rankings cache — 15-min TTL
+_RANKINGS_TTL = 15 * 60
+_rankings_cache: list[PoliticianRankingOut] = []
+_rankings_cache_at: float = 0.0
+
 
 @router.get("/rankings", response_model=list[PoliticianRankingOut])
 async def get_rankings(
     current_user: Annotated[User, Depends(get_current_user)],
+    limit: int = Query(default=10, ge=1, le=50),
 ) -> list[PoliticianRankingOut]:
     """Return platform-wide politician rankings (15-min cached)."""
-    all_trades = await fetch_congressional_trades()
-    scores = rank_politicians(all_trades, lookback_days=90, min_trades=5, top_n=10)
-    return [
-        PoliticianRankingOut(
-            politician_id=s.politician_id,
-            politician_name=s.politician_name,
-            total_trades=s.total_trades,
-            buy_trades=s.buy_trades,
-            win_rate=round(s.win_rate, 1),
-            avg_excess_return=round(s.avg_excess_return, 2),
-            recent_trade_count=s.recent_trade_count,
-            score=round(s.score, 1),
-            best_trades=s.best_trades,
-        )
-        for s in scores
-    ]
+    global _rankings_cache, _rankings_cache_at
+    now = time.monotonic()
+    if not _rankings_cache or (now - _rankings_cache_at) > _RANKINGS_TTL:
+        all_trades = await fetch_congressional_trades()
+        scores = rank_politicians(all_trades, lookback_days=90, min_trades=5, top_n=50)
+        _rankings_cache = [
+            PoliticianRankingOut(
+                politician_id=s.politician_id,
+                politician_name=s.politician_name,
+                total_trades=s.total_trades,
+                buy_trades=s.buy_trades,
+                win_rate=round(s.win_rate, 1),
+                avg_excess_return=round(s.avg_excess_return, 2),
+                recent_trade_count=s.recent_trade_count,
+                score=round(s.score, 1),
+                best_trades=s.best_trades,
+            )
+            for s in scores
+        ]
+        _rankings_cache_at = now
+    return _rankings_cache[:limit]
 
 
 @router.post("/sessions", response_model=CopyTradingSessionOut, status_code=status.HTTP_201_CREATED)
@@ -134,7 +146,10 @@ async def get_session_trades(
 
     result = await db.execute(
         select(CopiedPoliticianTrade)
-        .where(CopiedPoliticianTrade.session_id == session_id)
+        .where(
+            CopiedPoliticianTrade.session_id == session_id,
+            CopiedPoliticianTrade.user_id == current_user.id,
+        )
         .order_by(CopiedPoliticianTrade.created_at.desc())
         .limit(limit)
     )
