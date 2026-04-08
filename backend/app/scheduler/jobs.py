@@ -32,6 +32,7 @@ from app.scheduler.tasks.run_news_scanner import run_news_scanner
 from app.scheduler.tasks.scan_watchlist import scan_all_watchlists
 from app.scheduler.tasks.trailing_bot_monitor import monitor_trailing_bots
 from app.scheduler.tasks.copy_trading_monitor import monitor_copy_trading
+from app.scheduler.tasks.wheel_bot_monitor import monitor_wheel_bots, wheel_bot_daily_summary
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,29 @@ def register_jobs() -> None:
         id="run_commodity_alerts",
         coalesce=True,
         max_instances=1,
+    )
+
+    # ── Wheel bot monitor — 15 min during market hours ────────────────────────
+    scheduler.add_job(
+        monitor_wheel_bots,
+        "interval",
+        minutes=15,
+        id="wheel_bot_monitor",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
+    )
+    # Daily summary at 16:05 ET = 21:05 UTC, Mon–Fri
+    scheduler.add_job(
+        wheel_bot_daily_summary,
+        "cron",
+        hour=21,
+        minute=5,
+        day_of_week="mon-fri",
+        id="wheel_bot_daily_summary",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
     )
 
     logger.info(
