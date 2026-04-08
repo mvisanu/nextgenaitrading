@@ -26,6 +26,7 @@ const PROTECTED_PREFIXES = [
   "/stock",
   "/morning-brief",
   "/trailing-bot",
+  "/congress-copy",
 ];
 
 /**
