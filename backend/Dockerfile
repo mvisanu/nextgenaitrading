@@ -39,6 +39,9 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* \
 # on code-only changes.
 COPY --chown=appuser:appgroup . .
 
+# start.sh must be executable by the non-root user.
+RUN chmod +x /app/start.sh
+
 USER appuser
 
 EXPOSE 8000
@@ -49,9 +52,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
     CMD curl -f http://localhost:8000/healthz || exit 1
 
-# Single worker — APScheduler is an in-process singleton.
-# Scale via Render instance count, not --workers.
-# Run migrations on every deploy so schema is always up to date before traffic hits.
-# --limit-concurrency caps simultaneous in-flight requests to prevent memory spikes
-# when many watchlist polling requests arrive at once.
-CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --limit-concurrency 20 --backlog 64
+# start.sh:
+#   1. migrate_fix.py  — resets broken alembic_version state if needed
+#   2. alembic upgrade head — applies any pending migrations
+#   3. uvicorn         — serves the API
+CMD ["/app/start.sh"]
