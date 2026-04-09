@@ -220,7 +220,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - **Placeholder visibility:** Symbol inputs use `placeholder:text-primary/40`. General inputs use `placeholder:text-muted-foreground/60` minimum. Never `/30` or lower.
 - **`useMemo` with derived arrays:** Declare array construction inside the `useMemo` callback, not outside.
 - **SSR hydration for time/random values:** Initialize `useState` as `null`; set real value only in `useEffect`.
-- **Alembic on Render:** Dockerfile CMD runs `alembic upgrade head && uvicorn ...` — migrations auto-apply on every deploy.
+- **Alembic on Render:** Startup uses `backend/start.sh` (Dockerfile CMD). Script runs `migrate_fix.py` (repairs stale `alembic_version` if needed) → `alembic upgrade head` → uvicorn. Never revert to inline `alembic upgrade head && uvicorn` — the fix script is required for Render reliability.
 - **Alembic / PgBouncer:** Use `statement_cache_size=0` in alembic `env.py` engine to avoid `DuplicatePreparedStatementError`.
 - **`py_vollib_vectorized` on Render:** Wrap import in `except Exception` (not just `ImportError`) — numba crashes on read-only fs; falls back to analytic B-S.
 - **JWT security:** Always verify `audience="authenticated"`; never skip on missing secret. Both primary and fallback decode paths must include `verify_aud=True`.
@@ -480,7 +480,7 @@ pytest tests/
 - ~~Trailing bot 502 on live mode~~ → fixed: whole-share GTC orders, 2dp price rounding, fill-poll + partial-cancel to avoid wash trade, full rollback contract, 409 guard for duplicate symbol sessions.
 
 ## Implementation Status
-All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Copy Trading (V6) added 2026-04-08 — uses Quiver Quant API, user's own broker credentials, broker account selector. Wheel Strategy Bot (V7) backend + frontend fully built 2026-04-08. Trailing bot live-mode Alpaca order bugs fixed 2026-04-08. Alembic divergent-head conflict resolved 2026-04-08 — merge migration `5bafc0ec3474` joins `v6b_congress_trade_unique_fix` and `v7c_wheel_bot_credential` into single head. Run `alembic upgrade head` after pulling (applies all v5–v7c migrations + merge).
+All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Copy Trading (V6) added 2026-04-08 — uses Quiver Quant API, user's own broker credentials, broker account selector. Wheel Strategy Bot (V7) backend + frontend fully built 2026-04-08. Trailing bot live-mode Alpaca order bugs fixed 2026-04-08. Alembic divergent-head conflict resolved 2026-04-08 — merge migration `5bafc0ec3474` joins `v6b_congress_trade_unique_fix` and `v7c_wheel_bot_credential` into single head. Render startup fixed 2026-04-09 — `migrate_fix.py` + `start.sh` added; Dockerfile CMD updated. Run `alembic upgrade head` after pulling (applies all v5–v7c migrations + merge).
 
 ## Session Workflow
 
