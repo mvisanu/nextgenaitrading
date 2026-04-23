@@ -79,9 +79,17 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
     const supabase = getSupabaseBrowserClient();
     if (supabase) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      let { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        // Cold cache after server-side code exchange — attempt one silent refresh.
+        // Do NOT navigate to /login here: if the refresh also fails, let the API
+        // call proceed without a token and the 401 handler below will do a proper
+        // sign-out + redirect. Navigating to /login from here while the middleware
+        // still sees a valid session cookie creates an infinite redirect loop
+        // (middleware catches /login with session → redirects back to /dashboard).
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        session = refreshData.session;
+      }
       if (session?.access_token) {
         return { Authorization: `Bearer ${session.access_token}` };
       }
@@ -116,13 +124,24 @@ export async function apiFetch<T>(
     },
   });
 
-  // On 401, redirect to login
+  // On 401, clear the session and redirect to login
   if (res.status === 401) {
     if (typeof window !== "undefined") {
       const onAuthPage = ["/login", "/register"].some((p) =>
         window.location.pathname === p || window.location.pathname.startsWith(p + "/")
       );
       if (!onAuthPage) {
+        // Sign out to clear Supabase session cookies before redirecting.
+        // Without this the middleware sees a stale session and bounces the
+        // user straight back to /dashboard, creating an infinite 401 loop.
+        try {
+          const supabase = getSupabaseBrowserClient();
+          if (supabase) await supabase.auth.signOut();
+        } catch {
+          // Ignore sign-out errors — we're redirecting regardless
+        }
+        // Also clear dev token
+        document.cookie = "dev_token=; path=/; max-age=0; SameSite=Lax";
         window.location.href = "/login";
       }
     }
@@ -185,11 +204,13 @@ export const authApi = {
     try {
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
-        if (!error && user) {
+        let { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) {
+          // Cold cache after server-side code exchange — refresh via stored refresh token
+          const { data } = await supabase.auth.refreshSession();
+          user = data.session?.user ?? null;
+        }
+        if (user) {
           return {
             id: user.id,
             email: user.email ?? "",

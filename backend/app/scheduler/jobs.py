@@ -12,10 +12,15 @@ V3 jobs added:
   run_idea_generator  — every 60 min, market hours, auto-generates idea cards
   run_news_scanner    — every 60 min, market hours, RSS news warmup/logging
   prune_old_signals   — daily, prunes buy_now_signals older than signal_prune_days
+
+Crons management API (`/api/v1/crons/*`) uses JOB_TEMPLATES to let the user
+re-add a deleted job. Each entry is the callable + default trigger kwargs
+that would have been used if `register_jobs()` added it fresh.
 """
 from __future__ import annotations
 
 import logging
+from typing import Any, Callable
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -36,6 +41,104 @@ from app.scheduler.tasks.wheel_bot_monitor import monitor_wheel_bots, run_wheel_
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler()
+
+
+# ── Job template registry ─────────────────────────────────────────────────────
+# Used by the `/api/v1/crons` management endpoints to (a) list which jobs the
+# user can re-add after deleting them and (b) provide the default callable +
+# trigger kwargs when creating a new instance. Keep in sync with register_jobs.
+#
+# Each value is:
+#   {"func": callable, "trigger": "interval"|"cron", **trigger_kwargs}
+JOB_TEMPLATES: dict[str, dict[str, Any]] = {
+    "refresh_buy_zones": {
+        "func": refresh_buy_zones,
+        "trigger": "interval",
+        "minutes": settings.buy_zone_refresh_minutes,
+        "description": "Refresh buy-zone snapshots for the watchlist universe",
+    },
+    "refresh_theme_scores": {
+        "func": refresh_theme_scores,
+        "trigger": "interval",
+        "minutes": settings.theme_score_refresh_minutes,
+        "description": "Recompute per-theme composite scores",
+    },
+    "evaluate_alerts": {
+        "func": evaluate_alerts,
+        "trigger": "interval",
+        "minutes": settings.alert_eval_minutes,
+        "description": "Evaluate user price-alert rules and fire notifications",
+    },
+    "evaluate_auto_buy": {
+        "func": evaluate_auto_buy,
+        "trigger": "interval",
+        "minutes": settings.auto_buy_eval_minutes,
+        "description": "Evaluate auto-buy settings and execute matching orders",
+    },
+    "scan_all_watchlists": {
+        "func": scan_all_watchlists,
+        "trigger": "interval",
+        "minutes": settings.watchlist_scan_minutes,
+        "description": "Scan every user watchlist for new buy/sell signals",
+    },
+    "run_live_scanner": {
+        "func": run_live_scanner,
+        "trigger": "interval",
+        "minutes": settings.live_scanner_minutes,
+        "description": "Run the 10-condition buy-now scanner (market hours only)",
+    },
+    "run_idea_generator": {
+        "func": run_idea_generator_job,
+        "trigger": "interval",
+        "minutes": settings.idea_generator_minutes,
+        "description": "Auto-generate idea cards from market scans + news",
+    },
+    "run_news_scanner": {
+        "func": run_news_scanner,
+        "trigger": "interval",
+        "minutes": settings.idea_generator_minutes,
+        "description": "RSS news warmup/logging for the idea generator",
+    },
+    "prune_old_signals": {
+        "func": prune_old_signals,
+        "trigger": "cron",
+        "hour": 2,
+        "minute": 0,
+        "description": "Daily prune of stale buy_now_signals rows",
+    },
+    "trailing_bot_monitor": {
+        "func": monitor_trailing_bots,
+        "trigger": "interval",
+        "minutes": 5,
+        "description": "Adjust trailing stops for active trailing-bot sessions",
+    },
+    "wheel_bot_monitor": {
+        "func": monitor_wheel_bots,
+        "trigger": "interval",
+        "minutes": 15,
+        "description": "Advance wheel-strategy bot state machine",
+    },
+    "wheel_bot_daily_summary": {
+        "func": run_wheel_bot_daily_summary,
+        "trigger": "cron",
+        "hour": 21,
+        "minute": 5,
+        "day_of_week": "mon-fri",
+        "description": "Generate EOD summary for active wheel-bot sessions",
+    },
+    "run_commodity_alerts": {
+        "func": run_commodity_alerts,
+        "trigger": "interval",
+        "minutes": settings.commodity_alert_minutes,
+        "description": "Commodity 4-gate signal engine + email/SMS alerts",
+    },
+}
+
+
+def get_job_template(job_id: str) -> dict[str, Any] | None:
+    """Look up a job template by id. Returns a copy so callers can mutate safely."""
+    tmpl = JOB_TEMPLATES.get(job_id)
+    return dict(tmpl) if tmpl else None
 
 
 def register_jobs() -> None:

@@ -4,6 +4,17 @@ FastAPI dependencies for authenticated routes.
 Supabase JWT authentication: reads the Authorization header (Bearer token),
 decodes the Supabase-issued JWT, and loads/creates the corresponding User
 from the database.
+
+Supports two JWT signing schemes Supabase uses:
+  - **Asymmetric (ES256/RS256)** — current Supabase projects. JWTs carry a
+    `kid` in the header; public key is fetched from the project's JWKS
+    endpoint (`/auth/v1/.well-known/jwks.json`). Used for user tokens issued
+    via magic-link, OAuth, password, etc.
+  - **Symmetric (HS256)** — legacy projects and the anon_key/service_role_key
+    artefacts. Uses `settings.supabase_jwt_secret` as the shared HMAC secret.
+
+Algorithm detection is based on the JWT header; only the allow-listed algs
+are accepted to prevent "alg=none" confusion attacks.
 """
 from __future__ import annotations
 
@@ -32,39 +43,126 @@ _credentials_exception = HTTPException(
 # HTTPBearer extracts the token from the Authorization: Bearer <token> header
 _bearer_scheme = HTTPBearer(auto_error=False)
 
+# JWKS client is cached per project URL so we don't refetch the key on every
+# request. PyJWKClient internally caches keys for ~1h (see lifespan arg).
+_jwks_client_cache: dict[str, jwt.PyJWKClient] = {}
+
+# Algorithms we accept. Supabase only ever signs with these — rejecting anything
+# else (including "none") prevents alg-confusion attacks if an attacker supplies
+# a token with a forged header.
+_ASYMMETRIC_ALGS = {"ES256", "RS256", "ES384", "RS384", "ES512", "RS512"}
+_SYMMETRIC_ALGS = {"HS256", "HS384", "HS512"}
+
+
+def _get_jwks_client(supabase_url: str) -> jwt.PyJWKClient:
+    """Return a cached PyJWKClient for the given Supabase project URL."""
+    jwks_url = f"{supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+    client = _jwks_client_cache.get(jwks_url)
+    if client is None:
+        # lifespan=3600 → keys cached for 1 hour; Supabase rotates rarely so this is safe
+        client = jwt.PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)
+        _jwks_client_cache[jwks_url] = client
+    return client
+
 
 def _decode_supabase_token(token: str) -> dict:
     """
     Decode and validate a Supabase-issued JWT.
-    Uses the Supabase JWT secret for HMAC verification.
-    Falls back to the legacy secret_key if supabase_jwt_secret is not configured.
+    Picks the verification method (JWKS vs. shared secret) based on the header
+    algorithm, and restricts accepted algorithms to prevent alg-confusion.
     """
-    secret = settings.supabase_jwt_secret or settings.secret_key
+    # Peek at the header to choose verification path. Header is untrusted user
+    # input — only used to look up the correct key; the signature check below
+    # still fails if the attacker lied about alg.
     try:
-        payload = jwt.decode(
-            token,
-            secret,
-            algorithms=[settings.jwt_algorithm],
-            audience="authenticated",
-            options={"verify_aud": True},
-        )
-        return payload
-    except JWTError:
-        # Fallback to legacy secret_key only when supabase_jwt_secret is set and the
-        # primary decode failed (e.g. during key rotation).  Always enforce audience
-        # verification on the fallback path to prevent forged tokens from being accepted.
-        if settings.supabase_jwt_secret and settings.secret_key:
-            try:
-                return jwt.decode(
-                    token,
-                    settings.secret_key,
-                    algorithms=[settings.jwt_algorithm],
-                    audience="authenticated",
-                    options={"verify_aud": True},
-                )
-            except JWTError:
-                pass
+        header = jwt.get_unverified_header(token)
+    except JWTError as e:
+        logger.warning("Malformed JWT header: %s", e)
         raise
+    alg = header.get("alg", "")
+
+    # ── Asymmetric path (current Supabase user tokens: ES256/RS256) ──────────
+    if alg in _ASYMMETRIC_ALGS:
+        if not settings.supabase_url:
+            logger.warning(
+                "Received asymmetric JWT (alg=%s) but supabase_url is not configured — cannot fetch JWKS",
+                alg,
+            )
+            raise JWTError("supabase_url not configured for JWKS verification")
+        try:
+            jwks_client = _get_jwks_client(settings.supabase_url)
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            return jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=[alg],
+                audience="authenticated",
+                options={"verify_aud": True},
+                # Small leeway to tolerate minor clock skew between local box and Supabase.
+                leeway=10,
+            )
+        except JWTError as err:
+            _log_decode_failure(token, err, alg)
+            raise
+
+    # ── Symmetric path (legacy HS256: anon_key, service_role_key, old projects) ──
+    if alg in _SYMMETRIC_ALGS:
+        secret = settings.supabase_jwt_secret or settings.secret_key
+        try:
+            return jwt.decode(
+                token,
+                secret,
+                algorithms=[alg],
+                audience="authenticated",
+                options={"verify_aud": True},
+                leeway=10,
+            )
+        except JWTError as primary_err:
+            # Fallback to legacy secret_key only when supabase_jwt_secret is set
+            # and the primary decode failed (useful during key rotation).
+            if settings.supabase_jwt_secret and settings.secret_key:
+                try:
+                    return jwt.decode(
+                        token,
+                        settings.secret_key,
+                        algorithms=[alg],
+                        audience="authenticated",
+                        options={"verify_aud": True},
+                        leeway=10,
+                    )
+                except JWTError:
+                    pass
+            _log_decode_failure(token, primary_err, alg)
+            raise
+
+    logger.warning("JWT uses unsupported algorithm %r — rejecting", alg)
+    raise JWTError(f"Unsupported JWT algorithm: {alg!r}")
+
+
+def _log_decode_failure(token: str, err: Exception, alg: str) -> None:
+    """Emit a single warning line with the key diagnostic fields from a failed decode."""
+    try:
+        payload_unverified = jwt.decode(
+            token,
+            options={"verify_signature": False, "verify_aud": False, "verify_exp": False},
+        )
+        iss = payload_unverified.get("iss", "?")
+        aud = payload_unverified.get("aud", "?")
+        exp = payload_unverified.get("exp", "?")
+        role = payload_unverified.get("role", "?")
+    except Exception:
+        iss = aud = exp = role = "<parse-failed>"
+    logger.warning(
+        "JWT decode FAILED: err=%r | alg=%s | iss=%s aud=%s exp=%s role=%s | supabase_url=%s jwt_secret_set=%s",
+        err,
+        alg,
+        iss,
+        aud,
+        exp,
+        role,
+        bool(settings.supabase_url),
+        bool(settings.supabase_jwt_secret),
+    )
 
 
 async def get_current_user(

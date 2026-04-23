@@ -10,6 +10,11 @@
 
 import { NextRequest } from "next/server";
 
+// Provide Supabase env vars so the guard in proxy.ts passes and the mock is
+// actually called. Must be set before the module is imported.
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+
 // Mock the Supabase SSR module
 let mockUser: { id: string; email: string } | null = null;
 

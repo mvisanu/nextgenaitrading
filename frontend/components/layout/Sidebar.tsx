@@ -34,6 +34,7 @@ import {
   TrendingDown,
   Users,
   RefreshCw,
+  Clock,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,7 @@ const NAV_GROUPS: NavGroup[] = [
     links: [
       { href: "/artifacts", label: "Artifacts", icon: FileCode },
       { href: "/trade-log", label: "Ledger", icon: ClipboardList },
+      { href: "/crons", label: "Crons", icon: Clock },
       { href: "/learn", label: "Academy", icon: GraduationCap },
       { href: "/faq", label: "FAQ", icon: HelpCircle },
     ],

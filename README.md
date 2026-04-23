@@ -733,6 +733,7 @@ Unit tests cover V2 and V3 service logic. They do not require a running database
 ```bash
 cd backend
 source .venv/bin/activate
+.venv/scripts/activate
 pytest tests/ -v
 ```
 

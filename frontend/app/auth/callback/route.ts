@@ -3,7 +3,8 @@
  *
  * After the user clicks the magic link in their email, Supabase redirects
  * them to this route with a `code` query parameter. We exchange that code
- * for a session, then redirect to the dashboard (or the originally requested page).
+ * for a session, then redirect to /pin-setup (which handles the has-PIN
+ * check and either shows the setup form or bounces to the dashboard).
  */
 
 import { NextResponse } from "next/server";
@@ -16,7 +17,12 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/dashboard";
 
   if (code) {
-    const response = NextResponse.redirect(new URL(next, origin));
+    // Redirect to pin-setup, passing the original next destination through
+    const pinSetupUrl = new URL("/pin-setup", origin);
+    pinSetupUrl.searchParams.set("next", next);
+    // response is created BEFORE exchangeCodeForSession so the setAll cookie
+    // handler can mutate it in-place. Per @supabase/ssr pattern — do not reorder.
+    const response = NextResponse.redirect(pinSetupUrl);
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,7 +47,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // If code exchange fails or no code, redirect to login with error
   return NextResponse.redirect(
     new URL("/login?error=auth_callback_failed", origin)
   );

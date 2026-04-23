@@ -28,6 +28,8 @@ const PROTECTED_PREFIXES = [
   "/trailing-bot",
   "/copy-trading",
   "/wheel-bot",
+  "/crons",
+  "/pin-setup",
 ];
 
 /**
