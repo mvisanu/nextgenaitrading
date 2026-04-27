@@ -694,7 +694,7 @@ export default function CronsPage() {
 
   const {
     data: jobs,
-    isLoading,
+    isPending: jobsPending,
     isFetching,
     isError,
     error,
@@ -893,7 +893,7 @@ export default function CronsPage() {
           </div>
         </div>
 
-        {isLoading ? (
+        {jobsPending ? (
           <div>
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonRow key={i} />

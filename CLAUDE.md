@@ -86,15 +86,24 @@ frontend/
 ### Request Flow
 1. Middleware checks Supabase SSR session → redirect to `/login` if absent
 2. API calls send `Authorization: Bearer <supabase_access_token>`
-3. FastAPI `get_current_user` decodes Supabase JWT (HS256 / `SUPABASE_JWT_SECRET`), auto-provisions user by email
+3. FastAPI `get_current_user` decodes Supabase JWT. Algorithm is detected from the JWT header:
+   - **ES256 / RS256** (current Supabase projects) → verified via `PyJWKClient` against `<SUPABASE_URL>/auth/v1/.well-known/jwks.json` (public keys cached for 1h)
+   - **HS256** (legacy projects, dev_token, anon_key, service_role_key) → verified with `SUPABASE_JWT_SECRET` (fallback: `SECRET_KEY`)
+   Auto-provisions user by email on first call.
 4. All DB queries scoped `WHERE user_id = current_user.id`
 5. Broker credentials decrypted in-memory at execution time only; never returned in responses
 
 ### Auth Notes
 - **Supabase magic link** — passwordless; `signInWithOtp({ email })` → `/auth/callback`
+- **Login page modes** — `choose` (default, pick magic-link or PIN) → `pin` (PIN entry) or `magic-sent` (email confirmation). `"magic"` mode never exists as a runtime state.
+- **PIN auth** — 4-digit PIN for quick repeat login after initial magic-link. See "PIN Auth (V8)" section below.
 - **Dev login** — `POST /test/token` (debug only) → `dev_token` cookie (`httponly=True`, `secure=settings.cookie_secure`); enable with `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true`
-- **JWT lib:** PyJWT (not python-jose); `audience="authenticated"` always verified
+- **JWT lib:** PyJWT 2.12+ (not python-jose); uses `PyJWKClient` for asymmetric verification; `audience="authenticated"` always verified; `leeway=10s` for clock skew
+- **Algorithm allow-list:** `ES256`/`RS256`/`HS256` (and 384/512 variants); any other algorithm — including `none` — is rejected to prevent alg-confusion attacks
 - **Cross-origin (Vercel↔Render)** — `auth_session=1` marker cookie set on frontend domain
+- **New Supabase projects use ES256** — the JWKS endpoint at `/auth/v1/.well-known/jwks.json` must be reachable from the backend. `anon_key` and `service_role_key` stay HS256 for backward compat.
+- **401 redirect contract** — `apiFetch` in `lib/api.ts` calls `supabase.auth.signOut()` + clears `dev_token` cookie BEFORE `window.location.href = "/login"`. Without `signOut()`, middleware sees stale cookies and bounces user back to `/dashboard`, creating an infinite redirect loop.
+- **pin-setup token after magic link** — `handleSetPin` calls `refreshSession()` first (reads refresh_token from cookies) rather than `getSession()` (returns stale localStorage). After PKCE code exchange in `/auth/callback`, localStorage may hold an old expired token; the cookie-based refresh_token is always fresh.
 
 ### Strategy Modes
 | Mode | Leverage | Min Confirms | Notes |
@@ -124,6 +133,8 @@ frontend/
 **V6 (2):** `CopyTradingSession` (`copy_trading_sessions`; has `credential_id` FK added in `v6b_copy_trading_credential` migration), `CopiedPoliticianTrade` (`copied_politician_trades`; unique on `user_id+trade_id`)
 
 **V7 (1):** `WheelBotSession` (`wheel_bot_sessions`)
+
+**V8 (1):** `UserPin` (`user_pins`; unique on `user_id`; stores bcrypt `pin_hash`, `attempt_count`, `locked_until`)
 
 **Commodity (1):** `CommodityAlertPrefs` (unique per user; stores alert_email, alert_phone, symbols JSON, min_confidence, cooldown_minutes, last_alerted_at)
 
@@ -223,7 +234,8 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - **Alembic on Render:** Startup uses `backend/start.sh` (Dockerfile CMD). Script runs `migrate_fix.py` (repairs stale `alembic_version` if needed) → `alembic upgrade head` → uvicorn. Never revert to inline `alembic upgrade head && uvicorn` — the fix script is required for Render reliability.
 - **Alembic / PgBouncer:** Use `statement_cache_size=0` in alembic `env.py` engine to avoid `DuplicatePreparedStatementError`.
 - **`py_vollib_vectorized` on Render:** Wrap import in `except Exception` (not just `ImportError`) — numba crashes on read-only fs; falls back to analytic B-S.
-- **JWT security:** Always verify `audience="authenticated"`; never skip on missing secret. Both primary and fallback decode paths must include `verify_aud=True`.
+- **JWT security:** Always verify `audience="authenticated"`; never skip on missing secret. All decode paths (ES256/RS256 JWKS + HS256 shared secret + HS256 fallback) must include `verify_aud=True`. Algorithm allow-list in `_decode_supabase_token` prevents `alg=none` / alg-confusion attacks.
+- **JWKS fetch:** `PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)` — keys cached in-memory for 1h; cached per `supabase_url`. Do NOT fetch on every request.
 - **`GET /api/v1/stream/status`** requires `get_current_user` auth.
 - **Deprecated APIs:** Use `datetime.now(timezone.utc)` (not `utcnow()`); use `asyncio.get_running_loop()` (not `get_event_loop()`).
 
@@ -429,6 +441,57 @@ Frontend page at `/wheel-bot`. Automates the Wheel Strategy on TSLA using a dedi
 - `frontend/app/wheel-bot/page.tsx` — UI page (dry-run toggle, session cards, daily summary panel)
 - `frontend/lib/wheel-bot-api.ts` — typed API wrappers
 
+## PIN Auth (V8)
+
+Quick-login flow layered on top of Supabase magic-link. After a user's first magic-link login they set a 4-digit PIN; future logins exchange `email + pin` for a fresh Supabase session via the admin API.
+
+**Flow:**
+1. First login: magic link → `/auth/callback` → `/pin-setup` (prompts to create a PIN)
+2. Subsequent logins: enter email + PIN → backend verifies bcrypt hash → calls Supabase admin `generate_link` → returns `token_hash` → frontend exchanges for session via `supabase.auth.verifyOtp({ token_hash, type: "magiclink" })`
+3. Lockout: 5 wrong attempts → 15-minute lockout persisted on `user_pins.locked_until`
+
+**API routes** (`/auth/`):
+- `POST /auth/pin-login` — public (no Bearer token); body `{email, pin}` → `{token_hash}`
+- `POST /auth/set-pin` — authenticated; body `{pin}` → 204 (bcrypt hashes + stores/replaces)
+- `GET /auth/has-pin` — authenticated; returns `{has_pin: bool}`
+
+**DB table:** `user_pins` (V8 migration `v8_user_pins.py`). Unique on `user_id`; stores `pin_hash`, `attempt_count`, `locked_until`.
+
+**Frontend token-fetch pattern** (`pin-setup/page.tsx::handleSetPin`): uses `supabase.auth.getUser()` first (server-validates AND auto-refreshes expired tokens in one network call, writing fresh token to cookie storage), then `getSession()`, then `refreshSession()` as a last resort. On 401 from backend → `signOut()` + redirect to `/login`. This guards against cold-cache nulls after server-side `exchangeCodeForSession`.
+
+**Key files:**
+- `backend/alembic/versions/v8_user_pins.py` — DB migration
+- `backend/app/models/user_pin.py` — `UserPin` ORM model
+- `backend/app/api/pin_auth.py` — FastAPI router (3 endpoints)
+- `frontend/app/(auth)/login/page.tsx` — PIN + magic-link login modes
+- `frontend/app/(auth)/pin-setup/page.tsx` — 2-step PIN creation wizard
+- `frontend/lib/pin-auth-api.ts` — typed API wrappers
+
+## Crons Management (`/crons`)
+
+Inspect + manage registered APScheduler jobs from the UI. Every route requires a Bearer token.
+
+**API routes** (`/api/v1/crons/`):
+- `GET /jobs` — list with `trigger_type`, `interval_minutes`, `cron_hour/minute/day_of_week`, `next_run_time`, `status`
+- `GET /templates` — 13 addable templates (callable + default trigger kwargs + description + `already_registered` flag)
+- `PATCH /jobs/{id}` — reschedule; body provides either `interval_minutes` OR cron fields (trigger type may change)
+- `DELETE /jobs/{id}` — remove from scheduler
+- `POST /jobs` — re-add a template; 409 if already registered
+- `POST /jobs/{id}/pause` · `/resume` — toggle without unregistering
+- `POST /jobs/{id}/run-now` — modify `next_run_time` to now; normal cadence preserved
+
+**Algorithm allow-list enforcement:** `RescheduleRequest` and `AddJobRequest` validate with `model_validator` — exactly one trigger style per request. Interval bounded `[1, 10080]` minutes; hour `[0,23]`, minute `[0,59]`.
+
+**Template registry:** `backend/app/scheduler/jobs.py::JOB_TEMPLATES` is the source of truth for which jobs can be re-added after delete. Keep in sync with `register_jobs()` — if you add a new scheduled job, add its entry to `JOB_TEMPLATES` too.
+
+**Persistence:** Mutations apply only to the in-memory `AsyncIOScheduler`. `register_jobs()` restores all templates to their default cadence on startup. To make edits survive restarts, add a `cron_overrides(job_id, enabled, interval_minutes, cron_*)` table and apply overrides inside `register_jobs()`.
+
+**Key files:**
+- `backend/app/scheduler/jobs.py` — `scheduler`, `register_jobs()`, `JOB_TEMPLATES`, `get_job_template()`
+- `backend/app/api/crons.py` — FastAPI router (7 management endpoints + GET jobs/templates)
+- `frontend/app/crons/page.tsx` — CRUD UI (row action menu, Edit/Add/Delete dialogs, React Query mutations + Sonner toasts)
+- `frontend/lib/crons-api.ts` — typed API wrappers
+
 ## Test Suite
 
 ```bash
@@ -472,6 +535,16 @@ pytest tests/
 - **`politician_scraper_service.py`** `_fetch_raw()` returns stale cache on any exception — callers cannot distinguish "no data" from "Quiver API down". Fix: raise a custom error or return a `(list, error)` tuple so the scheduler can log degraded state.
 - **`copy_trading_service.py`** Options fallback builds OCC contract symbol from raw description text — will produce an invalid symbol if Quiver's `Description` field is missing or malformatted. Fix: validate the resulting symbol before sending to Alpaca; fall back to underlying stock.
 
+### Fixed (2026-04-22)
+- ~~All authenticated endpoints returning 401 for Supabase magic-link sessions~~ → Supabase project now uses ES256 asymmetric JWTs; backend only supported HS256. Added `PyJWKClient`-based verification in `_decode_supabase_token` with cached public-key lookup; legacy HS256 path preserved. Dev tokens + anon/service_role keys still verified via shared secret.
+- ~~`/pin-setup` set-pin 401 crash~~ → `handleSetPin` now uses `getUser()` (which auto-refreshes the token in cookies) before reading the session; 401 catch-block calls `signOut()` + redirects to `/login` so the middleware doesn't bounce the user back to `/dashboard` on stale cookies.
+- ~~Crons page was read-only~~ → added edit/delete/add/pause/resume/run-now via `/api/v1/crons/*` + UI dialogs.
+- ~~**BUG-LOGIN-006 (CRITICAL)** PIN lockout counter reset to 0 on lockout trigger~~ → `attempt_count = 0` line removed from lockout block in `backend/app/api/pin_auth.py`; counter now persists through the lockout window so attacker doesn't get a fresh budget after each 15-min timeout.
+- ~~**Infinite 401 redirect loop** on dashboard~~ → `apiFetch` now calls `supabase.auth.signOut()` + clears `dev_token` cookie before redirecting; `getAuthHeaders` proactively signs out when `refreshSession()` fails. Without signOut, middleware saw stale cookies and bounced user back from `/login` → `/dashboard` → 401 → repeat.
+- ~~**"Not authenticated" on pin-setup after magic link**~~ → `handleSetPin` + `useEffect` cold-cache branch now call `refreshSession()` first (reads refresh_token from cookies) instead of `getSession()` (which returns stale localStorage token that the backend rejects).
+- ~~**PinPad visual bug** — space-padded initial value `"    "` rendered as 4 filled password dots~~ → added `.trim()` to cell value in login PinPad (`value[i]?.trim() ?? ""`).
+- ~~Dead `"magic"` mode in login `Mode` type~~ → removed from union type; Enter-key guard updated to exclude it.
+
 ### Fixed (2026-04-08)
 - ~~`trailing_bot_service.py` Race condition — double stop orders if cancel fails~~ → `_cancel_order_alpaca` return value checked; abort if cancel fails.
 - ~~`btc_trailing_bot.py` Infinite fill-wait loop~~ → 60-attempt max with `TimeoutError`.
@@ -480,7 +553,7 @@ pytest tests/
 - ~~Trailing bot 502 on live mode~~ → fixed: whole-share GTC orders, 2dp price rounding, fill-poll + partial-cancel to avoid wash trade, full rollback contract, 409 guard for duplicate symbol sessions.
 
 ## Implementation Status
-All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Copy Trading (V6) added 2026-04-08 — uses Quiver Quant API, user's own broker credentials, broker account selector. Wheel Strategy Bot (V7) backend + frontend fully built 2026-04-08. Trailing bot live-mode Alpaca order bugs fixed 2026-04-08. Alembic divergent-head conflict resolved 2026-04-08 — merge migration `5bafc0ec3474` joins `v6b_congress_trade_unique_fix` and `v7c_wheel_bot_credential` into single head. Render startup fixed 2026-04-09 — `migrate_fix.py` + `start.sh` added; Dockerfile CMD updated. Run `alembic upgrade head` after pulling (applies all v5–v7c migrations + merge).
+All V1–V4 backend and frontend features complete as of 2026-04-05. `btc_trailing_bot.py` + scheduled agent added 2026-04-07. Trailing bot web feature (V5) added 2026-04-07. Copy Trading (V6) added 2026-04-08. Wheel Strategy Bot (V7) added 2026-04-08. Trailing bot live-mode bugs fixed 2026-04-08. Alembic merge migration `5bafc0ec3474` (2026-04-08). Render startup fix (`migrate_fix.py` + `start.sh`) 2026-04-09. **PIN Auth (V8)** migration + backend + frontend added 2026-04-22. **JWT ES256/JWKS verification** added 2026-04-22 (required for current Supabase projects). **Crons CRUD UI** added 2026-04-22. **Login system audit + bug fixes** 2026-04-22 — 9 bugs fixed including CRITICAL PIN lockout counter reset (BUG-LOGIN-006), infinite 401 redirect loop, "not authenticated" on pin-setup after magic link, PinPad visual bug, dead Mode type. Current alembic head: `v8_user_pins`. Run `alembic upgrade head` after pulling.
 
 ## Session Workflow
 

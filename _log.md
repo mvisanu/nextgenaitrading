@@ -1,5 +1,18 @@
 # Session Log
 
+## 2026-04-22 (session 5 — Login audit + bug fixes)
+- Ran e2e-test-architect → wrote `test_login.md` with 9 login bugs identified across login page, pin-setup, and auth callback
+- Fixed all 9 bugs via bug-fixer:
+  - **BUG-LOGIN-006 (CRITICAL):** PIN lockout counter was reset to 0 on lockout trigger — removed `attempt_count = 0` from lockout block in `pin_auth.py`; counter now persists through the lockout window
+  - **BUG-LOGIN-001/002:** PinPad `value[i]?.trim() ?? ""` — space-padded initial `"    "` no longer renders as 4 filled dots
+  - **BUG-LOGIN-003:** Backspace handler unified to space-padding (`value.slice(0,i) + " " + value.slice(i+1)`)
+  - **BUG-LOGIN-008:** Dead `"magic"` union member removed from `Mode` type; Enter-key guard updated
+  - **BUG-LOGIN-009:** Collapsed dead if-else in pin-setup (both branches were identical)
+  - **BUG-LOGIN-005/007/004:** Clarifying comments added on cleanPin comparison, PKCE cookie ordering, disabled button condition
+- Fixed **infinite 401 redirect loop** on dashboard: `apiFetch` now calls `supabase.auth.signOut()` + clears `dev_token` cookie BEFORE `window.location.href = "/login"`; `getAuthHeaders` proactively signs out when `refreshSession()` fails — without this, middleware saw stale cookies and bounced user back from `/login` → `/dashboard` → 401 → repeat
+- Fixed **"not authenticated" on pin-setup after magic link**: `handleSetPin` + `useEffect` cold-cache branch now call `refreshSession()` first (reads refresh_token from cookies, bypasses stale localStorage session that was carrying an expired access_token)
+- Confirmed `user_pins` table already present (`alembic current` → `v8_user_pins (head)`); no migration needed
+
 ## 2026-04-22 (session 4 — Crons CRUD)
 - Added full CRUD to `/crons` page — edit, delete, add, pause/resume, run-now
 - Backend: `backend/app/api/crons.py` — new endpoints `PATCH /crons/jobs/{id}`, `DELETE /crons/jobs/{id}`, `POST /crons/jobs`, `POST /crons/jobs/{id}/pause`, `/resume`, `/run-now`; `GET /crons/templates`
