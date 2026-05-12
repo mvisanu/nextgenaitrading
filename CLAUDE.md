@@ -181,7 +181,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - **DB pool:** `pool_size=2`, `max_overflow=3` (5 max connections). Never raise these.
 - **uvicorn:** `--workers 1 --limit-concurrency 20 --backlog 64`. Single worker (APScheduler singleton).
 - **yfinance:** Hard cap at 750 rows after download. Weekly/monthly intervals limited to `"1825d"` (5 years).
-- **Scheduler intervals:** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min, trailing-bot=5min, copy-trading=15min, wheel-bot=15min.
+- **Scheduler intervals:** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min, trailing-bot=5min, copy-trading=15min, wheel-bot=15min, btc-bot-monitor=5min.
 - **Scheduler gc:** Every scheduler task must have `gc.collect()` in its `finally` block.
 - **`chart-data` endpoint:** Never add `db: Depends(get_db)` unless actually used — dashboard fires 15+ concurrent polls per symbol.
 
@@ -259,7 +259,7 @@ API: `GET /commodity-alerts/prefs` + `PATCH /commodity-alerts/prefs`.
 
 ## BTC Trailing Stop Bot
 
-Standalone script: `btc_trailing_bot.py` (repo root). Executes against Alpaca paper trading via `alpaca-py`.
+Standalone scripts in `btc-bot/`: `btc_trailing_bot.py` (monitor loop), `btc_execute_now.py` (one-shot buy), `btc_close_now.py` (one-shot close), `btc_status.py` (read-only check). All auto-load creds from `backend/.env` via `Path(__file__).parent.parent / "backend" / ".env"`. Authoritative spec: `btc-bot/BTC_BOT.md`. Executes against Alpaca paper trading via `alpaca-py`.
 
 **Rules implemented:**
 - **FLOOR** — hard stop: sell all if price drops 10% below fill price
@@ -271,9 +271,9 @@ Standalone script: `btc_trailing_bot.py` (repo root). Executes against Alpaca pa
   | L2 | entry × 0.70 | $15,000 | fill × 0.90 |
   | L3 | entry × 0.60 | $20,000 | fill × 0.90 |
 
-**Run:** `cd backend && source .venv/Scripts/activate && python ../btc_trailing_bot.py`
+**Run:** `cd backend && source .venv/Scripts/activate && python ../btc-bot/btc_trailing_bot.py`
 
-**Close out:** `python ../btc_close_now.py` (one-shot market-sell of any open BTC/USD paper position).
+**Close out:** `python btc-bot/btc_close_now.py` (cancels open BTC orders, then market-sells any open position; matches positions by normalized symbol so it handles both `BTC/USD` and `BTCUSD` formats from Alpaca's API).
 
 ## Trailing Stop Bot — Web Feature (V5)
 

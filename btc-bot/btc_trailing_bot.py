@@ -30,7 +30,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent / "backend" / ".env")
+load_dotenv(Path(__file__).parent.parent / "backend" / ".env")
 
 # --- Config ---
 API_KEY    = os.environ.get("VISANU_ALPACA_API_KEY") or os.environ.get("ALPACA_API_KEY", "")

@@ -25,6 +25,7 @@ from typing import Any, Callable
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.core.config import settings
+from app.scheduler.tasks.btc_bot_monitor import monitor_btc_bot
 from app.scheduler.tasks.evaluate_alerts import evaluate_alerts
 from app.scheduler.tasks.evaluate_auto_buy import evaluate_auto_buy
 from app.scheduler.tasks.prune_old_signals import prune_old_signals
@@ -131,6 +132,12 @@ JOB_TEMPLATES: dict[str, dict[str, Any]] = {
         "trigger": "interval",
         "minutes": settings.commodity_alert_minutes,
         "description": "Commodity 4-gate signal engine + email/SMS alerts",
+    },
+    "btc_bot_monitor": {
+        "func": monitor_btc_bot,
+        "trigger": "interval",
+        "minutes": settings.btc_bot_monitor_minutes,
+        "description": "Read-only BTC bot heartbeat: balances, position, last order",
     },
 }
 
@@ -266,6 +273,17 @@ def register_jobs() -> None:
         id="run_commodity_alerts",
         coalesce=True,
         max_instances=1,
+    )
+
+    # ── BTC bot heartbeat (read-only) ─────────────────────────────────────────
+    scheduler.add_job(
+        monitor_btc_bot,
+        "interval",
+        minutes=settings.btc_bot_monitor_minutes,
+        id="btc_bot_monitor",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
     )
 
     logger.info(

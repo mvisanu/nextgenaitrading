@@ -122,6 +122,9 @@ class Settings(BaseSettings):
     # ── Commodity alerts scheduler ─────────────────────────────────────────────
     commodity_alert_minutes: int = Field(default=30, description="Interval for commodity signal check (minutes)")
 
+    # ── BTC bot heartbeat monitor ──────────────────────────────────────────────
+    btc_bot_monitor_minutes: int = Field(default=5, description="Read-only BTC bot heartbeat interval (minutes)")
+
     # ── Congress copy bot ──────────────────────────────────────────────────────
     congress_copy_poll_minutes: int = Field(
         default=30, description="How often (minutes) to poll Capitol Trades for new trades"

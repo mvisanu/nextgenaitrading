@@ -27,7 +27,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent / "backend" / ".env")
+load_dotenv(Path(__file__).parent.parent / "backend" / ".env")
 
 API_KEY    = os.environ.get("VISANU_ALPACA_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
 SECRET_KEY = os.environ.get("VISANU_ALPACA_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
@@ -45,14 +45,17 @@ trading = TradingClient(API_KEY, SECRET_KEY, paper=True)
 
 
 def fetch_position():
-    """Return the BTC/USD position, or None if flat."""
-    try:
-        return trading.get_open_position(SYMBOL)
-    except APIError as e:
-        msg = str(e).lower()
-        if "not found" in msg or "position does not exist" in msg or "404" in msg:
-            return None
-        raise
+    """Return the BTC position, or None if flat.
+
+    Alpaca crypto positions are returned with the symbol stripped of its slash
+    (e.g. `BTCUSD`) while orders use the slashed form (`BTC/USD`). Match on
+    the normalized symbol so we work regardless of which form Alpaca uses.
+    """
+    target = SYMBOL.replace("/", "").upper()
+    for p in trading.get_all_positions():
+        if p.symbol.replace("/", "").upper() == target:
+            return p
+    return None
 
 
 def cancel_open_btc_orders() -> int:
@@ -106,8 +109,10 @@ def main() -> None:
     # Brief settle so Alpaca releases the locked qty before we submit the close.
     time.sleep(1)
 
-    print(f"\nSubmitting market-close for {qty:.8f} BTC…")
-    close_order = trading.close_position(SYMBOL)
+    # Use the symbol Alpaca returned on the position (could be "BTCUSD" or "BTC/USD")
+    # — close_position is symbol-format-sensitive for crypto.
+    print(f"\nSubmitting market-close for {qty:.8f} BTC ({pos.symbol})…")
+    close_order = trading.close_position(pos.symbol)
     print(f"  Close order submitted: {close_order.id}")
 
     # Poll up to 30s for fill.

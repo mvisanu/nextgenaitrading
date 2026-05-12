@@ -1,9 +1,17 @@
 # BTC Trailing Stop Bot
 
-Standalone script: [`btc_trailing_bot.py`](./btc_trailing_bot.py) (repo root).
-Executes BTC/USD against Alpaca paper trading via `alpaca-py`.
+Four standalone scripts in `btc-bot/`, all trading BTC/USD against Alpaca paper:
 
-This file is the authoritative spec — the script, this doc, `CLAUDE.md`, and `README.md` are aligned on the 3-level ladder.
+| Script | Purpose |
+|---|---|
+| [`btc_trailing_bot.py`](./btc_trailing_bot.py) | Long-running monitor: initial buy, FLOOR, TRAILING FLOOR, LADDER IN |
+| [`btc_execute_now.py`](./btc_execute_now.py)   | One-shot: place initial buy + stop-loss, print full strategy summary, exit |
+| [`btc_close_now.py`](./btc_close_now.py)       | One-shot: cancel open BTC orders, market-sell entire position, report PnL |
+| [`btc_status.py`](./btc_status.py)             | Read-only: account balances, current BTC position, last 20 BTC orders |
+
+All four auto-load credentials from `../backend/.env` via `load_dotenv(Path(__file__).parent.parent / "backend" / ".env")` — you can run them from any working directory without pre-setting env vars.
+
+This file is the authoritative spec — the scripts, this doc, `CLAUDE.md`, and `README.md` are aligned on the 3-level ladder.
 
 ---
 
@@ -66,31 +74,55 @@ After each ladder fill:
             └─────┘  every +5% from trailing high → floor steps up
 ```
 
-A single position lifecycle ends on EXIT (FLOOR hit). The script does not auto-restart — re-run manually or rely on the remote scheduled agent (see below).
+A single position lifecycle ends on EXIT (FLOOR hit). The script does not auto-restart — re-run `python btc-bot/btc_trailing_bot.py` manually to start a new cycle.
 
 ---
 
 ## Usage
 
+Activate the backend venv once, then run any of the four scripts from any directory:
+
+```powershell
+# Windows PowerShell — from repo root
+.\backend\.venv\Scripts\Activate.ps1
+python .\btc-bot\btc_trailing_bot.py     # start monitoring loop
+python .\btc-bot\btc_execute_now.py      # one-shot initial buy
+python .\btc-bot\btc_close_now.py        # one-shot close + cancel orders
+python .\btc-bot\btc_status.py           # read-only: account + position + recent orders
+```
+
 ```bash
-cd backend && source .venv/Scripts/activate
-python ../btc_trailing_bot.py
+# macOS / Linux — from repo root
+source backend/.venv/bin/activate
+python btc-bot/btc_trailing_bot.py
 ```
 
 ### Environment variables
 
+Auto-loaded from `../backend/.env` (relative to this folder). Resolution order: `VISANU_*` takes precedence over `ALPACA_*` for the same key.
+
 | Var                       | Required | Default                          | Purpose                                |
 |---------------------------|----------|----------------------------------|----------------------------------------|
-| `ALPACA_API_KEY`          | yes      | —                                | Alpaca API key (paper)                 |
-| `ALPACA_SECRET_KEY`       | yes      | —                                | Alpaca secret                          |
-| `VISANU_ALPACA_API_KEY`   | no       | —                                | Personal-account override; takes precedence over `ALPACA_API_KEY` |
-| `VISANU_ALPACA_SECRET_KEY`| no       | —                                | Personal-account secret override       |
+| `VISANU_ALPACA_API_KEY`   | yes¹     | —                                | Personal Alpaca paper key (preferred)  |
+| `VISANU_ALPACA_SECRET_KEY`| yes¹     | —                                | Personal Alpaca paper secret (preferred) |
+| `ALPACA_API_KEY`          | yes¹     | —                                | Fallback if `VISANU_*` not set         |
+| `ALPACA_SECRET_KEY`       | yes¹     | —                                | Fallback if `VISANU_*` not set         |
 | `BTC_USD`                 | no       | `10000`                          | Dollar amount of the initial buy       |
-| `POLL_INTERVAL_SEC`       | no       | `30`                             | Polling interval                       |
+| `POLL_INTERVAL_SEC`       | no       | `30`                             | `btc_trailing_bot.py` polling interval |
+
+¹ Either the `VISANU_*` pair or the `ALPACA_*` pair must be set. The scripts exit immediately if both pairs are missing/empty.
 
 Paper trading endpoint is hard-coded: `https://paper-api.alpaca.markets`.
 
 ### Closing out
 
-Run `python btc_close_now.py` from the repo root to market-sell any open BTC/USD paper position. Uses the same `VISANU_ALPACA_*` env vars. Safe to run when no position is open (it exits cleanly).
+`btc_close_now.py` cancels any open BTC/USD orders first (stop-loss, GTC limits, ladder triggers) **then** market-sells the entire position. Safe to run when no position is open — it sweeps dangling orders and exits 0.
+
+Expected output when flat:
+```
+Account: <id> (paper)
+Buying power: $<n>
+
+  No open BTC/USD position. Nothing to close.
+```
 
