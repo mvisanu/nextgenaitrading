@@ -37,7 +37,7 @@ This is a portfolio project. The points below are the ones technical evaluators 
 - **Options trading buy flow** — Pro mode P&L panel now includes a full-width "Place Paper/Live Trade" button that activates after selecting any contract from the chain table; Beginner mode empty state routes to Pro when signals are unavailable; `underlying_price` wired through to execute payload instead of hardcoded to 100
 - **Alpaca stream resilience** — 406 connection-limit error (free IEX tier: 1 connection per account) now triggers 60s backoff immediately instead of a 1s retry storm; `_hit_connection_limit` flag detected in message handler, consumed in reconnect loop
 - **Morning Brief page** — daily crypto watchlist TA snapshot at `/morning-brief`; computes EMA-200, RSI-14 (Wilder's EWM), and MACD 12/26/9 from yfinance daily data for BTC/ETH/SOL/XRP/LINK/PEPE; derives Bias and Signal labels; 1-hour in-process cache (single-worker safe); async-safe via `asyncio.to_thread`; auth-protected; sidebar nav link
-- **BTC trailing stop bot** — standalone `btc_trailing_bot.py` executes a $-denominated BTC/USD paper trade via Alpaca with three rules: hard floor (−10% stop loss), trailing floor (activates at +10%, steps every +5%, never moves down), and a 3-level DCA ladder re-entry (−20% → $1k, −30% → $1.5k, −40% → $2k — larger buys at deeper discounts); paired with a 24/7 hourly cloud-scheduled agent that automatically manages stop-limit orders and ladder re-entries on Alpaca's servers
+- **BTC trailing stop bot** — standalone `btc_trailing_bot.py` executes a $-denominated BTC/USD paper trade via Alpaca with three rules: hard floor (−10% stop loss), trailing floor (activates at +10%, steps every +5%, never moves down), and a 3-level DCA ladder re-entry (−20% → $10k, −30% → $15k, −40% → $20k — larger buys at deeper discounts; $10k default initial buy, max $55k deployed); companion `btc_execute_now.py` (one-shot initial buy) and `btc_close_now.py` (one-shot market-close) for manual session control
 - **Trailing Stop Bot web page (V5)** — full-stack `/trailing-bot` feature: buy any stock at market, set a hard floor stop loss, configure ladder-in limit buys at lower prices, then let an APScheduler background task raise the trailing stop every 5 minutes as the position gains; `TrailingBotSession` DB model tracks all orders + trailing state per user; dry-run default with explicit live-mode confirmation dialog; Sovereign Terminal card UI shows every placed order and active rule with live status badges; live mode enforces whole-share GTC orders, 2dp price rounding, fill-poll before stop placement to avoid wash-trade errors, and full rollback on failure
 - **Politician Copy Trading (V6)** — `/copy-trading` page scrapes Quiver Quantitative congressional trading API (1000 recent disclosures, 5-min cache); ranks politicians by composite score (win rate vs SPY × excess return × recent activity); user selects which saved Alpaca credential to use per session; scheduler polls every 15 min, seeds existing trades as `pre_existing` on session creation to prevent bulk-copying history; dry-run default with live confirmation dialog
 - **Wheel Strategy Bot (V7)** — `/wheel-bot` page automates the Wheel Strategy (sell cash-secured put → assignment → sell covered call → called away) using a dedicated `WHEEL_ALPACA_*` paper account; stage machine persisted in `wheel_bot_sessions`; put strike = current\_price × 0.90, call strike = cost\_basis × 1.10, 14–28 day expiry window; 50% profit early-close logic; APScheduler monitor every 15 min (market hours only) + daily summary cron at 16:05 ET
@@ -276,7 +276,7 @@ Screenshots coming soon. The platform includes the following main views:
 | Mobile responsiveness | All pages phone-friendly — hamburger menus, scrollable tables, Sheet overlays, responsive grids |
 | Thai/English i18n | FAQ page with full Thai translations + language toggle |
 | OWASP security hardening | CORS restricted, rate limiting (slowapi), account lockout (5 attempts / 15min), Swagger disabled in production, DOMPurify XSS sanitisation |
-| BTC trailing stop bot | `btc_trailing_bot.py` — paper trade BTC/USD via Alpaca; hard floor (−10%), trailing floor (activates +10%, steps every +5%), 3-level DCA ladder re-entry (−20%/$1k, −30%/$1.5k, −40%/$2k); 24/7 hourly cloud-scheduled agent manages stop-limit orders and ladders automatically |
+| BTC trailing stop bot | `btc_trailing_bot.py` — paper trade BTC/USD via Alpaca; hard floor (−10%), trailing floor (activates +10%, steps every +5%), 3-level DCA ladder re-entry (−20%/$10k, −30%/$15k, −40%/$20k); $10k default initial buy ($55k max deployed); companion scripts `btc_execute_now.py` and `btc_close_now.py` for manual entry/exit |
 | Trailing Stop Bot web (V5) | `/trailing-bot` — buy any stock at market, configure hard floor + ladder-in rules, APScheduler raises trailing stop every 5 min; `TrailingBotSession` per user; live mode enforces whole-share GTC orders, 2dp rounding, fill-poll to avoid wash-trade errors, full rollback on failure |
 | Politician Copy Trading (V6) | `/copy-trading` — Quiver Quant congressional disclosures ranked by win rate × excess return vs SPY; user selects broker account per session; seeds existing trades as `pre_existing`; scheduler polls every 15 min; dry-run default |
 | Wheel Strategy Bot (V7) | `/wheel-bot` — automates sell put → assignment → sell covered call → called away on configurable symbol; dedicated `WHEEL_ALPACA_*` paper account; 50% profit early-close; APScheduler monitor every 15 min + daily summary at 16:05 ET |
@@ -345,17 +345,17 @@ source .venv/Scripts/activate       # Windows PowerShell: .venv\Scripts\Activate
 export ALPACA_API_KEY=your-key
 export ALPACA_SECRET_KEY=your-secret
 
-# Buy $1,000 of BTC/USD on paper account and start monitoring
+# Buy $10,000 of BTC/USD on paper account and start monitoring
 python ../btc_trailing_bot.py
 
 # Custom entry size
-BTC_USD=500 python ../btc_trailing_bot.py
+BTC_USD=5000 python ../btc_trailing_bot.py
 ```
 
 **Rules enforced automatically:**
 - Hard floor: sell all if −10% from entry
 - Trailing floor: activates at +10%, raises every +5%, never moves down
-- 3-level DCA ladder re-entry after stop-out: −20% → $1k · −30% → $1.5k · −40% → $2k
+- 3-level DCA ladder re-entry: −20% → $10k · −30% → $15k · −40% → $20k (max $55k deployed)
 
 Press `Ctrl+C` to stop monitoring — position and stop-limit order stay active on Alpaca.
 

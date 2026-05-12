@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-btc_execute_now.py — Execute initial $1000 BTC buy on Alpaca paper trading
+btc_execute_now.py — Execute initial $10,000 BTC buy on Alpaca paper trading
 and print a full strategy summary showing all rules and the placed order.
 
 Run once to enter the position. The scheduled monitor (btc_monitor.py) handles
@@ -11,13 +11,14 @@ import sys
 import time
 import uuid as _uuid
 from decimal import Decimal, ROUND_DOWN
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).parent / "backend" / ".env")
 
 API_KEY    = os.environ.get("VISANU_ALPACA_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
 SECRET_KEY = os.environ.get("VISANU_ALPACA_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
-BTC_USD    = float(os.environ.get("BTC_USD", "1000"))
+BTC_USD    = float(os.environ.get("BTC_USD", "10000"))
 
 if not API_KEY or not SECRET_KEY:
     sys.exit("ERROR: VISANU_ALPACA_API_KEY / VISANU_ALPACA_SECRET_KEY must be set in .env")
@@ -32,8 +33,9 @@ trading     = TradingClient(API_KEY, SECRET_KEY, paper=True)
 data_client = CryptoHistoricalDataClient(API_KEY, SECRET_KEY)
 
 LADDER_LEVELS = [
-    (0.20, 1000.0),
-    (0.30, 2000.0),
+    (0.20, 10000.0),  # L1: -20% → $10,000
+    (0.30, 15000.0),  # L2: -30% → $15,000
+    (0.40, 20000.0),  # L3: -40% → $20,000
 ]
 
 
@@ -100,6 +102,7 @@ def main():
     trailing_trigger     = round(fill_price * 1.10, 2)
     first_ladder_trigger = round(fill_price * 0.80, 2)
     second_ladder_trigger= round(fill_price * 0.70, 2)
+    third_ladder_trigger = round(fill_price * 0.60, 2)
 
     # Place initial stop-loss order
     stop_order_id = place_stop_loss(qty, floor_price)
@@ -132,8 +135,9 @@ def main():
   └──────────────────────────────────────────────────────┘
 
   ┌─ LADDER IN (DCA on Dips) ────────────────────────────┐
-  │  Level 1:   Price ≤ ${first_ladder_trigger:,.2f} (−20%)   → Buy $1,000   │
-  │  Level 2:   Price ≤ ${second_ladder_trigger:,.2f} (−30%)   → Buy $2,000   │
+  │  Level 1:   Price ≤ ${first_ladder_trigger:,.2f} (−20%)   → Buy $10,000  │
+  │  Level 2:   Price ≤ ${second_ladder_trigger:,.2f} (−30%)   → Buy $15,000  │
+  │  Level 3:   Price ≤ ${third_ladder_trigger:,.2f} (−40%)   → Buy $20,000  │
   │  Each level fires ONCE. Floor only ever moves UP.      │
   └──────────────────────────────────────────────────────┘""")
 

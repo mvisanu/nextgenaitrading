@@ -5,9 +5,10 @@ btc_trailing_bot.py — Standalone BTC trailing stop bot using Alpaca paper trad
 Rules:
   FLOOR:          Sell all if price drops 10% below fill price
   TRAILING FLOOR: Activates at +10% gain; stop = current * 0.95; advances every +5%; never goes down
-  LADDER IN:      2-level DCA re-entry (larger buys at deeper discounts):
-                    Level 1: -20% from original entry  → $1,000
-                    Level 2: -30% from original entry  → $2,000
+  LADDER IN:      3-level DCA re-entry (larger buys at deeper discounts):
+                    Level 1: -20% from original entry  → $10,000
+                    Level 2: -30% from original entry  → $15,000
+                    Level 3: -40% from original entry  → $20,000
                   Each level fires once per session. Floor never moves down.
 
 Usage:
@@ -17,7 +18,7 @@ Usage:
 Config (environment variables):
   ALPACA_API_KEY        — Alpaca API key (required)
   ALPACA_SECRET_KEY     — Alpaca secret key (required)
-  BTC_USD=1000          — dollar amount to buy initially (default 1000)
+  BTC_USD=10000         — dollar amount to buy initially (default 10000)
   POLL_INTERVAL_SEC=30  — polling interval in seconds (default 30)
 """
 import os
@@ -25,19 +26,25 @@ import time
 import logging
 import uuid as _uuid
 from decimal import Decimal, ROUND_DOWN
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent / "backend" / ".env")
 
 # --- Config ---
 API_KEY    = os.environ.get("VISANU_ALPACA_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
 SECRET_KEY = os.environ.get("VISANU_ALPACA_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
-BTC_USD = float(os.environ.get("BTC_USD", "1000"))
+BTC_USD = float(os.environ.get("BTC_USD", "10000"))
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL_SEC", "30"))
 PAPER_URL = "https://paper-api.alpaca.markets"
 
 # Ladder levels: (drop_pct_from_entry, buy_usd)
 # Fires once per session at each level; floor never moves down after a ladder fill.
 LADDER_LEVELS = [
-    (0.20, 1000.0),   # Level 1: -20% → $1,000  (normal correction)
-    (0.30, 2000.0),   # Level 2: -30% → $2,000  (deep pullback, max conviction)
+    (0.20, 10000.0),  # Level 1: -20% → $10,000  (normal correction)
+    (0.30, 15000.0),  # Level 2: -30% → $15,000  (standard pullback)
+    (0.40, 20000.0),  # Level 3: -40% → $20,000  (deep pullback, max conviction)
 ]
 
 # --- Logging ---
