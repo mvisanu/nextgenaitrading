@@ -35,6 +35,7 @@ import {
   Users,
   RefreshCw,
   Clock,
+  Bitcoin,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/trailing-bot", label: "Trail Bot", icon: TrendingDown },
       { href: "/copy-trading", label: "Copy Trade", icon: Users },
       { href: "/wheel-bot", label: "Wheel Bot", icon: RefreshCw },
+      { href: "/btc-bot", label: "BTC Bot", icon: Bitcoin },
       { href: "/options", label: "Options", icon: BarChart2 },
     ],
   },
