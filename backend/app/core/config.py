@@ -122,8 +122,26 @@ class Settings(BaseSettings):
     # ── Commodity alerts scheduler ─────────────────────────────────────────────
     commodity_alert_minutes: int = Field(default=30, description="Interval for commodity signal check (minutes)")
 
-    # ── BTC bot heartbeat monitor ──────────────────────────────────────────────
-    btc_bot_monitor_minutes: int = Field(default=5, description="Read-only BTC bot heartbeat interval (minutes)")
+    # ── BTC Trailing-Stop Bot (V9) ────────────────────────────────────────────
+    btc_bot_initial_usd: float = Field(
+        default=10000.0,
+        description="Default initial buy size (USD) for a new btc-bot session.",
+    )
+    btc_bot_cooldown_minutes: int = Field(
+        default=240,
+        description="Minutes to wait after FLOOR stop-out before auto re-entering.",
+    )
+    btc_bot_monitor_minutes: int = Field(
+        default=15,
+        description="APScheduler interval for btc_bot_monitor (minutes).",
+    )
+    btc_bot_bootstrap_user_email: str = Field(
+        default="",
+        description=(
+            "Only the user whose email matches this value receives the env-var Alpaca "
+            "credential fallback. All other users must save their own BrokerCredential."
+        ),
+    )
 
     # ── Congress copy bot ──────────────────────────────────────────────────────
     congress_copy_poll_minutes: int = Field(
