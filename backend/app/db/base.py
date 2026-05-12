@@ -32,4 +32,6 @@ from app.models import (  # noqa: F401, E402
     commodity_alert_prefs,
     # v7 wheel bot
     wheel_bot,
+    # v9
+    btc_bot,
 )

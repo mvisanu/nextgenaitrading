@@ -43,4 +43,7 @@ __all__ = [
     "UserWatchlist",
     "BuyNowSignal",
     "GeneratedIdea",
+    # v9
+    "BtcBotAction",
+    "BtcBotSession",
 ]

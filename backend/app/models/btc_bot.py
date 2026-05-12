@@ -33,6 +33,11 @@ class BtcBotSession(Base):
     # active | cooldown | ended | error
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
 
+    # SQLAlchemy 2's mapped_column(default=...) populates defaults at DB flush time,
+    # not at construction time. We override __init__ so callers can read the
+    # documented defaults (status="active", total_qty=0, etc.) directly on a
+    # newly-constructed instance before any DB interaction — used by tests and by
+    # the orchestrator's InitialBuy path when handling a freshly built session.
     def __init__(self, **kwargs: object) -> None:
         kwargs.setdefault("status", "active")
         kwargs.setdefault("total_qty", Decimal("0"))
