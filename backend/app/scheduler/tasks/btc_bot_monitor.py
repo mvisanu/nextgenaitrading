@@ -335,8 +335,138 @@ def _apply_action(
     raise RuntimeError(f"Unknown TickAction type: {type(action).__name__}")
 
 
-# ── Placeholder for backward-compat with jobs.py (Task 17 cleans this up) ──
+import asyncio
+import gc
+from datetime import timezone
 
-def monitor_btc_bot() -> None:
-    """Placeholder during V9 buildout — Task 16 implements the real function."""
-    logger.warning("btc_bot_monitor: not yet wired (Tasks 12-16 in progress)")
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.broker.btc_bot_client import BtcBotClient
+from app.db.session import AsyncSessionLocal
+from app.services.btc_bot_service import evaluate_tick
+
+
+async def _load_users_to_tick(db: AsyncSession) -> list[User]:
+    """Users with active/cooldown sessions PLUS the bootstrap user (if configured)."""
+    result = await db.execute(
+        select(User).join(
+            BtcBotSession, BtcBotSession.user_id == User.id
+        ).where(
+            BtcBotSession.status.in_(("active", "cooldown"))
+        ).distinct()
+    )
+    users = list(result.scalars().all())
+    user_ids_present = {u.id for u in users}
+
+    if settings.btc_bot_bootstrap_user_email:
+        bootstrap_result = await db.execute(
+            select(User).where(User.email == settings.btc_bot_bootstrap_user_email)
+        )
+        bootstrap = bootstrap_result.scalars().first()
+        if bootstrap and bootstrap.id not in user_ids_present:
+            users.append(bootstrap)
+
+    return users
+
+
+async def _load_active_session(db: AsyncSession, user_id: int) -> Optional[BtcBotSession]:
+    result = await db.execute(
+        select(BtcBotSession).where(
+            BtcBotSession.user_id == user_id,
+            BtcBotSession.status.in_(("active", "cooldown")),
+        ).limit(1)
+    )
+    return result.scalars().first()
+
+
+async def _load_broker_cred(db: AsyncSession, session: Optional[BtcBotSession]) -> Optional[BrokerCredential]:
+    if session is None or session.credential_id is None:
+        return None
+    result = await db.execute(
+        select(BrokerCredential).where(BrokerCredential.id == session.credential_id)
+    )
+    return result.scalars().first()
+
+
+async def _tick_one_user(db: AsyncSession, user: User, now_utc: datetime) -> None:
+    """Single-user tick. Must NEVER raise — log + record_error on failure."""
+    session = await _load_active_session(db, user.id)
+    broker_cred = await _load_broker_cred(db, session)
+
+    creds = _resolve_creds_for_user(user, broker_cred)
+    if creds is None:
+        logger.info("btc_bot: user %d has no usable credentials — skipping", user.id)
+        return
+    api_key, secret_key = creds
+
+    try:
+        client = BtcBotClient(api_key=api_key, secret_key=secret_key, paper=True)
+        price = client.get_btc_ask()
+        position = client.get_btc_position()
+    except Exception as exc:
+        logger.exception("btc_bot: read failure for user %d: %s", user.id, exc)
+        _record_error(db, session, f"Alpaca read failure: {exc}")
+        return
+
+    state = _build_session_state(session)
+    alpaca_qty = position["qty"] if position else Decimal("0")
+    alpaca_avg = position["avg_entry_price"] if position else None
+    initial_usd = (
+        session.initial_buy_usd if session
+        else Decimal(str(settings.btc_bot_initial_usd))
+    )
+
+    action = evaluate_tick(
+        state,
+        current_price=price,
+        alpaca_position_qty=alpaca_qty,
+        alpaca_avg_entry=alpaca_avg,
+        initial_buy_usd=initial_usd,
+        now_utc=now_utc,
+    )
+    logger.info("btc_bot: user=%d action=%s price=%s", user.id, type(action).__name__, price)
+
+    try:
+        _apply_action(
+            db, client,
+            session=session,
+            user_id=user.id,
+            action=action,
+            price=price,
+            now_utc=now_utc,
+        )
+    except Exception as exc:
+        logger.exception("btc_bot: apply failure for user %d action=%s: %s", user.id, type(action).__name__, exc)
+        _record_error(db, session, f"Apply {type(action).__name__} failed: {exc}")
+
+
+async def _run_monitor() -> None:
+    now_utc = datetime.now(timezone.utc)
+    logger.info("btc_bot_monitor: starting at %s", now_utc.isoformat())
+    try:
+        async with AsyncSessionLocal() as db:
+            users = await _load_users_to_tick(db)
+            if not users:
+                logger.info("btc_bot_monitor: no users to tick")
+                return
+            logger.info("btc_bot_monitor: ticking %d user(s)", len(users))
+            for user in users:
+                try:
+                    await _tick_one_user(db, user, now_utc)
+                except Exception as exc:
+                    logger.exception("btc_bot: unhandled error in tick for user %d: %s", user.id, exc)
+            await db.commit()
+    except Exception as exc:
+        logger.exception("btc_bot_monitor: job failed: %s", exc)
+    finally:
+        gc.collect()
+
+
+def monitor_btc_bots() -> None:
+    """Synchronous APScheduler entry point (plural — the trader)."""
+    asyncio.run(_run_monitor())
+
+
+# Backward-compat alias for jobs.py until Task 17 rewires (will be removed there).
+monitor_btc_bot = monitor_btc_bots
