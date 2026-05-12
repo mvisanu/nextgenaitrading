@@ -146,5 +146,35 @@ def evaluate_tick(
             level = session.ladder_next + 1
             return LadderBuy(level=level, usd_amount=LADDER_USD[session.ladder_next])
 
-    # Trailing checks added in next task.
-    return Idle("active — no rule fired yet")
+    # 4c. Trailing floor — activation + step advances. Up-only.
+    if not session.trailing_active:
+        gain = current_price / session.blended_entry - Decimal("1")
+        if gain >= TRAILING_ACTIVATION_GAIN:
+            proposed = (current_price * TRAILING_FLOOR_MULT).quantize(Decimal("0.01"))
+            if proposed > session.current_floor:
+                return AdvanceTrailing(
+                    new_floor=proposed,
+                    new_trailing_high=current_price,
+                    activated_now=True,
+                )
+    else:
+        # trailing_active == True
+        if (
+            session.trailing_high is not None
+            and current_price > session.trailing_high
+        ):
+            step = current_price / session.trailing_high - Decimal("1")
+            if step >= TRAILING_STEP:
+                proposed = (current_price * TRAILING_FLOOR_MULT).quantize(Decimal("0.01"))
+                if proposed > session.current_floor:
+                    return AdvanceTrailing(
+                        new_floor=proposed,
+                        new_trailing_high=current_price,
+                        activated_now=False,
+                    )
+
+    # 4d. Nothing fired — pure idle with diagnostic reason.
+    gain_pct = (current_price / session.blended_entry - Decimal("1")) * Decimal("100")
+    return Idle(
+        f"price=${current_price:.2f} gain={gain_pct:+.2f}% floor=${session.current_floor:.2f}"
+    )
