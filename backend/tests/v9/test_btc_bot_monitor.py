@@ -53,3 +53,39 @@ def test_build_session_state_from_none_returns_no_session():
     assert state.status == "no_session"
     assert state.total_qty == Decimal("0")
     assert state.original_entry is None
+
+
+from app.scheduler.tasks.btc_bot_monitor import _record_action, _record_error
+from app.models.btc_bot import BtcBotAction
+
+
+def test_record_action_creates_row_with_required_fields():
+    db = MagicMock()
+    db.add = MagicMock()
+    _record_action(
+        db,
+        session_id=10,
+        user_id=1,
+        action="initial_buy",
+        btc_price=Decimal("94000"),
+        qty_delta=Decimal("0.10"),
+        usd_delta=Decimal("10000"),
+        alpaca_order_id="abc",
+        notes=None,
+    )
+    db.add.assert_called_once()
+    row = db.add.call_args[0][0]
+    assert isinstance(row, BtcBotAction)
+    assert row.action == "initial_buy"
+    assert row.qty_delta == Decimal("0.10")
+    assert row.alpaca_order_id == "abc"
+
+
+def test_record_error_writes_error_row(active_session):
+    db = MagicMock()
+    db.add = MagicMock()
+    _record_error(db, active_session, reason="Alpaca quote failed")
+    db.add.assert_called_once()
+    row = db.add.call_args[0][0]
+    assert row.action == "error"
+    assert "Alpaca" in row.notes

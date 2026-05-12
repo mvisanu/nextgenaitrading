@@ -93,6 +93,53 @@ def _build_session_state(session: Optional[BtcBotSession]) -> SessionState:
     )
 
 
+from app.models.btc_bot import BtcBotAction
+
+
+def _record_action(
+    db,
+    *,
+    session_id: int,
+    user_id: int,
+    action: str,
+    btc_price: Optional[Decimal] = None,
+    qty_delta: Optional[Decimal] = None,
+    usd_delta: Optional[Decimal] = None,
+    floor_before: Optional[Decimal] = None,
+    floor_after: Optional[Decimal] = None,
+    alpaca_order_id: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> None:
+    """Insert one row into btc_bot_actions. Caller commits later."""
+    row = BtcBotAction(
+        session_id=session_id,
+        user_id=user_id,
+        action=action,
+        btc_price=btc_price,
+        qty_delta=qty_delta,
+        usd_delta=usd_delta,
+        floor_before=floor_before,
+        floor_after=floor_after,
+        alpaca_order_id=alpaca_order_id,
+        notes=notes,
+    )
+    db.add(row)
+
+
+def _record_error(db, session: Optional[BtcBotSession], reason: str) -> None:
+    """Write an `error` action row. If we have no session yet, skip (nothing to attach to)."""
+    if session is None:
+        logger.error("btc_bot: error before session existed: %s", reason)
+        return
+    _record_action(
+        db,
+        session_id=session.id,
+        user_id=session.user_id,
+        action="error",
+        notes=reason[:5000],
+    )
+
+
 # ── Placeholder for backward-compat with jobs.py (Task 17 cleans this up) ──
 
 def monitor_btc_bot() -> None:
