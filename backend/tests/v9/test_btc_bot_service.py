@@ -114,3 +114,28 @@ def test_no_session_with_open_position_returns_adopt():
     assert isinstance(action, AdoptPosition)
     assert action.avg_entry == Decimal("94000")
     assert action.qty == Decimal("0.10000000")
+
+
+def test_active_floor_breach_returns_stop_out():
+    state = _state(current_floor=Decimal("85000"))
+    action = evaluate_tick(
+        state, Decimal("84999.99"), Decimal("0.10"), None, Decimal("10000"), _now()
+    )
+    assert isinstance(action, StopOut)
+
+
+def test_active_floor_equal_returns_stop_out():
+    """Boundary: price == floor must also trigger StopOut (≤ semantics)."""
+    state = _state(current_floor=Decimal("85000"))
+    action = evaluate_tick(
+        state, Decimal("85000.00"), Decimal("0.10"), None, Decimal("10000"), _now()
+    )
+    assert isinstance(action, StopOut)
+
+
+def test_active_floor_above_price_no_stop_out():
+    state = _state(current_floor=Decimal("85000"))
+    action = evaluate_tick(
+        state, Decimal("85000.01"), Decimal("0.10"), None, Decimal("10000"), _now()
+    )
+    assert not isinstance(action, StopOut)

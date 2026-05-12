@@ -126,5 +126,17 @@ def evaluate_tick(
             return AdoptPosition(avg_entry=alpaca_avg_entry, qty=alpaca_position_qty)
         return InitialBuy(usd_amount=initial_buy_usd)
 
-    # 4. status == "active" — main monitoring branch (filled in next tasks).
-    return Idle("not implemented yet")
+    # 4. status == "active" — main monitoring branch
+    if session.current_floor is None or session.blended_entry is None or session.original_entry is None:
+        # Defensive: orchestrator should never hand us this; treat as Idle.
+        return Idle("active session missing required state")
+
+    # 4a. FLOOR check first — safety override (wins over ladder, trailing, everything).
+    if current_price <= session.current_floor:
+        gain = (current_price / session.blended_entry - Decimal("1")) * Decimal("100")
+        return StopOut(
+            reason=f"FLOOR @ ${current_price:.2f} ({gain:+.2f}% from blended ${session.blended_entry:.2f})"
+        )
+
+    # Remaining checks (ladder, trailing) added in subsequent tasks.
+    return Idle("active — no rule fired yet")
