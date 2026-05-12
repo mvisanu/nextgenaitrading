@@ -1,104 +1,67 @@
 """
-Scheduler task: BTC trailing-bot heartbeat monitor.
+APScheduler task: BTC trailing-stop bot monitor (V9).
 
-Read-only observability for the standalone ``btc-bot/btc_trailing_bot.py`` daemon.
-Fires on a configurable interval (``settings.btc_bot_monitor_minutes``, default 5)
-and logs a single line summarising the current BTC paper-trading state:
+Fires every BTC_BOT_MONITOR_MINUTES (default 15). Iterates active + cooldown
+sessions across all users, executes one TickAction per session per fire.
 
-  • Account balances (cash, buying power)
-  • Current BTC position (qty, avg entry, market value, unrealized PnL)
-  • Last filled BTC/USD order timestamp
+This module is the only place I/O happens for the bot:
+  - DB reads/writes go through AsyncSessionLocal
+  - Alpaca calls go through BtcBotClient
+  - Pure decisions delegated to services.btc_bot_service.evaluate_tick
 
-This task does NOT trade. It is intended purely to surface in the ``/crons`` UI
-so the operator has one place to see "yes, the BTC bot infrastructure is alive
-and the position looks like this." The trading loop itself remains in the
-standalone daemon (or its eventual APScheduler refactor).
+One AsyncSessionLocal is opened OUTSIDE the per-user loop (CLAUDE.md rule);
+gc.collect() in the finally block (Render memory rule).
 
-Uses the same credential resolution as the standalone bot:
-  VISANU_ALPACA_API_KEY / VISANU_ALPACA_SECRET_KEY  preferred
-  ALPACA_API_KEY        / ALPACA_SECRET_KEY         fallback
+NOTE: This module replaced an earlier read-only heartbeat (`monitor_btc_bot`).
+The backward-compat alias at the bottom keeps `app.scheduler.jobs` importable
+until Task 17 wires the new entry point.
 """
 from __future__ import annotations
 
-import asyncio
-import gc
 import logging
-import os
+from typing import Optional
+
+from app.core.config import settings
+from app.core.security import decrypt_value
+from app.models.broker import BrokerCredential
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-SYMBOL = "BTC/USD"
+
+# ── Credential resolution ──────────────────────────────────────────────────
+
+def _resolve_creds_for_user(
+    user: User,
+    broker_cred: Optional[BrokerCredential],
+) -> Optional[tuple[str, str]]:
+    """
+    Return (api_key, secret_key) for the user, or None if no usable credential.
+
+    Precedence:
+      1. user's BrokerCredential row (if non-None)
+      2. env vars VISANU_ALPACA_* (only for the bootstrap user)
+    """
+    if broker_cred is not None:
+        api = decrypt_value(broker_cred.api_key)
+        secret = decrypt_value(broker_cred.encrypted_secret_key)
+        return (api, secret)
+
+    if (
+        settings.btc_bot_bootstrap_user_email
+        and user.email
+        and user.email.lower() == settings.btc_bot_bootstrap_user_email.lower()
+    ):
+        api = settings.visanu_alpaca_api_key
+        secret = settings.visanu_alpaca_secret_key
+        if api and secret:
+            return (api, secret)
+
+    return None
 
 
-def _resolve_creds() -> tuple[str, str]:
-    """Return (api_key, secret_key) preferring VISANU_* over ALPACA_*."""
-    api = os.environ.get("VISANU_ALPACA_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
-    sec = os.environ.get("VISANU_ALPACA_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
-    return api, sec
+# ── Placeholder for backward-compat with jobs.py (Task 17 cleans this up) ──
 
-
-def _sync_heartbeat() -> str:
-    """Run the synchronous Alpaca queries and return a one-line summary."""
-    from alpaca.trading.client import TradingClient
-    from alpaca.trading.enums import QueryOrderStatus
-    from alpaca.trading.requests import GetOrdersRequest
-
-    api_key, secret_key = _resolve_creds()
-    if not api_key or not secret_key:
-        return "btc_bot_monitor: creds missing (VISANU_ALPACA_* / ALPACA_* both unset) — skipping"
-
-    trading = TradingClient(api_key, secret_key, paper=True)
-    account = trading.get_account()
-
-    # Alpaca returns crypto positions with the slash stripped (e.g. BTCUSD).
-    # Match on normalized symbol to handle either form.
-    target = SYMBOL.replace("/", "").upper()
-    btc_pos = next(
-        (p for p in trading.get_all_positions()
-         if p.symbol.replace("/", "").upper() == target),
-        None,
-    )
-
-    last_order = None
-    orders = trading.get_orders(
-        filter=GetOrdersRequest(status=QueryOrderStatus.ALL, symbols=[SYMBOL], limit=1)
-    )
-    if orders:
-        last_order = orders[0]
-
-    cash = float(account.cash)
-    bp = float(account.buying_power)
-
-    if btc_pos is None:
-        pos_str = "no position"
-    else:
-        qty = float(btc_pos.qty)
-        avg = float(btc_pos.avg_entry_price)
-        mv = float(btc_pos.market_value)
-        pl = float(btc_pos.unrealized_pl)
-        pct = float(btc_pos.unrealized_plpc) * 100
-        pos_str = (
-            f"qty={qty:.8f} BTC @ avg ${avg:,.2f} | mkt ${mv:,.2f} | "
-            f"PnL ${pl:+,.2f} ({pct:+.2f}%)"
-        )
-
-    if last_order:
-        ts = last_order.submitted_at.strftime("%Y-%m-%d %H:%M UTC") if last_order.submitted_at else "?"
-        order_str = f"last order: {last_order.side.value} {last_order.qty or last_order.notional} @ {ts} ({last_order.status.value})"
-    else:
-        order_str = "no order history"
-
-    return (
-        f"btc_bot_monitor: cash=${cash:,.2f} bp=${bp:,.2f} | {pos_str} | {order_str}"
-    )
-
-
-async def monitor_btc_bot() -> None:
-    """Async wrapper — runs the sync Alpaca queries in a thread to avoid blocking the loop."""
-    try:
-        summary = await asyncio.to_thread(_sync_heartbeat)
-        logger.info(summary)
-    except Exception as e:
-        logger.exception("btc_bot_monitor: unhandled error: %s", e)
-    finally:
-        gc.collect()
+def monitor_btc_bot() -> None:
+    """Placeholder during V9 buildout — Task 16 implements the real function."""
+    logger.warning("btc_bot_monitor: not yet wired (Tasks 12-16 in progress)")
