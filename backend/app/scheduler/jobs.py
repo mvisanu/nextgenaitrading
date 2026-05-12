@@ -25,7 +25,7 @@ from typing import Any, Callable
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.core.config import settings
-from app.scheduler.tasks.btc_bot_monitor import monitor_btc_bot
+from app.scheduler.tasks.btc_bot_monitor import monitor_btc_bots
 from app.scheduler.tasks.evaluate_alerts import evaluate_alerts
 from app.scheduler.tasks.evaluate_auto_buy import evaluate_auto_buy
 from app.scheduler.tasks.prune_old_signals import prune_old_signals
@@ -134,10 +134,10 @@ JOB_TEMPLATES: dict[str, dict[str, Any]] = {
         "description": "Commodity 4-gate signal engine + email/SMS alerts",
     },
     "btc_bot_monitor": {
-        "func": monitor_btc_bot,
+        "func": monitor_btc_bots,
         "trigger": "interval",
         "minutes": settings.btc_bot_monitor_minutes,
-        "description": "Read-only BTC bot heartbeat: balances, position, last order",
+        "description": "Tick the BTC trailing-stop bot — FLOOR / trailing / ladder / cooldown re-entry",
     },
 }
 
@@ -275,9 +275,9 @@ def register_jobs() -> None:
         max_instances=1,
     )
 
-    # ── BTC bot heartbeat (read-only) ─────────────────────────────────────────
+    # ── BTC trailing-stop bot (full-lifecycle trader) ─────────────────────────
     scheduler.add_job(
-        monitor_btc_bot,
+        monitor_btc_bots,
         "interval",
         minutes=settings.btc_bot_monitor_minutes,
         id="btc_bot_monitor",
@@ -290,7 +290,7 @@ def register_jobs() -> None:
         "Scheduler jobs registered: buy_zone=%dm theme=%dm alerts=%dm auto_buy=%dm "
         "scan=%dm live_scanner=%dm idea_gen=%dm prune_signals=daily commodity_alerts=%dm "
         "trailing_bot_monitor=5m wheel_bot_monitor=15m "
-        "wheel_bot_daily_summary=cron(21:05 UTC)",
+        "wheel_bot_daily_summary=cron(21:05 UTC) btc_bot_monitor=%dm",
         settings.buy_zone_refresh_minutes,
         settings.theme_score_refresh_minutes,
         settings.alert_eval_minutes,
@@ -299,4 +299,5 @@ def register_jobs() -> None:
         settings.live_scanner_minutes,
         settings.idea_generator_minutes,
         settings.commodity_alert_minutes,
+        settings.btc_bot_monitor_minutes,
     )

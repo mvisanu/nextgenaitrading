@@ -13,8 +13,7 @@ One AsyncSessionLocal is opened OUTSIDE the per-user loop (CLAUDE.md rule);
 gc.collect() in the finally block (Render memory rule).
 
 NOTE: This module replaced an earlier read-only heartbeat (`monitor_btc_bot`).
-The backward-compat alias at the bottom keeps `app.scheduler.jobs` importable
-until Task 17 wires the new entry point.
+Task 17 rewired `app.scheduler.jobs` to import `monitor_btc_bots` directly.
 """
 from __future__ import annotations
 
@@ -467,6 +466,3 @@ def monitor_btc_bots() -> None:
     """Synchronous APScheduler entry point (plural — the trader)."""
     asyncio.run(_run_monitor())
 
-
-# Backward-compat alias for jobs.py until Task 17 rewires (will be removed there).
-monitor_btc_bot = monitor_btc_bots
