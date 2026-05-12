@@ -120,5 +120,11 @@ def evaluate_tick(
             return Idle(f"cooldown — {remaining} left")
         return ExitCooldown()
 
-    # Remaining branches added in subsequent tasks.
+    # 3. No session in DB
+    if session.status == "no_session":
+        if alpaca_position_qty > 0 and alpaca_avg_entry is not None:
+            return AdoptPosition(avg_entry=alpaca_avg_entry, qty=alpaca_position_qty)
+        return InitialBuy(usd_amount=initial_buy_usd)
+
+    # 4. status == "active" — main monitoring branch (filled in next tasks).
     return Idle("not implemented yet")

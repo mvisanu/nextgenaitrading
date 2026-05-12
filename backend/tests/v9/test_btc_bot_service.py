@@ -73,3 +73,44 @@ def test_cooldown_expired_returns_exit():
         state, Decimal("95000"), Decimal("0"), None, Decimal("10000"), _now()
     )
     assert isinstance(action, ExitCooldown)
+
+
+def test_no_session_flat_account_returns_initial_buy():
+    state = _state(
+        status="no_session",
+        original_entry=None,
+        blended_entry=None,
+        total_qty=Decimal("0"),
+        current_floor=None,
+    )
+    action = evaluate_tick(
+        state,
+        current_price=Decimal("95000"),
+        alpaca_position_qty=Decimal("0"),
+        alpaca_avg_entry=None,
+        initial_buy_usd=Decimal("10000"),
+        now_utc=_now(),
+    )
+    assert isinstance(action, InitialBuy)
+    assert action.usd_amount == Decimal("10000")
+
+
+def test_no_session_with_open_position_returns_adopt():
+    state = _state(
+        status="no_session",
+        original_entry=None,
+        blended_entry=None,
+        total_qty=Decimal("0"),
+        current_floor=None,
+    )
+    action = evaluate_tick(
+        state,
+        current_price=Decimal("95000"),
+        alpaca_position_qty=Decimal("0.10000000"),
+        alpaca_avg_entry=Decimal("94000"),
+        initial_buy_usd=Decimal("10000"),
+        now_utc=_now(),
+    )
+    assert isinstance(action, AdoptPosition)
+    assert action.avg_entry == Decimal("94000")
+    assert action.qty == Decimal("0.10000000")
