@@ -49,7 +49,12 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             nullable=False,
         ),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
         sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -118,9 +123,16 @@ def upgrade() -> None:
         ["user_id", "created_at"],
         if_not_exists=True,
     )
+    op.create_index(
+        "ix_btc_bot_actions_session_created",
+        "btc_bot_actions",
+        ["session_id", "created_at"],
+        if_not_exists=True,
+    )
 
 
 def downgrade() -> None:
+    op.drop_index("ix_btc_bot_actions_session_created", table_name="btc_bot_actions", if_exists=True)
     op.drop_index("ix_btc_bot_actions_user_created", table_name="btc_bot_actions", if_exists=True)
     op.drop_index("ix_btc_bot_actions_session_id", table_name="btc_bot_actions", if_exists=True)
     op.drop_table("btc_bot_actions")
