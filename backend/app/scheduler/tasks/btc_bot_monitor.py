@@ -60,6 +60,39 @@ def _resolve_creds_for_user(
     return None
 
 
+from decimal import Decimal
+
+from app.models.btc_bot import BtcBotSession
+from app.services.btc_bot_service import SessionState
+
+
+def _build_session_state(session: Optional[BtcBotSession]) -> SessionState:
+    """Project a DB row (or None) into the immutable SessionState the decision fn needs."""
+    if session is None:
+        return SessionState(
+            status="no_session",
+            original_entry=None,
+            blended_entry=None,
+            total_qty=Decimal("0"),
+            current_floor=None,
+            trailing_active=False,
+            trailing_high=None,
+            ladder_next=0,
+            cooldown_until=None,
+        )
+    return SessionState(
+        status=session.status,  # type: ignore[arg-type]
+        original_entry=session.original_entry_price,
+        blended_entry=session.blended_entry_price,
+        total_qty=session.total_qty or Decimal("0"),
+        current_floor=session.current_floor,
+        trailing_active=session.trailing_active,
+        trailing_high=session.trailing_high,
+        ladder_next=session.ladder_next,
+        cooldown_until=session.cooldown_until,
+    )
+
+
 # ── Placeholder for backward-compat with jobs.py (Task 17 cleans this up) ──
 
 def monitor_btc_bot() -> None:

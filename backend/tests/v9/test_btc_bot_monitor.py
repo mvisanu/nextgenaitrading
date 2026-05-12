@@ -32,3 +32,24 @@ def test_resolve_creds_prefers_broker_cred_over_env(user_bootstrap):
         mock_dec.side_effect = ["personal-key", "personal-secret"]
         creds = _resolve_creds_for_user(user_bootstrap, broker_cred=mock_cred)
     assert creds == ("personal-key", "personal-secret")
+
+
+from decimal import Decimal
+
+from app.scheduler.tasks.btc_bot_monitor import _build_session_state
+from app.services.btc_bot_service import SessionState
+
+
+def test_build_session_state_from_active_session(active_session):
+    state = _build_session_state(active_session)
+    assert isinstance(state, SessionState)
+    assert state.status == "active"
+    assert state.original_entry == Decimal("94000.00")
+    assert state.ladder_next == 0
+
+
+def test_build_session_state_from_none_returns_no_session():
+    state = _build_session_state(None)
+    assert state.status == "no_session"
+    assert state.total_qty == Decimal("0")
+    assert state.original_entry is None
