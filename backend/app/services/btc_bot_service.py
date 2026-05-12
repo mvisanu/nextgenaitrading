@@ -138,5 +138,13 @@ def evaluate_tick(
             reason=f"FLOOR @ ${current_price:.2f} ({gain:+.2f}% from blended ${session.blended_entry:.2f})"
         )
 
-    # Remaining checks (ladder, trailing) added in subsequent tasks.
+    # 4b. Ladder check — triggers compare to ORIGINAL entry, never blended.
+    if session.ladder_next < 3:
+        drop = LADDER_DROPS[session.ladder_next]
+        trigger = session.original_entry * (Decimal("1") - drop)
+        if current_price <= trigger:
+            level = session.ladder_next + 1
+            return LadderBuy(level=level, usd_amount=LADDER_USD[session.ladder_next])
+
+    # Trailing checks added in next task.
     return Idle("active — no rule fired yet")
