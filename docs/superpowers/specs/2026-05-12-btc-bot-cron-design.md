@@ -97,9 +97,9 @@ One row per session lifecycle (`active` → `cooldown` → `ended`).
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | UUID PK | |
-| `user_id` | UUID FK → `users.id` | every query scoped here |
-| `status` | Enum(`active`, `cooldown`, `ended`, `error`) | drives the cron's decision |
+| `id` | Integer PK autoincrement | matches codebase convention (`wheel_bot_sessions`, `copy_trading_sessions`) |
+| `user_id` | Integer FK → `users.id` ON DELETE CASCADE | every query scoped here |
+| `status` | String(20) | values: `active`, `cooldown`, `ended`, `error` (no Postgres-native enum — easier to extend later) |
 | `original_entry_price` | Numeric(18,2) | frozen at first buy; ladder triggers reference this |
 | `blended_entry_price` | Numeric(18,2) | recomputed after each ladder fill |
 | `total_qty` | Numeric(20,8) | BTC qty held |
@@ -123,10 +123,10 @@ Sparse audit log: one row per **state change**. Idle ticks write nothing.
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | UUID PK | |
-| `session_id` | UUID FK → `btc_bot_sessions.id` ON DELETE CASCADE | |
-| `user_id` | UUID FK → `users.id` | denormalised for fast user-scoped queries |
-| `action` | Enum | `initial_buy`, `ladder_l1`, `ladder_l2`, `ladder_l3`, `trailing_activate`, `trailing_advance`, `stop_out`, `cooldown_start`, `cooldown_exit`, `adopted_position`, `manual_close`, `error` |
+| `id` | Integer PK autoincrement | |
+| `session_id` | Integer FK → `btc_bot_sessions.id` ON DELETE CASCADE | |
+| `user_id` | Integer FK → `users.id` ON DELETE CASCADE | denormalised for fast user-scoped queries |
+| `action` | String(30) | values: `initial_buy`, `ladder_l1`, `ladder_l2`, `ladder_l3`, `trailing_activate`, `trailing_advance`, `stop_out`, `cooldown_start`, `cooldown_exit`, `adopted_position`, `manual_close`, `error` |
 | `btc_price` | Numeric(18,2) | observed price when action fired |
 | `qty_delta` | Numeric(20,8) nullable | `+qty` on buys, `-qty` on sells, null otherwise |
 | `usd_delta` | Numeric(18,2) nullable | dollar amount on buys/sells |
@@ -139,7 +139,7 @@ Sparse audit log: one row per **state change**. Idle ticks write nothing.
 - `(user_id, created_at DESC)` — history table on `/btc-bot`.
 - `(session_id, created_at)` — session-detail drill-in.
 
-**Enums:** use SQLAlchemy `Enum(... native_enum=False)` to avoid Postgres-side enum alters on future additions.
+**Status/action types:** Stored as plain `String` columns (not Postgres Enums), matching the `wheel_bot_sessions.stage` pattern. Avoids enum-alter migration pain when adding new action types later.
 
 **Migration:** new alembic revision based on the current head; filename `v9_btc_bot.py` (next number after the v8 PIN migration).
 
