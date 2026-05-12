@@ -178,3 +178,29 @@ def evaluate_tick(
     return Idle(
         f"price=${current_price:.2f} gain={gain_pct:+.2f}% floor=${session.current_floor:.2f}"
     )
+
+
+# ── Helpers for orchestrator (also pure) ────────────────────────────────────
+
+def compute_blended_entry(
+    prior_qty: Decimal,
+    prior_blended: Decimal,
+    fill_qty: Decimal,
+    fill_price: Decimal,
+) -> Decimal:
+    """Weighted-average entry after a buy fills. Rounds to 2dp."""
+    total_cost = prior_qty * prior_blended + fill_qty * fill_price
+    total_qty = prior_qty + fill_qty
+    if total_qty == 0:
+        return Decimal("0.00")
+    return (total_cost / total_qty).quantize(Decimal("0.01"))
+
+
+def compute_new_floor_up_only(
+    existing: Decimal | None,
+    proposed: Decimal,
+) -> Decimal:
+    """Floor is up-only. Returns max of existing (if any) and proposed."""
+    if existing is None:
+        return proposed
+    return max(existing, proposed)
