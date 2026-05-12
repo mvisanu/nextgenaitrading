@@ -43,22 +43,23 @@ npx playwright test --config=e2e/playwright.config.ts
 ```
 backend/app/
   main.py, core/, auth/                   # app entry, config, Supabase JWT auth
-  api/                                    # v1: profile,broker,backtests,strategies,live,artifacts,morning_brief,copy_trading,wheel_bot,trailing_bot
+  api/                                    # v1: profile,broker,backtests,strategies,live,artifacts,morning_brief,copy_trading,wheel_bot,trailing_bot,btc_bot
                                           # v2: buy_zone,alerts,ideas,auto_buy,opportunities
                                           # v3: watchlist,scanner,generated_ideas
                                           # v4: options
                                           # commodity: gold, commodity_alert_prefs
-  models/, schemas/                       # ORM + Pydantic DTOs
+  models/, schemas/                       # ORM + Pydantic DTOs (incl. btc_bot)
   services/
     alpaca_data.py                        # Alpaca StockHistoricalDataClient; primary source for stocks/ETFs
     alpaca_stream.py                      # AlpacaStreamManager singleton; WebSocket→SSE fan-out; max 20 symbols; bounded queues
     market_data.py                        # routes load_ohlcv(): Alpaca→yfinance fallback; yfinance-only for commodities/forex/crypto
     yfinance_cache.py                     # 30-min TTL cache; use get_ticker_info(t) — never yf.Ticker(t).info directly
+    btc_bot_service.py                    # pure evaluate_tick(...) -> TickAction; zero I/O — fully unit-testable
   strategies/                             # conservative, aggressive, bollinger_squeeze
   optimizers/                             # ai_pick, buy_low_sell_high
-  scheduler/tasks/                        # APScheduler: buy-zone, alerts, auto-buy, live-scanner, idea-gen, commodity-alerts, trailing-bot, copy-trading, wheel-bot
+  scheduler/tasks/                        # APScheduler: buy-zone, alerts, auto-buy, live-scanner, idea-gen, commodity-alerts, trailing-bot, copy-trading, wheel-bot, btc-bot
   db/session.py                           # async engine (lazy init, pool_recycle=3600)
-  broker/                                 # AlpacaClient, RobinhoodClient (stub), factory, WheelAlpacaClient (wheel bot; WHEEL_ALPACA_* env vars)
+  broker/                                 # AlpacaClient, RobinhoodClient (stub), factory, WheelAlpacaClient (wheel bot; WHEEL_ALPACA_* env vars), BtcBotClient (thin alpaca-py wrapper)
   options/                                # broker/, greeks.py, iv.py, scanner.py, signals.py, risk.py, calendar.py, executor.py
   backtesting/engine.py
   alembic/                                # v1+v2+v3+v4+v5+v6+v7+v8 migrations
@@ -68,7 +69,7 @@ frontend/
                                           #   artifacts, profile, faq, learn, opportunities, ideas, alerts,
                                           #   auto-buy, portfolio, multi-chart, stock/[symbol],
                                           #   gold/, options/, commodities-guide/, morning-brief/,
-                                          #   trailing-bot/, copy-trading/, wheel-bot/, crons/)
+                                          #   trailing-bot/, copy-trading/, wheel-bot/, btc-bot/, crons/)
   components/ui/, charts/, layout/, strategy/, buy-zone/, alerts/, ideas/, opportunities/, options/
   lib/api.ts                              # typed fetch wrappers, Bearer token auth
   lib/auth.ts, lib/supabase.ts            # Supabase session helpers
@@ -127,6 +128,8 @@ frontend/
 
 **V8 (1):** `UserPin` (`user_pins`; unique on `user_id`; stores bcrypt `pin_hash`, `attempt_count`, `locked_until`)
 
+**V9 (2):** `BtcBotSession` (`btc_bot_sessions`; partial-unique on `user_id` while `status IN ('active','cooldown')`), `BtcBotAction` (`btc_bot_actions`; sparse audit log of every state change)
+
 **Commodity (1):** `CommodityAlertPrefs` (unique per user; stores alert_email, alert_phone, symbols JSON, min_confidence, cooldown_minutes, last_alerted_at)
 
 ## Environment Variables
@@ -181,7 +184,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - **DB pool:** `pool_size=2`, `max_overflow=3` (5 max connections). Never raise these.
 - **uvicorn:** `--workers 1 --limit-concurrency 20 --backlog 64`. Single worker (APScheduler singleton).
 - **yfinance:** Hard cap at 750 rows after download. Weekly/monthly intervals limited to `"1825d"` (5 years).
-- **Scheduler intervals:** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min, trailing-bot=5min, copy-trading=15min, wheel-bot=15min, btc-bot-monitor=5min.
+- **Scheduler intervals:** buy-zones=120min, theme-scores=720min, alerts=10min, auto-buy=10min, watchlist=30min, live-scanner=15min, idea-gen=120min, commodity-alerts=30min, trailing-bot=5min, copy-trading=15min, wheel-bot=15min, btc-bot=15min.
 - **Scheduler gc:** Every scheduler task must have `gc.collect()` in its `finally` block.
 - **`chart-data` endpoint:** Never add `db: Depends(get_db)` unless actually used — dashboard fires 15+ concurrent polls per symbol.
 
@@ -325,6 +328,24 @@ Frontend page at `/wheel-bot`. Automates Wheel Strategy on TSLA using `WHEEL_ALP
 
 **API routes** (`/auth/`): `POST /auth/pin-login` (public) · `POST /auth/set-pin` (auth) · `GET /auth/has-pin` (auth)
 
+## BTC Trailing-Stop Bot — Web Feature (V9)
+
+Frontend page at `/btc-bot`. Converts the standalone `btc-bot/` CLI scripts into a multi-tenant scheduled feature managed from `/crons`.
+
+**API routes** (`/api/v1/btc-bot/`): `GET /session` · `GET /sessions` · `GET /sessions/{id}` · `GET /actions` · `POST /sessions` · `POST /sessions/{id}/close` · `POST /sessions/{id}/cancel-cooldown`
+
+**Strategy (from `btc-bot/BTC_BOT.md`):**
+- FLOOR: blended_entry × 0.90 (up-only)
+- Trailing activates at +10% gain; floor = current × 0.95; advances every +5% step
+- 3-level ladder against original_entry: L1 (-20%, $10k), L2 (-30%, $15k), L3 (-40%, $20k)
+- After stop-out: 4h cooldown, then auto re-enter with default initial buy
+
+**Credential resolution:** Prefers `BrokerCredential` row; falls back to `VISANU_ALPACA_*` env vars only for the user whose email matches `BTC_BOT_BOOTSTRAP_USER_EMAIL`.
+
+**Scheduler:** `btc_bot_monitor` every 15 min. Iterates active+cooldown sessions across all users + the bootstrap user. Single `AsyncSessionLocal` outside the loop, one commit at the end, `gc.collect()` in `finally`.
+
+**Decision is pure:** `services.btc_bot_service.evaluate_tick(...) -> TickAction` has zero I/O — fully testable. Orchestrator in `scheduler/tasks/btc_bot_monitor.py` dispatches actions through `BtcBotClient` (thin alpaca-py wrapper).
+
 ## Crons Management (`/crons`)
 
 **API routes** (`/api/v1/crons/`): `GET /jobs` · `GET /templates` · `PATCH /jobs/{id}` · `DELETE /jobs/{id}` · `POST /jobs` · `POST /jobs/{id}/pause` · `POST /jobs/{id}/resume` · `POST /jobs/{id}/run-now`
@@ -339,6 +360,7 @@ Frontend page at `/wheel-bot`. Automates Wheel Strategy on TSLA using `WHEEL_ALP
 cd backend && pytest tests/v2/ tests/v3/ tests/v4/ tests/v5/
 cd backend && pytest tests/v6/   # standalone only — do NOT run with v5
 cd backend && pytest tests/v7/
+cd backend && pytest tests/v9/   # BTC bot (V9)
 ```
 
 ## Known Bugs
