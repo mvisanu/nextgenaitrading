@@ -140,6 +140,201 @@ def _record_error(db, session: Optional[BtcBotSession], reason: str) -> None:
     )
 
 
+from datetime import datetime, timedelta
+from app.services.btc_bot_service import (
+    AdoptPosition,
+    AdvanceTrailing,
+    ExitCooldown,
+    FLOOR_MULT,
+    Idle,
+    InitialBuy,
+    LadderBuy,
+    StopOut,
+    TickAction,
+    compute_blended_entry,
+    compute_new_floor_up_only,
+)
+
+
+def _apply_action(
+    db,
+    client,
+    *,
+    session: Optional[BtcBotSession],
+    user_id: int,
+    action: TickAction,
+    price: Decimal,
+    now_utc: datetime,
+) -> Optional[BtcBotSession]:
+    """Execute one TickAction. Returns the (possibly newly-created) session."""
+    if isinstance(action, Idle):
+        return session
+
+    if isinstance(action, InitialBuy):
+        fill = client.market_buy(usd_amount=action.usd_amount)
+        new_session = BtcBotSession(
+            user_id=user_id,
+            status="active",
+            original_entry_price=fill["filled_price"],
+            blended_entry_price=fill["filled_price"],
+            total_qty=fill["filled_qty"],
+            initial_buy_usd=action.usd_amount,
+            current_floor=(fill["filled_price"] * FLOOR_MULT).quantize(Decimal("0.01")),
+            trailing_active=False,
+            trailing_high=None,
+            ladder_next=0,
+            last_action_at=now_utc,
+        )
+        db.add(new_session)
+        try:
+            db.flush()
+        except Exception:
+            pass
+        _record_action(
+            db,
+            session_id=new_session.id or 0,
+            user_id=user_id,
+            action="initial_buy",
+            btc_price=fill["filled_price"],
+            qty_delta=fill["filled_qty"],
+            usd_delta=action.usd_amount,
+            floor_after=new_session.current_floor,
+            alpaca_order_id=fill["order_id"],
+        )
+        return new_session
+
+    if isinstance(action, AdoptPosition):
+        new_session = BtcBotSession(
+            user_id=user_id,
+            status="active",
+            original_entry_price=action.avg_entry,
+            blended_entry_price=action.avg_entry,
+            total_qty=action.qty,
+            initial_buy_usd=Decimal(str(settings.btc_bot_initial_usd)),
+            current_floor=(action.avg_entry * FLOOR_MULT).quantize(Decimal("0.01")),
+            trailing_active=False,
+            trailing_high=None,
+            ladder_next=0,
+            last_action_at=now_utc,
+        )
+        db.add(new_session)
+        try:
+            db.flush()
+        except Exception:
+            pass
+        _record_action(
+            db,
+            session_id=new_session.id or 0,
+            user_id=user_id,
+            action="adopted_position",
+            btc_price=price,
+            qty_delta=action.qty,
+            floor_after=new_session.current_floor,
+            notes=f"Adopted Alpaca position: avg_entry=${action.avg_entry} qty={action.qty}",
+        )
+        return new_session
+
+    assert session is not None, f"_apply_action({action.__class__.__name__}) requires existing session"
+
+    if isinstance(action, LadderBuy):
+        floor_before = session.current_floor
+        fill = client.market_buy(usd_amount=action.usd_amount)
+        new_blended = compute_blended_entry(
+            prior_qty=session.total_qty,
+            prior_blended=session.blended_entry_price,
+            fill_qty=fill["filled_qty"],
+            fill_price=fill["filled_price"],
+        )
+        new_total_qty = (session.total_qty + fill["filled_qty"]).quantize(Decimal("0.00000001"))
+        proposed_floor = (new_blended * FLOOR_MULT).quantize(Decimal("0.01"))
+        new_floor = compute_new_floor_up_only(session.current_floor, proposed_floor)
+
+        session.blended_entry_price = new_blended
+        session.total_qty = new_total_qty
+        session.current_floor = new_floor
+        session.ladder_next = action.level
+        session.last_action_at = now_utc
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action=f"ladder_l{action.level}",
+            btc_price=fill["filled_price"],
+            qty_delta=fill["filled_qty"],
+            usd_delta=action.usd_amount,
+            floor_before=floor_before,
+            floor_after=new_floor,
+            alpaca_order_id=fill["order_id"],
+        )
+        return session
+
+    if isinstance(action, AdvanceTrailing):
+        floor_before = session.current_floor
+        session.current_floor = action.new_floor
+        session.trailing_high = action.new_trailing_high
+        session.trailing_active = True
+        session.last_action_at = now_utc
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action="trailing_activate" if action.activated_now else "trailing_advance",
+            btc_price=price,
+            floor_before=floor_before,
+            floor_after=action.new_floor,
+        )
+        return session
+
+    if isinstance(action, StopOut):
+        floor_before = session.current_floor
+        qty_to_sell = session.total_qty
+        fill = client.market_sell_all(qty=qty_to_sell)
+        proceeds = fill["filled_qty"] * fill["filled_price"]
+        cost_basis = qty_to_sell * session.blended_entry_price
+        realized = (proceeds - cost_basis).quantize(Decimal("0.01"))
+
+        session.status = "cooldown"
+        session.cooldown_until = now_utc + timedelta(minutes=settings.btc_bot_cooldown_minutes)
+        session.realized_pnl = realized
+        session.total_qty = Decimal("0")
+        session.last_action_at = now_utc
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action="stop_out",
+            btc_price=fill["filled_price"],
+            qty_delta=-qty_to_sell,
+            usd_delta=proceeds,
+            floor_before=floor_before,
+            alpaca_order_id=fill["order_id"],
+            notes=action.reason,
+        )
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action="cooldown_start",
+            notes=f"cooldown until {session.cooldown_until.isoformat()}",
+        )
+        return session
+
+    if isinstance(action, ExitCooldown):
+        session.status = "ended"
+        session.ended_at = now_utc
+        session.last_action_at = now_utc
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action="cooldown_exit",
+            notes="Cooldown expired; session ended. Next tick will fire InitialBuy.",
+        )
+        return session
+
+    raise RuntimeError(f"Unknown TickAction type: {type(action).__name__}")
+
+
 # ── Placeholder for backward-compat with jobs.py (Task 17 cleans this up) ──
 
 def monitor_btc_bot() -> None:
