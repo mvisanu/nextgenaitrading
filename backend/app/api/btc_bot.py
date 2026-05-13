@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
@@ -110,7 +111,9 @@ async def list_actions(
 # ── Helper ─────────────────────────────────────────────────────────────────────
 
 
-async def _build_client_for_session(session: BtcBotSession, db: AsyncSession) -> BtcBotClient:
+async def _build_client_for_session(
+    session: BtcBotSession, db: AsyncSession, user: User
+) -> BtcBotClient:
     """Resolve creds + build BtcBotClient for an existing session row."""
     cred: Optional[BrokerCredential] = None
     if session.credential_id is not None:
@@ -122,9 +125,15 @@ async def _build_client_for_session(session: BtcBotSession, db: AsyncSession) ->
     if cred:
         api = decrypt_value(cred.api_key)
         secret = decrypt_value(cred.encrypted_secret_key)
-    else:
+    elif (
+        settings.btc_bot_bootstrap_user_email
+        and user.email
+        and user.email.lower() == settings.btc_bot_bootstrap_user_email.lower()
+    ):
         api = settings.visanu_alpaca_api_key
         secret = settings.visanu_alpaca_secret_key
+    else:
+        api, secret = "", ""
 
     if not api or not secret:
         raise HTTPException(
@@ -197,8 +206,8 @@ async def close_session(
     order_id: Optional[str] = None
     qty_sold = session.total_qty or Decimal("0")
     if qty_sold > 0:
-        client = await _build_client_for_session(session, db)
-        fill = client.market_sell_all(qty=qty_sold)
+        client = await _build_client_for_session(session, db, user)
+        fill = await asyncio.to_thread(client.market_sell_all, qty=qty_sold)
         proceeds = fill["filled_qty"] * fill["filled_price"]
         fill_price = fill["filled_price"]
         order_id = fill["order_id"]

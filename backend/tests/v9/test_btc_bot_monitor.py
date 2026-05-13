@@ -3,7 +3,7 @@
 Avoid hitting Alpaca by patching BtcBotClient. Use the conftest fixtures for
 deterministic user + session inputs.
 """
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -104,10 +104,13 @@ from app.services.btc_bot_service import (
 )
 
 
-def test_apply_idle_does_nothing(active_session):
+@pytest.mark.asyncio
+async def test_apply_idle_does_nothing(active_session):
     db = MagicMock()
+    db.flush = AsyncMock()
+    db.add = MagicMock()
     client = MagicMock()
-    new_session = _apply_action(
+    new_session = await _apply_action(
         db, client, session=active_session, user_id=1,
         action=Idle("nothing"), price=Decimal("95000"), now_utc=None,
     )
@@ -117,8 +120,10 @@ def test_apply_idle_does_nothing(active_session):
     client.market_sell_all.assert_not_called()
 
 
-def test_apply_initial_buy_creates_session_and_records_action(user_bootstrap):
+@pytest.mark.asyncio
+async def test_apply_initial_buy_creates_session_and_records_action(user_bootstrap):
     db = MagicMock()
+    db.flush = AsyncMock()
     db.add = MagicMock()
     client = MagicMock()
     client.market_buy.return_value = {
@@ -128,7 +133,7 @@ def test_apply_initial_buy_creates_session_and_records_action(user_bootstrap):
     }
     now = datetime(2026, 5, 12, 15, 0, 0, tzinfo=timezone.utc)
 
-    new_session = _apply_action(
+    new_session = await _apply_action(
         db, client, session=None, user_id=user_bootstrap.id,
         action=InitialBuy(usd_amount=Decimal("10000")),
         price=Decimal("95000"), now_utc=now,
@@ -146,12 +151,15 @@ def test_apply_initial_buy_creates_session_and_records_action(user_bootstrap):
     assert db.add.call_count == 2
 
 
-def test_apply_adopt_position_creates_session(user_bootstrap):
+@pytest.mark.asyncio
+async def test_apply_adopt_position_creates_session(user_bootstrap):
     db = MagicMock()
+    db.flush = AsyncMock()
+    db.add = MagicMock()
     client = MagicMock()
     now = datetime(2026, 5, 12, 15, 0, 0, tzinfo=timezone.utc)
 
-    new_session = _apply_action(
+    new_session = await _apply_action(
         db, client, session=None, user_id=user_bootstrap.id,
         action=AdoptPosition(avg_entry=Decimal("94000"), qty=Decimal("0.10")),
         price=Decimal("95000"), now_utc=now,
@@ -166,8 +174,11 @@ def test_apply_adopt_position_creates_session(user_bootstrap):
     assert db.add.call_count == 2
 
 
-def test_apply_ladder_buy_updates_blended_and_floor(active_session):
+@pytest.mark.asyncio
+async def test_apply_ladder_buy_updates_blended_and_floor(active_session):
     db = MagicMock()
+    db.flush = AsyncMock()
+    db.add = MagicMock()
     client = MagicMock()
     client.market_buy.return_value = {
         "filled_qty": Decimal("0.125"),
@@ -176,7 +187,7 @@ def test_apply_ladder_buy_updates_blended_and_floor(active_session):
     }
     now = datetime(2026, 5, 12, 15, 0, 0, tzinfo=timezone.utc)
 
-    new_session = _apply_action(
+    new_session = await _apply_action(
         db, client, session=active_session, user_id=1,
         action=LadderBuy(level=1, usd_amount=Decimal("10000")),
         price=Decimal("80000"), now_utc=now,
@@ -189,8 +200,11 @@ def test_apply_ladder_buy_updates_blended_and_floor(active_session):
     assert new_session.ladder_next == 1
 
 
-def test_apply_advance_trailing_updates_floor_in_place(active_session):
+@pytest.mark.asyncio
+async def test_apply_advance_trailing_updates_floor_in_place(active_session):
     db = MagicMock()
+    db.flush = AsyncMock()
+    db.add = MagicMock()
     client = MagicMock()
     now = datetime(2026, 5, 12, 15, 0, 0, tzinfo=timezone.utc)
     action = AdvanceTrailing(
@@ -199,7 +213,7 @@ def test_apply_advance_trailing_updates_floor_in_place(active_session):
         activated_now=True,
     )
 
-    new_session = _apply_action(
+    new_session = await _apply_action(
         db, client, session=active_session, user_id=1,
         action=action, price=Decimal("110000"), now_utc=now,
     )
@@ -211,8 +225,11 @@ def test_apply_advance_trailing_updates_floor_in_place(active_session):
     client.market_sell_all.assert_not_called()
 
 
-def test_apply_stop_out_sells_all_and_enters_cooldown(active_session):
+@pytest.mark.asyncio
+async def test_apply_stop_out_sells_all_and_enters_cooldown(active_session):
     db = MagicMock()
+    db.flush = AsyncMock()
+    db.add = MagicMock()
     client = MagicMock()
     client.market_sell_all.return_value = {
         "filled_qty": Decimal("0.10000000"),
@@ -221,7 +238,7 @@ def test_apply_stop_out_sells_all_and_enters_cooldown(active_session):
     }
     now = datetime(2026, 5, 12, 15, 0, 0, tzinfo=timezone.utc)
 
-    new_session = _apply_action(
+    new_session = await _apply_action(
         db, client, session=active_session, user_id=1,
         action=StopOut(reason="FLOOR hit"),
         price=Decimal("83000"), now_utc=now,
@@ -235,14 +252,17 @@ def test_apply_stop_out_sells_all_and_enters_cooldown(active_session):
     assert new_session.total_qty == Decimal("0")
 
 
-def test_apply_exit_cooldown_ends_session(active_session):
+@pytest.mark.asyncio
+async def test_apply_exit_cooldown_ends_session(active_session):
     db = MagicMock()
+    db.flush = AsyncMock()
+    db.add = MagicMock()
     client = MagicMock()
     active_session.status = "cooldown"
     active_session.cooldown_until = None
     now = datetime(2026, 5, 12, 15, 0, 0, tzinfo=timezone.utc)
 
-    new_session = _apply_action(
+    new_session = await _apply_action(
         db, client, session=active_session, user_id=1,
         action=ExitCooldown(),
         price=Decimal("95000"), now_utc=now,

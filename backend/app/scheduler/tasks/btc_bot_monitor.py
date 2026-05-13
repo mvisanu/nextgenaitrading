@@ -155,7 +155,7 @@ from app.services.btc_bot_service import (
 )
 
 
-def _apply_action(
+async def _apply_action(
     db,
     client,
     *,
@@ -185,13 +185,10 @@ def _apply_action(
             last_action_at=now_utc,
         )
         db.add(new_session)
-        try:
-            db.flush()
-        except Exception:
-            pass
+        await db.flush()
         _record_action(
             db,
-            session_id=new_session.id or 0,
+            session_id=new_session.id,
             user_id=user_id,
             action="initial_buy",
             btc_price=fill["filled_price"],
@@ -217,13 +214,10 @@ def _apply_action(
             last_action_at=now_utc,
         )
         db.add(new_session)
-        try:
-            db.flush()
-        except Exception:
-            pass
+        await db.flush()
         _record_action(
             db,
-            session_id=new_session.id or 0,
+            session_id=new_session.id,
             user_id=user_id,
             action="adopted_position",
             btc_price=price,
@@ -427,7 +421,7 @@ async def _tick_one_user(db: AsyncSession, user: User, now_utc: datetime) -> Non
     logger.info("btc_bot: user=%d action=%s price=%s", user.id, type(action).__name__, price)
 
     try:
-        _apply_action(
+        await _apply_action(
             db, client,
             session=session,
             user_id=user.id,
