@@ -292,12 +292,17 @@ def register_jobs() -> None:
     # connections / yfinance traffic on every interval. Resume from /crons
     # if you start using the corresponding feature.
     _DEFAULT_PAUSED = (
+        # Discovery jobs — feed pages we don't actively use
         "refresh_buy_zones",
         "refresh_theme_scores",
         "scan_all_watchlists",
         "run_live_scanner",
         "run_idea_generator",
         "run_news_scanner",
+        # Bot jobs for strategies not in active use
+        "trailing_bot_monitor",
+        "wheel_bot_monitor",
+        "wheel_bot_daily_summary",
     )
     for job_id in _DEFAULT_PAUSED:
         try:
