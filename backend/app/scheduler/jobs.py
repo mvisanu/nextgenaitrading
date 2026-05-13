@@ -286,6 +286,25 @@ def register_jobs() -> None:
         replace_existing=True,
     )
 
+    # ── Default-paused jobs ───────────────────────────────────────────────────
+    # These discovery jobs feed pages we don't actively use; keep them
+    # registered (visible on /crons) but paused so they don't burn DB
+    # connections / yfinance traffic on every interval. Resume from /crons
+    # if you start using the corresponding feature.
+    _DEFAULT_PAUSED = (
+        "refresh_buy_zones",
+        "refresh_theme_scores",
+        "scan_all_watchlists",
+        "run_live_scanner",
+        "run_idea_generator",
+        "run_news_scanner",
+    )
+    for job_id in _DEFAULT_PAUSED:
+        try:
+            scheduler.pause_job(job_id)
+        except Exception as exc:
+            logger.warning("Could not pause job %s: %s", job_id, exc)
+
     logger.info(
         "Scheduler jobs registered: buy_zone=%dm theme=%dm alerts=%dm auto_buy=%dm "
         "scan=%dm live_scanner=%dm idea_gen=%dm prune_signals=daily commodity_alerts=%dm "
