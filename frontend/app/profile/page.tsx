@@ -845,7 +845,7 @@ function BrokerCard({ credential, onTest, onDelete, isTestLoading }: BrokerCardP
       </div>
       <div className="flex items-center justify-between gap-2">
         <p className="text-2xs text-muted-foreground font-mono tabular-nums truncate">
-          {credential.api_key}
+          {credential.api_key_masked}
         </p>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {credential.provider === "alpaca" ? (

@@ -244,6 +244,8 @@ from app.api.trailing_bot import router as trailing_bot_router
 from app.api.copy_trading import router as copy_trading_router
 # wheel strategy bot
 from app.api.wheel_bot import router as wheel_bot_router
+# BTC trailing-stop bot
+from app.api.btc_bot import router as btc_bot_router
 # crons inspector
 from app.api.crons import router as crons_router
 # PIN auth
@@ -279,6 +281,7 @@ app.include_router(stream_router)
 app.include_router(trailing_bot_router, prefix="/api/v1")
 app.include_router(copy_trading_router, prefix="/api/v1")
 app.include_router(wheel_bot_router, prefix="/api/v1")
+app.include_router(btc_bot_router, prefix="/api/v1")
 app.include_router(crons_router, prefix="/api/v1")
 app.include_router(pin_auth_router)
 

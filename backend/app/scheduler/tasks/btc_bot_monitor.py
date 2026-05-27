@@ -1,104 +1,462 @@
 """
-Scheduler task: BTC trailing-bot heartbeat monitor.
+APScheduler task: BTC trailing-stop bot monitor (V9).
 
-Read-only observability for the standalone ``btc-bot/btc_trailing_bot.py`` daemon.
-Fires on a configurable interval (``settings.btc_bot_monitor_minutes``, default 5)
-and logs a single line summarising the current BTC paper-trading state:
+Fires every BTC_BOT_MONITOR_MINUTES (default 15). Iterates active + cooldown
+sessions across all users, executes one TickAction per session per fire.
 
-  • Account balances (cash, buying power)
-  • Current BTC position (qty, avg entry, market value, unrealized PnL)
-  • Last filled BTC/USD order timestamp
+This module is the only place I/O happens for the bot:
+  - DB reads/writes go through AsyncSessionLocal
+  - Alpaca calls go through BtcBotClient
+  - Pure decisions delegated to services.btc_bot_service.evaluate_tick
 
-This task does NOT trade. It is intended purely to surface in the ``/crons`` UI
-so the operator has one place to see "yes, the BTC bot infrastructure is alive
-and the position looks like this." The trading loop itself remains in the
-standalone daemon (or its eventual APScheduler refactor).
+One AsyncSessionLocal is opened OUTSIDE the per-user loop (CLAUDE.md rule);
+gc.collect() in the finally block (Render memory rule).
 
-Uses the same credential resolution as the standalone bot:
-  VISANU_ALPACA_API_KEY / VISANU_ALPACA_SECRET_KEY  preferred
-  ALPACA_API_KEY        / ALPACA_SECRET_KEY         fallback
+NOTE: This module replaced an earlier read-only heartbeat (`monitor_btc_bot`).
+Task 17 rewired `app.scheduler.jobs` to import `monitor_btc_bots` directly.
 """
 from __future__ import annotations
 
-import asyncio
-import gc
 import logging
-import os
+from typing import Optional
+
+from app.core.config import settings
+from app.core.security import decrypt_value
+from app.models.broker import BrokerCredential
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-SYMBOL = "BTC/USD"
+
+# ── Credential resolution ──────────────────────────────────────────────────
+
+def _resolve_creds_for_user(
+    user: User,
+    broker_cred: Optional[BrokerCredential],
+) -> Optional[tuple[str, str]]:
+    """
+    Return (api_key, secret_key) for the user, or None if no usable credential.
+
+    Precedence:
+      1. user's BrokerCredential row (if non-None)
+      2. env vars VISANU_ALPACA_* (only for the bootstrap user)
+    """
+    if broker_cred is not None:
+        api = decrypt_value(broker_cred.api_key)
+        secret = decrypt_value(broker_cred.encrypted_secret_key)
+        return (api, secret)
+
+    if (
+        settings.btc_bot_bootstrap_user_email
+        and user.email
+        and user.email.lower() == settings.btc_bot_bootstrap_user_email.lower()
+    ):
+        api = settings.visanu_alpaca_api_key
+        secret = settings.visanu_alpaca_secret_key
+        if api and secret:
+            return (api, secret)
+
+    return None
 
 
-def _resolve_creds() -> tuple[str, str]:
-    """Return (api_key, secret_key) preferring VISANU_* over ALPACA_*."""
-    api = os.environ.get("VISANU_ALPACA_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
-    sec = os.environ.get("VISANU_ALPACA_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
-    return api, sec
+from decimal import Decimal
+
+from app.models.btc_bot import BtcBotSession
+from app.services.btc_bot_service import SessionState
 
 
-def _sync_heartbeat() -> str:
-    """Run the synchronous Alpaca queries and return a one-line summary."""
-    from alpaca.trading.client import TradingClient
-    from alpaca.trading.enums import QueryOrderStatus
-    from alpaca.trading.requests import GetOrdersRequest
-
-    api_key, secret_key = _resolve_creds()
-    if not api_key or not secret_key:
-        return "btc_bot_monitor: creds missing (VISANU_ALPACA_* / ALPACA_* both unset) — skipping"
-
-    trading = TradingClient(api_key, secret_key, paper=True)
-    account = trading.get_account()
-
-    # Alpaca returns crypto positions with the slash stripped (e.g. BTCUSD).
-    # Match on normalized symbol to handle either form.
-    target = SYMBOL.replace("/", "").upper()
-    btc_pos = next(
-        (p for p in trading.get_all_positions()
-         if p.symbol.replace("/", "").upper() == target),
-        None,
-    )
-
-    last_order = None
-    orders = trading.get_orders(
-        filter=GetOrdersRequest(status=QueryOrderStatus.ALL, symbols=[SYMBOL], limit=1)
-    )
-    if orders:
-        last_order = orders[0]
-
-    cash = float(account.cash)
-    bp = float(account.buying_power)
-
-    if btc_pos is None:
-        pos_str = "no position"
-    else:
-        qty = float(btc_pos.qty)
-        avg = float(btc_pos.avg_entry_price)
-        mv = float(btc_pos.market_value)
-        pl = float(btc_pos.unrealized_pl)
-        pct = float(btc_pos.unrealized_plpc) * 100
-        pos_str = (
-            f"qty={qty:.8f} BTC @ avg ${avg:,.2f} | mkt ${mv:,.2f} | "
-            f"PnL ${pl:+,.2f} ({pct:+.2f}%)"
+def _build_session_state(session: Optional[BtcBotSession]) -> SessionState:
+    """Project a DB row (or None) into the immutable SessionState the decision fn needs."""
+    if session is None:
+        return SessionState(
+            status="no_session",
+            original_entry=None,
+            blended_entry=None,
+            total_qty=Decimal("0"),
+            current_floor=None,
+            trailing_active=False,
+            trailing_high=None,
+            ladder_next=0,
+            cooldown_until=None,
         )
-
-    if last_order:
-        ts = last_order.submitted_at.strftime("%Y-%m-%d %H:%M UTC") if last_order.submitted_at else "?"
-        order_str = f"last order: {last_order.side.value} {last_order.qty or last_order.notional} @ {ts} ({last_order.status.value})"
-    else:
-        order_str = "no order history"
-
-    return (
-        f"btc_bot_monitor: cash=${cash:,.2f} bp=${bp:,.2f} | {pos_str} | {order_str}"
+    return SessionState(
+        status=session.status,  # type: ignore[arg-type]
+        original_entry=session.original_entry_price,
+        blended_entry=session.blended_entry_price,
+        total_qty=session.total_qty or Decimal("0"),
+        current_floor=session.current_floor,
+        trailing_active=session.trailing_active,
+        trailing_high=session.trailing_high,
+        ladder_next=session.ladder_next,
+        cooldown_until=session.cooldown_until,
     )
 
 
-async def monitor_btc_bot() -> None:
-    """Async wrapper — runs the sync Alpaca queries in a thread to avoid blocking the loop."""
+from app.models.btc_bot import BtcBotAction
+
+
+def _record_action(
+    db,
+    *,
+    session_id: int,
+    user_id: int,
+    action: str,
+    btc_price: Optional[Decimal] = None,
+    qty_delta: Optional[Decimal] = None,
+    usd_delta: Optional[Decimal] = None,
+    floor_before: Optional[Decimal] = None,
+    floor_after: Optional[Decimal] = None,
+    alpaca_order_id: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> None:
+    """Insert one row into btc_bot_actions. Caller commits later."""
+    row = BtcBotAction(
+        session_id=session_id,
+        user_id=user_id,
+        action=action,
+        btc_price=btc_price,
+        qty_delta=qty_delta,
+        usd_delta=usd_delta,
+        floor_before=floor_before,
+        floor_after=floor_after,
+        alpaca_order_id=alpaca_order_id,
+        notes=notes,
+    )
+    db.add(row)
+
+
+def _record_error(db, session: Optional[BtcBotSession], reason: str) -> None:
+    """Write an `error` action row. If we have no session yet, skip (nothing to attach to)."""
+    if session is None:
+        logger.error("btc_bot: error before session existed: %s", reason)
+        return
+    _record_action(
+        db,
+        session_id=session.id,
+        user_id=session.user_id,
+        action="error",
+        notes=reason[:5000],
+    )
+
+
+from datetime import datetime, timedelta
+from app.services.btc_bot_service import (
+    AdoptPosition,
+    AdvanceTrailing,
+    ExitCooldown,
+    FLOOR_MULT,
+    Idle,
+    InitialBuy,
+    LadderBuy,
+    StopOut,
+    TickAction,
+    compute_blended_entry,
+    compute_new_floor_up_only,
+)
+
+
+async def _apply_action(
+    db,
+    client,
+    *,
+    session: Optional[BtcBotSession],
+    user_id: int,
+    action: TickAction,
+    price: Decimal,
+    now_utc: datetime,
+) -> Optional[BtcBotSession]:
+    """Execute one TickAction. Returns the (possibly newly-created) session."""
+    if isinstance(action, Idle):
+        return session
+
+    if isinstance(action, InitialBuy):
+        fill = client.market_buy(usd_amount=action.usd_amount)
+        new_session = BtcBotSession(
+            user_id=user_id,
+            status="active",
+            original_entry_price=fill["filled_price"],
+            blended_entry_price=fill["filled_price"],
+            total_qty=fill["filled_qty"],
+            initial_buy_usd=action.usd_amount,
+            current_floor=(fill["filled_price"] * FLOOR_MULT).quantize(Decimal("0.01")),
+            trailing_active=False,
+            trailing_high=None,
+            ladder_next=0,
+            last_action_at=now_utc,
+        )
+        db.add(new_session)
+        await db.flush()
+        _record_action(
+            db,
+            session_id=new_session.id,
+            user_id=user_id,
+            action="initial_buy",
+            btc_price=fill["filled_price"],
+            qty_delta=fill["filled_qty"],
+            usd_delta=action.usd_amount,
+            floor_after=new_session.current_floor,
+            alpaca_order_id=fill["order_id"],
+        )
+        return new_session
+
+    if isinstance(action, AdoptPosition):
+        new_session = BtcBotSession(
+            user_id=user_id,
+            status="active",
+            original_entry_price=action.avg_entry,
+            blended_entry_price=action.avg_entry,
+            total_qty=action.qty,
+            initial_buy_usd=Decimal(str(settings.btc_bot_initial_usd)),
+            current_floor=(action.avg_entry * FLOOR_MULT).quantize(Decimal("0.01")),
+            trailing_active=False,
+            trailing_high=None,
+            ladder_next=0,
+            last_action_at=now_utc,
+        )
+        db.add(new_session)
+        await db.flush()
+        _record_action(
+            db,
+            session_id=new_session.id,
+            user_id=user_id,
+            action="adopted_position",
+            btc_price=price,
+            qty_delta=action.qty,
+            floor_after=new_session.current_floor,
+            notes=f"Adopted Alpaca position: avg_entry=${action.avg_entry} qty={action.qty}",
+        )
+        return new_session
+
+    assert session is not None, f"_apply_action({action.__class__.__name__}) requires existing session"
+
+    if isinstance(action, LadderBuy):
+        floor_before = session.current_floor
+        fill = client.market_buy(usd_amount=action.usd_amount)
+        new_blended = compute_blended_entry(
+            prior_qty=session.total_qty,
+            prior_blended=session.blended_entry_price,
+            fill_qty=fill["filled_qty"],
+            fill_price=fill["filled_price"],
+        )
+        new_total_qty = (session.total_qty + fill["filled_qty"]).quantize(Decimal("0.00000001"))
+        proposed_floor = (new_blended * FLOOR_MULT).quantize(Decimal("0.01"))
+        new_floor = compute_new_floor_up_only(session.current_floor, proposed_floor)
+
+        session.blended_entry_price = new_blended
+        session.total_qty = new_total_qty
+        session.current_floor = new_floor
+        session.ladder_next = action.level
+        session.last_action_at = now_utc
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action=f"ladder_l{action.level}",
+            btc_price=fill["filled_price"],
+            qty_delta=fill["filled_qty"],
+            usd_delta=action.usd_amount,
+            floor_before=floor_before,
+            floor_after=new_floor,
+            alpaca_order_id=fill["order_id"],
+        )
+        return session
+
+    if isinstance(action, AdvanceTrailing):
+        floor_before = session.current_floor
+        session.current_floor = action.new_floor
+        session.trailing_high = action.new_trailing_high
+        session.trailing_active = True
+        session.last_action_at = now_utc
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action="trailing_activate" if action.activated_now else "trailing_advance",
+            btc_price=price,
+            floor_before=floor_before,
+            floor_after=action.new_floor,
+        )
+        return session
+
+    if isinstance(action, StopOut):
+        floor_before = session.current_floor
+        qty_to_sell = session.total_qty
+        fill = client.market_sell_all(qty=qty_to_sell)
+        proceeds = fill["filled_qty"] * fill["filled_price"]
+        cost_basis = qty_to_sell * session.blended_entry_price
+        realized = (proceeds - cost_basis).quantize(Decimal("0.01"))
+
+        session.status = "cooldown"
+        session.cooldown_until = now_utc + timedelta(minutes=settings.btc_bot_cooldown_minutes)
+        session.realized_pnl = realized
+        session.total_qty = Decimal("0")
+        session.last_action_at = now_utc
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action="stop_out",
+            btc_price=fill["filled_price"],
+            qty_delta=-qty_to_sell,
+            usd_delta=proceeds,
+            floor_before=floor_before,
+            alpaca_order_id=fill["order_id"],
+            notes=action.reason,
+        )
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action="cooldown_start",
+            notes=f"cooldown until {session.cooldown_until.isoformat()}",
+        )
+        return session
+
+    if isinstance(action, ExitCooldown):
+        session.status = "ended"
+        session.ended_at = now_utc
+        session.last_action_at = now_utc
+        _record_action(
+            db,
+            session_id=session.id,
+            user_id=user_id,
+            action="cooldown_exit",
+            notes="Cooldown expired; session ended. Next tick will fire InitialBuy.",
+        )
+        return session
+
+    raise RuntimeError(f"Unknown TickAction type: {type(action).__name__}")
+
+
+import asyncio
+import gc
+from datetime import timezone
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.broker.btc_bot_client import BtcBotClient
+from app.db.session import AsyncSessionLocal
+from app.services.btc_bot_service import evaluate_tick
+
+
+async def _load_users_to_tick(db: AsyncSession) -> list[User]:
+    """Users with active/cooldown sessions PLUS the bootstrap user (if configured)."""
+    result = await db.execute(
+        select(User).join(
+            BtcBotSession, BtcBotSession.user_id == User.id
+        ).where(
+            BtcBotSession.status.in_(("active", "cooldown"))
+        ).distinct()
+    )
+    users = list(result.scalars().all())
+    user_ids_present = {u.id for u in users}
+
+    if settings.btc_bot_bootstrap_user_email:
+        bootstrap_result = await db.execute(
+            select(User).where(User.email == settings.btc_bot_bootstrap_user_email)
+        )
+        bootstrap = bootstrap_result.scalars().first()
+        if bootstrap and bootstrap.id not in user_ids_present:
+            users.append(bootstrap)
+
+    return users
+
+
+async def _load_active_session(db: AsyncSession, user_id: int) -> Optional[BtcBotSession]:
+    result = await db.execute(
+        select(BtcBotSession).where(
+            BtcBotSession.user_id == user_id,
+            BtcBotSession.status.in_(("active", "cooldown")),
+        ).limit(1)
+    )
+    return result.scalars().first()
+
+
+async def _load_broker_cred(db: AsyncSession, session: Optional[BtcBotSession]) -> Optional[BrokerCredential]:
+    if session is None or session.credential_id is None:
+        return None
+    result = await db.execute(
+        select(BrokerCredential).where(BrokerCredential.id == session.credential_id)
+    )
+    return result.scalars().first()
+
+
+async def _tick_one_user(db: AsyncSession, user: User, now_utc: datetime) -> None:
+    """Single-user tick. Must NEVER raise — log + record_error on failure."""
+    session = await _load_active_session(db, user.id)
+    broker_cred = await _load_broker_cred(db, session)
+
+    creds = _resolve_creds_for_user(user, broker_cred)
+    if creds is None:
+        logger.info("btc_bot: user %d has no usable credentials — skipping", user.id)
+        return
+    api_key, secret_key = creds
+
     try:
-        summary = await asyncio.to_thread(_sync_heartbeat)
-        logger.info(summary)
-    except Exception as e:
-        logger.exception("btc_bot_monitor: unhandled error: %s", e)
+        client = BtcBotClient(api_key=api_key, secret_key=secret_key, paper=True)
+        price = client.get_btc_ask()
+        position = client.get_btc_position()
+    except Exception as exc:
+        logger.exception("btc_bot: read failure for user %d: %s", user.id, exc)
+        _record_error(db, session, f"Alpaca read failure: {exc}")
+        return
+
+    state = _build_session_state(session)
+    alpaca_qty = position["qty"] if position else Decimal("0")
+    alpaca_avg = position["avg_entry_price"] if position else None
+    initial_usd = (
+        session.initial_buy_usd if session
+        else Decimal(str(settings.btc_bot_initial_usd))
+    )
+
+    action = evaluate_tick(
+        state,
+        current_price=price,
+        alpaca_position_qty=alpaca_qty,
+        alpaca_avg_entry=alpaca_avg,
+        initial_buy_usd=initial_usd,
+        now_utc=now_utc,
+    )
+    logger.info("btc_bot: user=%d action=%s price=%s", user.id, type(action).__name__, price)
+
+    try:
+        await _apply_action(
+            db, client,
+            session=session,
+            user_id=user.id,
+            action=action,
+            price=price,
+            now_utc=now_utc,
+        )
+    except Exception as exc:
+        logger.exception("btc_bot: apply failure for user %d action=%s: %s", user.id, type(action).__name__, exc)
+        _record_error(db, session, f"Apply {type(action).__name__} failed: {exc}")
+
+
+async def _run_monitor() -> None:
+    now_utc = datetime.now(timezone.utc)
+    logger.info("btc_bot_monitor: starting at %s", now_utc.isoformat())
+    try:
+        async with AsyncSessionLocal() as db:
+            users = await _load_users_to_tick(db)
+            if not users:
+                logger.info("btc_bot_monitor: no users to tick")
+                return
+            logger.info("btc_bot_monitor: ticking %d user(s)", len(users))
+            for user in users:
+                try:
+                    await _tick_one_user(db, user, now_utc)
+                except Exception as exc:
+                    logger.exception("btc_bot: unhandled error in tick for user %d: %s", user.id, exc)
+            await db.commit()
+    except Exception as exc:
+        logger.exception("btc_bot_monitor: job failed: %s", exc)
     finally:
         gc.collect()
+
+
+def monitor_btc_bots() -> None:
+    """Synchronous APScheduler entry point (plural — the trader)."""
+    asyncio.run(_run_monitor())
+

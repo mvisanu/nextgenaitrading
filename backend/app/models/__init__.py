@@ -14,6 +14,8 @@ from app.models.auto_buy import AutoBuySettings, AutoBuyDecisionLog
 from app.models.user_watchlist import UserWatchlist
 from app.models.buy_signal import BuyNowSignal
 from app.models.generated_idea import GeneratedIdea
+# v9 models
+from app.models.btc_bot import BtcBotAction, BtcBotSession  # noqa: F401
 
 __all__ = [
     "User",
@@ -41,4 +43,7 @@ __all__ = [
     "UserWatchlist",
     "BuyNowSignal",
     "GeneratedIdea",
+    # v9
+    "BtcBotAction",
+    "BtcBotSession",
 ]

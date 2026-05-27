@@ -34,7 +34,8 @@ export interface BrokerCredential {
   user_id: number;
   provider: BrokerProvider;
   profile_name: string;
-  api_key: string; // masked: "****ABCD"
+  api_key_masked: string;
+  paper_trading: boolean;
   base_url: string | null;
   is_active: boolean;
   created_at: string;
