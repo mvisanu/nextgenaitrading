@@ -22,44 +22,56 @@ from app.services.theme_scoring_service import (
 
 class TestGetSectorThemes:
     def test_technology_sector_maps_to_correct_themes(self) -> None:
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Technology"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Technology"},
+        ):
             themes, score, explanation = _get_sector_themes("NVDA")
         assert "ai" in themes
         assert "semiconductors" in themes
         assert score == 0.5
 
     def test_industrials_sector_maps_to_correct_themes(self) -> None:
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Industrials"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Industrials"},
+        ):
             themes, score, _ = _get_sector_themes("GE")
         assert "robotics" in themes or "aerospace" in themes or "defense" in themes
 
     def test_unknown_sector_returns_empty_themes(self) -> None:
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Totally Unknown Sector"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Totally Unknown Sector"},
+        ):
             themes, score, explanation = _get_sector_themes("XYZ")
         assert themes == []
         assert score == 0.1
 
     def test_missing_sector_returns_empty_themes(self) -> None:
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={},
+        ):
             themes, score, _ = _get_sector_themes("NOINFO")
         assert themes == []
         assert score == 0.1
 
     def test_yfinance_exception_returns_fallback(self) -> None:
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.side_effect = Exception("Network error")
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            side_effect=Exception("Network error"),
+        ):
             themes, score, explanation = _get_sector_themes("FAIL")
         assert themes == []
         assert score == 0.1
         assert "unavailable" in explanation.lower() or "failed" in explanation.lower()
 
     def test_energy_sector_maps_to_renewable(self) -> None:
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Energy"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Energy"},
+        ):
             themes, _, _ = _get_sector_themes("NEE")
         assert "renewable_energy" in themes or "power_infrastructure" in themes
 
@@ -107,8 +119,10 @@ class TestComputeThemeScore:
     @pytest.mark.asyncio
     async def test_curated_ticker_nvda_scores_high(self) -> None:
         db = self._make_db()
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Technology"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Technology"},
+        ):
             result = await compute_theme_score("NVDA", user_id=1, db=db)
         # NVDA has 3 curated themes set to 0.80 each, tech sector adds more
         assert result.theme_score_total > 0.10
@@ -117,8 +131,10 @@ class TestComputeThemeScore:
     @pytest.mark.asyncio
     async def test_unknown_ticker_scores_low(self) -> None:
         db = self._make_db()
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {}  # no sector
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={},
+        ):
             result = await compute_theme_score("UNKNWN", user_id=1, db=db)
         assert result.theme_score_total < 0.30  # no overrides, no sector themes
 
@@ -128,8 +144,10 @@ class TestComputeThemeScore:
         idea.tags_json = ["ai", "semiconductors"]
         idea.conviction_score = 9
         db = self._make_db(user_ideas=[idea])
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Technology"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Technology"},
+        ):
             result = await compute_theme_score("NEWSTOCK", user_id=1, db=db)
         assert result.user_conviction_score > 0.0
         assert result.user_conviction_score == pytest.approx(0.9, abs=0.01)
@@ -140,8 +158,10 @@ class TestComputeThemeScore:
         idea.tags_json = SUPPORTED_THEMES  # all themes
         idea.conviction_score = 10
         db = self._make_db(user_ideas=[idea])
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Technology"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Technology"},
+        ):
             result = await compute_theme_score("NVDA", user_id=1, db=db)
         assert 0.0 <= result.theme_score_total <= 1.0
 
@@ -150,8 +170,10 @@ class TestComputeThemeScore:
         existing_ts = MagicMock()
         existing_ts.theme_score_total = 0.50
         db = self._make_db(existing_ts=existing_ts)
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Technology"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Technology"},
+        ):
             await compute_theme_score("NVDA", user_id=1, db=db)
         # db.add should NOT be called (update path)
         db.add.assert_not_called()
@@ -159,8 +181,10 @@ class TestComputeThemeScore:
     @pytest.mark.asyncio
     async def test_no_existing_db_record_is_inserted(self) -> None:
         db = self._make_db(existing_ts=None)
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Technology"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Technology"},
+        ):
             await compute_theme_score("NVDA", user_id=1, db=db)
         # db.add should be called once (insert path)
         db.add.assert_called_once()
@@ -168,16 +192,20 @@ class TestComputeThemeScore:
     @pytest.mark.asyncio
     async def test_ticker_uppercased(self) -> None:
         db = self._make_db()
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={},
+        ):
             result = await compute_theme_score("nvda", user_id=1, db=db)
         assert result.ticker == "NVDA"
 
     @pytest.mark.asyncio
     async def test_narrative_momentum_score_bounded(self) -> None:
         db = self._make_db()
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {"sector": "Technology"}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={"sector": "Technology"},
+        ):
             result = await compute_theme_score("MSFT", user_id=1, db=db)
         assert 0.0 <= result.narrative_momentum_score <= 1.0
 
@@ -188,8 +216,10 @@ class TestComputeThemeScore:
         idea.tags_json = []
         idea.conviction_score = 10
         db = self._make_db(user_ideas=[idea])
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={},
+        ):
             result = await compute_theme_score("TEST", user_id=1, db=db)
         assert result.user_conviction_score == pytest.approx(1.0, abs=0.01)
 
@@ -202,8 +232,10 @@ class TestComputeThemeScore:
         idea2.tags_json = []
         idea2.conviction_score = 10
         db = self._make_db(user_ideas=[idea1, idea2])
-        with patch("app.services.theme_scoring_service.yf") as mock_yf:
-            mock_yf.Ticker.return_value.info = {}
+        with patch(
+            "app.services.theme_scoring_service.get_ticker_info",
+            return_value={},
+        ):
             result = await compute_theme_score("TEST", user_id=1, db=db)
         # avg conviction = 8 → 0.8
         assert result.user_conviction_score == pytest.approx(0.8, abs=0.01)

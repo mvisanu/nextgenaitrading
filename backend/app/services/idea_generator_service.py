@@ -225,7 +225,7 @@ async def generate_ideas(top_n: int = 15) -> list[GeneratedIdeaOut]:
         return _cache[:top_n]
 
     logger.info("idea_generator: scanning %d tickers in universe", len(STOCK_UNIVERSE))
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     generated_at = datetime.now(timezone.utc)
 
     # Run each ticker scan in the default thread pool (yfinance is synchronous)

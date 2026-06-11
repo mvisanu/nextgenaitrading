@@ -72,18 +72,14 @@ class TestHeuristicFallback:
     def test_mega_cap_returns_heuristic(self):
         """For a ticker not in HIGH_MOAT_TICKERS, use yfinance market cap heuristic."""
         mock_info = {"marketCap": 600_000_000_000, "sector": "Technology", "industry": "Software"}
-        with patch("yfinance.Ticker") as mock_ticker:
-            mock_ticker.return_value.info = mock_info
+        with patch("app.services.moat_scoring_service.get_ticker_info", return_value=mock_info):
             result = score_moat("XYZ_NOT_IN_SEED")
         assert result.source == "heuristic"
         assert result.score == 0.65
 
     def test_yfinance_failure_returns_unavailable(self):
-        with patch("yfinance.Ticker") as mock_ticker:
-            mock_ticker.return_value.info = property(lambda self: (_ for _ in ()).throw(Exception("network")))
-            # Simpler: make .info raise
-            mock_ticker.return_value = MagicMock()
-            type(mock_ticker.return_value).info = property(lambda self: (_ for _ in ()).throw(Exception("err")))
+        # get_ticker_info swallows fetch errors and returns {} on failure
+        with patch("app.services.moat_scoring_service.get_ticker_info", return_value={}):
             result = score_moat("FAIL_TICKER")
         assert result.source == "unavailable"
         assert result.score == 0.50

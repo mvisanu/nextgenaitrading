@@ -8,6 +8,7 @@ pass that can be run independently to verify feed health.
 """
 from __future__ import annotations
 
+import gc
 import logging
 
 from app.services.news_scanner_service import scan_news
@@ -42,3 +43,5 @@ async def run_news_scanner() -> None:
         )
     except Exception as exc:
         logger.exception("run_news_scanner: job failed: %s", exc)
+    finally:
+        gc.collect()

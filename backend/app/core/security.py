@@ -51,6 +51,7 @@ def create_access_token(user_id: int, email: str) -> str:
         "sub": str(user_id),
         "email": email,
         "type": "access",
+        "aud": "authenticated",  # decode_token always verifies this audience
         "exp": expire,
         "iat": _utcnow(),
     }
@@ -62,6 +63,7 @@ def create_refresh_token(user_id: int) -> str:
     payload: dict[str, Any] = {
         "sub": str(user_id),
         "type": "refresh",
+        "aud": "authenticated",  # decode_token always verifies this audience
         "exp": expire,
         "iat": _utcnow(),
         "jti": secrets.token_hex(16),

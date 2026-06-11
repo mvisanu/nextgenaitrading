@@ -135,9 +135,9 @@ async def test_trailing_activates_at_trigger_pct():
 
     with patch("app.services.trailing_bot_service.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         # First call → _get_latest_price → 110.0
-        # Second call → _cancel_order_alpaca → None
+        # Second call → _cancel_order_alpaca → True (cancel succeeded)
         # Third call → _place_stop_order_alpaca → new stop ID
-        mock_thread.side_effect = [110.0, None, "dry-stop-BTC-USD-104.5"]
+        mock_thread.side_effect = [110.0, True, "dry-stop-BTC-USD-104.5"]
         await adjust_trailing_stop(session, broker, db)
 
     assert session.trailing_active is True
@@ -220,7 +220,7 @@ async def test_step_up_raises_floor_when_already_trailing():
     broker = _mock_broker()
 
     with patch("app.services.trailing_bot_service.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
-        mock_thread.side_effect = [115.5, None, "dry-stop-BTC-USD-109.7"]
+        mock_thread.side_effect = [115.5, True, "dry-stop-BTC-USD-109.7"]
         await adjust_trailing_stop(session, broker, db)
 
     assert abs(session.current_floor - 109.725) < 0.01
@@ -301,7 +301,7 @@ async def test_step_calc_with_none_high_water_falls_back_to_entry():
 
     # price = 107 → step_gained = (107-100)/100 * 100 = 7% >= 5% → should step up
     with patch("app.services.trailing_bot_service.asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
-        mock_thread.side_effect = [107.0, None, "dry-stop-BTC-USD-101.65"]
+        mock_thread.side_effect = [107.0, True, "dry-stop-BTC-USD-101.65"]
         await adjust_trailing_stop(session, broker, db)
 
     # Should not raise; should raise floor

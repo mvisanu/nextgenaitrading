@@ -365,13 +365,10 @@ cd backend && pytest tests/v9/   # BTC bot (V9)
 
 ## Known Bugs
 
-### HIGH
-- **`morning_brief.py:154`** `ZeroDivisionError` if `ema200 == 0`. Fix: `if ema200 == 0: return error_row`.
-- **`morning_brief.py:170-175`** Bias logic gap — `bullish_count=2` + `price_vs_ema200="Below"` returns `"Neutral"` instead of `"Bearish"`. Fix: check `price_vs_ema200 == "Below"` first.
+None currently tracked. (Previous HIGH/MEDIUM bugs in `morning_brief.py`, `politician_scraper_service.py`, and `copy_trading_service.py` were fixed 2026-06-11 — see `_log.md`.)
 
-### MEDIUM
-- **`politician_scraper_service.py`** `_fetch_raw()` returns stale cache on any exception — callers can't distinguish "no data" from "API down".
-- **`copy_trading_service.py`** Options fallback builds OCC symbol from raw description — invalid if Quiver `Description` is missing. Fix: validate symbol before sending to Alpaca.
+- **`politician_scraper_service.py`** now raises `QuiverFetchError` when the API is down AND no cache exists; returns stale cache (with warning) otherwise. `create_session` aborts (API returns 503) rather than creating an unseeded session that would bulk-copy historical trades.
+- **`copy_trading_service.py`** options fallback validates the OCC symbol via `_build_occ_symbol()` (regex + date parse); falls back to underlying stock when malformed.
 
 ## Session Workflow
 

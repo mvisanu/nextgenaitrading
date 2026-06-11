@@ -41,6 +41,8 @@ async def run_live_scanner() -> None:
     logger.info("run_live_scanner: starting")
 
     try:
+        # Single session for the whole run — opening one per user inside the
+        # loop churns the tiny Render connection pool (pool_size=2).
         async with AsyncSessionLocal() as db:
             # Collect distinct users with at least one watchlist entry
             users_result = await db.execute(
@@ -50,23 +52,23 @@ async def run_live_scanner() -> None:
             )
             user_ids: list[int] = [row[0] for row in users_result.fetchall()]
 
-        if not user_ids:
-            logger.info("run_live_scanner: no users with watchlist tickers — nothing to scan")
-            return
+            if not user_ids:
+                logger.info("run_live_scanner: no users with watchlist tickers — nothing to scan")
+                return
 
-        logger.info("run_live_scanner: scanning watchlists for %d user(s)", len(user_ids))
-        total_strong = 0
-        total_errors = 0
+            logger.info("run_live_scanner: scanning watchlists for %d user(s)", len(user_ids))
+            total_strong = 0
+            total_errors = 0
 
-        for user_id in user_ids:
-            try:
-                async with AsyncSessionLocal() as db:
+            for user_id in user_ids:
+                try:
                     results = await scan_user_watchlist(user_id=user_id, db=db)
-                total_strong += sum(1 for r in results if r.signal and r.signal.all_conditions_pass)
-                total_errors += sum(1 for r in results if r.error)
-            except Exception as exc:
-                total_errors += 1
-                logger.error("run_live_scanner: error for user_id=%d: %s", user_id, exc)
+                    total_strong += sum(1 for r in results if r.signal and r.signal.all_conditions_pass)
+                    total_errors += sum(1 for r in results if r.error)
+                except Exception as exc:
+                    await db.rollback()  # clear failed transaction before next user
+                    total_errors += 1
+                    logger.error("run_live_scanner: error for user_id=%d: %s", user_id, exc)
 
         logger.info(
             "run_live_scanner: complete — users=%d strong_buys=%d errors=%d",

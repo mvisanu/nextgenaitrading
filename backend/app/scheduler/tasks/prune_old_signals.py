@@ -6,6 +6,7 @@ recent history for the tooltip / audit trail UI.
 """
 from __future__ import annotations
 
+import gc
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -37,3 +38,5 @@ async def prune_old_signals() -> None:
             logger.info("prune_old_signals: deleted %d rows", result.rowcount)
     except Exception as exc:
         logger.exception("prune_old_signals: job failed: %s", exc)
+    finally:
+        gc.collect()

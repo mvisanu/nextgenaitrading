@@ -147,6 +147,8 @@ def _analyze_coin(entry: dict) -> MorningBriefRow:
 
         price = float(close.iloc[-1])
         ema200 = _compute_ema200(close)
+        if ema200 == 0:
+            return error_row
         rsi = _compute_rsi(close)
         macd_line, signal_line = _compute_macd(close)
 
@@ -167,10 +169,10 @@ def _analyze_coin(entry: dict) -> MorningBriefRow:
         macd_bullish = macd_bias == "Bullish"
         bullish_count = sum([above_ema200, rsi_above_50, macd_bullish])
 
-        if bullish_count >= 2 and price_vs_ema200 != "Below":
-            bias = "Bullish"
-        elif bullish_count <= 1 and price_vs_ema200 == "Below":
+        if price_vs_ema200 == "Below":
             bias = "Bearish"
+        elif bullish_count >= 2:
+            bias = "Bullish"
         else:
             bias = "Neutral"
 

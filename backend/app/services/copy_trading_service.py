@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,6 +73,41 @@ def _execute_stock_trade(
     }
 
 
+# OCC option symbol: root (1-6 letters) + YYMMDD + C/P + strike*1000 zero-padded to 8
+_OCC_SYMBOL_RE = re.compile(r"^[A-Z]{1,6}\d{6}[CP]\d{8}$")
+_EXPIRY_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%Y%m%d")
+
+
+def _build_occ_symbol(trade: PoliticianTrade) -> Optional[str]:
+    """Build a validated OCC contract symbol from a Quiver trade.
+
+    Returns None if any component is missing or malformed (Quiver Description
+    is free text — never trust it blindly).
+    """
+    expiry_raw = (trade.option_expiry or "").strip()
+    exp_date = None
+    for fmt in _EXPIRY_FORMATS:
+        try:
+            exp_date = datetime.strptime(expiry_raw[:10], fmt).date()
+            break
+        except ValueError:
+            continue
+    if exp_date is None:
+        return None
+
+    try:
+        strike = float(trade.option_strike)
+    except (TypeError, ValueError):
+        return None
+    if strike <= 0:
+        return None
+
+    cp = "C" if (trade.option_type or "").lower() == "call" else "P"
+    ticker = (trade.ticker or "").strip().upper()
+    symbol = f"{ticker}{exp_date.strftime('%y%m%d')}{cp}{int(round(strike * 1000)):08d}"
+    return symbol if _OCC_SYMBOL_RE.match(symbol) else None
+
+
 def _execute_options_trade(
     trade: PoliticianTrade,
     broker,
@@ -78,14 +115,9 @@ def _execute_options_trade(
     dry_run: bool,
 ) -> dict:
     """Attempt options trade; fall back to underlying stock if contract is unresolvable."""
-    if trade.option_strike is not None and trade.option_expiry and trade.option_type:
+    contract_symbol = _build_occ_symbol(trade)
+    if contract_symbol is not None:
         try:
-            exp = (trade.option_expiry or "").replace("-", "").replace("/", "")
-            if len(exp) == 8:
-                exp = exp[2:]
-            strike_int = int(float(trade.option_strike) * 1000)
-            cp = "C" if trade.option_type.lower() == "call" else "P"
-            contract_symbol = f"{trade.ticker}{exp}{cp}{strike_int:08d}"
             result = broker.place_order(
                 symbol=contract_symbol,
                 side=trade.trade_type,
@@ -119,12 +151,10 @@ async def create_session(
     Seeds all existing Quiver trades for the target politician as pre_existing
     so they are never bulk-copied on first poll.
     """
-    # Fetch once — used for name resolution and seeding
-    try:
-        all_trades = await fetch_congressional_trades()
-    except Exception as exc:
-        logger.warning("Could not fetch congressional trades on session creation: %s", exc)
-        all_trades = []
+    # Fetch once — used for name resolution and seeding.
+    # Must NOT proceed with an empty list: an unseeded session would bulk-copy
+    # every historical disclosure on the first scheduler poll.
+    all_trades = await fetch_congressional_trades()
 
     session = CopyTradingSession(
         user_id=current_user.id,
@@ -225,7 +255,10 @@ async def _seed_existing_trades(
             len(new_trades), session.id, len(trades_to_seed) - len(new_trades),
         )
     except Exception as exc:
-        logger.warning("Seeding failed for session id=%d: %s", session.id, exc)
+        # Re-raise: committing an unseeded session would bulk-copy historical
+        # trades on the first scheduler poll.
+        logger.error("Seeding failed for session id=%d: %s", session.id, exc)
+        raise
 
 
 # ---------------------------------------------------------------------------

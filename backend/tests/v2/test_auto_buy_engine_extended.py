@@ -40,6 +40,7 @@ def _make_settings(**kwargs) -> AutoBuySettings:
         max_expected_drawdown=-0.10,
         allow_near_earnings=False,
         allowed_account_ids_json=[1],
+        target_buy_price=None,  # MagicMock would break the > 0 comparison in safeguard 7
     )
     defaults.update(kwargs)
     s = MagicMock(spec=AutoBuySettings)

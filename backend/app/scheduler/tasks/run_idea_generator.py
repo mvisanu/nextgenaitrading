@@ -38,12 +38,12 @@ async def run_idea_generator_job() -> None:
 
     logger.info("run_idea_generator_job: starting")
     try:
+        # One session for generate + purge — avoids churning the small pool
         async with AsyncSessionLocal() as db:
             saved = await run_idea_generator(db)
             logger.info("run_idea_generator_job: saved %d ideas", len(saved))
 
-        # Purge expired ideas from previous cycles
-        async with AsyncSessionLocal() as db:
+            # Purge expired ideas from previous cycles
             now_utc = datetime.now(timezone.utc)
             result = await db.execute(
                 delete(GeneratedIdea).where(GeneratedIdea.expires_at < now_utc)

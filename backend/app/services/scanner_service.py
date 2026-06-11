@@ -108,7 +108,7 @@ async def estimate_buy_price(
     Raises ValueError if market data cannot be fetched.
     """
     ticker = ticker.upper().strip()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     data = await loop.run_in_executor(None, _run_strategy_sync, ticker)
 
     result = data["result"]

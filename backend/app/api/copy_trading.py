@@ -22,7 +22,10 @@ from app.schemas.copy_trading import (
 )
 from app.services.copy_trading_service import create_session
 from app.services.politician_ranker_service import rank_politicians
-from app.services.politician_scraper_service import fetch_congressional_trades
+from app.services.politician_scraper_service import (
+    QuiverFetchError,
+    fetch_congressional_trades,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,15 @@ async def get_rankings(
     global _rankings_cache, _rankings_cache_at
     now = time.monotonic()
     if not _rankings_cache or (now - _rankings_cache_at) > _RANKINGS_TTL:
-        all_trades = await fetch_congressional_trades()
+        try:
+            all_trades = await fetch_congressional_trades()
+        except QuiverFetchError:
+            if _rankings_cache:
+                return _rankings_cache[:limit]
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Congressional trade data is temporarily unavailable. Try again shortly.",
+            )
         scores = rank_politicians(all_trades, lookback_days=90, min_trades=5, top_n=50)
         _rankings_cache = [
             PoliticianRankingOut(
@@ -70,7 +81,13 @@ async def create_copy_session(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CopyTradingSessionOut:
     """Create and activate a copy-trading session."""
-    session = await create_session(payload, db, current_user)
+    try:
+        session = await create_session(payload, db, current_user)
+    except QuiverFetchError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Congressional trade data is temporarily unavailable. Try again shortly.",
+        )
     return CopyTradingSessionOut.from_orm(session)
 
 

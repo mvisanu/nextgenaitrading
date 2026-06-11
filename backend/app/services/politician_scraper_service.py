@@ -31,6 +31,10 @@ _cache_trades: list["PoliticianTrade"] = []
 _cache_time: float = 0.0
 
 
+class QuiverFetchError(RuntimeError):
+    """Quiver Quant API is unreachable and no cached data exists."""
+
+
 @dataclass
 class PoliticianTrade:
     trade_id: str
@@ -145,7 +149,11 @@ def _parse_quiver_record(rec: dict) -> Optional[PoliticianTrade]:
 
 
 def _fetch_raw() -> list[PoliticianTrade]:
-    """Synchronous Quiver Quant fetch. Returns stale cache on error."""
+    """Synchronous Quiver Quant fetch.
+
+    On error: returns stale cache if one exists, otherwise raises
+    QuiverFetchError so callers can distinguish "no data" from "API down".
+    """
     global _cache_trades, _cache_time
     try:
         resp = requests.get(QUIVER_URL, headers=_HEADERS, timeout=20)
@@ -153,7 +161,13 @@ def _fetch_raw() -> list[PoliticianTrade]:
         records = resp.json()
     except Exception as exc:
         logger.error("Quiver Quant fetch failed: %s", exc)
-        return _cache_trades  # return stale cache
+        if _cache_trades:
+            logger.warning(
+                "Returning stale congressional trades cache (%d trades, %.0fs old)",
+                len(_cache_trades), time.time() - _cache_time,
+            )
+            return _cache_trades
+        raise QuiverFetchError("Quiver Quant API unreachable and no cached data") from exc
 
     trades = [t for rec in records if (t := _parse_quiver_record(rec)) is not None]
     _cache_trades = trades

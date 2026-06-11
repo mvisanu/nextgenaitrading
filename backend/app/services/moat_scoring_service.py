@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-import yfinance as yf
+from app.services.yfinance_cache import get_ticker_info
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,14 @@ def score_moat(ticker: str) -> MoatResult:
     # Large-cap companies in concentrated industries tend to have stronger moats.
     # This is a rough proxy — not a fundamental analysis.
     try:
-        info = yf.Ticker(t).info
+        info = get_ticker_info(t)
+        if not info:
+            # get_ticker_info swallows fetch errors and returns {} — treat as unavailable
+            return MoatResult(
+                score=0.50,
+                description="Competitive moat data unavailable",
+                source="unavailable",
+            )
         market_cap = info.get("marketCap") or 0
         industry = info.get("industry", "")
         sector = info.get("sector", "")

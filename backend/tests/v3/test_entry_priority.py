@@ -15,6 +15,15 @@ from app.services.entry_priority_service import (
     _detect_weekly_swing_low,
     check_entry_priority,
 )
+from app.services.yfinance_cache import _info_cache
+
+
+@pytest.fixture(autouse=True)
+def _clear_yfinance_info_cache():
+    """The shared 30-min .info TTL cache leaks mocked data across tests."""
+    _info_cache.clear()
+    yield
+    _info_cache.clear()
 
 
 def _make_weekly_df(n: int = 55) -> pd.DataFrame:

@@ -20,12 +20,12 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-import yfinance as yf
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.idea import WatchlistIdea, WatchlistIdeaTicker
 from app.models.theme_score import StockThemeScore
+from app.services.yfinance_cache import get_ticker_info
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ def _get_sector_themes(ticker: str) -> tuple[list[str], float, str]:
     Returns (theme_list, sector_score, explanation_string).
     """
     try:
-        info = yf.Ticker(ticker).info
+        info = get_ticker_info(ticker)
         sector = info.get("sector", "") or ""
         themes = SECTOR_TO_THEMES.get(sector, [])
         score = 0.5 if themes else 0.1

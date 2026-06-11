@@ -37,6 +37,7 @@ def _make_settings(
     s.max_expected_drawdown = max_expected_drawdown
     s.allow_near_earnings = allow_near_earnings
     s.allowed_account_ids_json = [1]
+    s.target_buy_price = None  # MagicMock would break the > 0 comparison in safeguard 7
     return s
 
 

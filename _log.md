@@ -64,3 +64,25 @@
 - Removed `frontend/app/congress-copy/` + `frontend/lib/congress-copy-api.ts` — broken Vercel build (missing types, backend route unregistered)
 - Diagnosed Render backend 404s: caused by alembic failure preventing uvicorn from starting
 - Updated CLAUDE.md: alembic fix, session workflow (status.md + _log.md convention)
+
+## 2026-06-11
+- Fixed all 4 CLAUDE.md Known Bugs:
+  - `morning_brief.py` — ZeroDivisionError guard for `ema200 == 0`; bias logic now checks `price_vs_ema200 == "Below"` first (Below → Bearish always)
+  - `politician_scraper_service.py` — `_fetch_raw()` raises new `QuiverFetchError` when API down + no cache (callers can now distinguish "no data" from "API down"); stale cache returned with warning when available
+  - `copy_trading_service.py` — `create_session` no longer proceeds with empty trade list (would bulk-copy all historical trades on first poll); seeding failures re-raise; API returns 503 on Quiver outage
+  - `copy_trading_service.py` — OCC option symbol now built via validated `_build_occ_symbol()` (parses expiry with known formats — old code corrupted MM/DD/YYYY dates — validates strike > 0, regex-checks final symbol); falls back to underlying stock when malformed
+- Fixed `core/security.py`: `create_access_token`/`create_refresh_token` now include `aud="authenticated"` claim — `decode_token()` previously rejected the app's own tokens (2 failing tests)
+- Perf/cost refactors per Render 512 MB constraints:
+  - `moat_scoring_service` + `theme_scoring_service`: direct `yf.Ticker().info` → cached `get_ticker_info()` (30-min TTL, saves duplicate HTTP + memory)
+  - `run_live_scanner`: single `AsyncSessionLocal` for whole run instead of per-user (pool_size=2 churn); rollback on per-user error
+  - `run_idea_generator`: merged 2 sequential DB sessions into 1
+  - `run_news_scanner` + `prune_old_signals`: added missing `gc.collect()` in finally
+  - `idea_generator_service` + `scanner_service`: deprecated `asyncio.get_event_loop()` → `get_running_loop()`
+  - `moat_scoring_service`: empty info dict now returns source="unavailable" (get_ticker_info swallows fetch errors into `{}`)
+- Repaired 39 stale/polluted tests (all pre-existing failures → 0):
+  - auto-buy engine fixtures: added `target_buy_price=None` (MagicMock broke `> 0` comparison in safeguard 7) — 33 tests
+  - trailing-bot tests: cancel-order mock must return truthy (service correctly aborts floor-raise when cancel fails) — 3 tests
+  - theme/moat tests: patch `get_ticker_info` instead of module-level `yf` — 17 tests (broken by this session's refactor, fixed)
+  - entry-priority: autouse fixture clearing shared yfinance info cache (cross-test pollution) — 1 test
+- Test results: v2–v5 499 passed · v6 66 passed · v9 57 passed · root 93 passed. `tests/v7/` does not exist (CLAUDE.md reference is stale)
+- Updated CLAUDE.md Known Bugs section
