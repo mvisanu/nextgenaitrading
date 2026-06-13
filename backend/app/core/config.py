@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = Field(default="", description="Supabase JWT secret for token verification")
     supabase_service_role_key: str = Field(default="", description="Supabase service role key (server-side only)")
 
+    # ── Bypass / access-code login ───────────────────────────────────────────
+    # Shared secret that lets a known user sign in with email + this code,
+    # skipping the magic-link email. Disabled unless set to a non-empty value.
+    # Set BYPASS_LOGIN_CODE in the backend .env (and keep it secret).
+    bypass_login_code: str = Field(
+        default="",
+        description="Shared access code for bypass login. Empty = feature disabled.",
+    )
+
     # ── Fernet encryption ──────────────────────────────────────────────────────
     encryption_key: str = Field(description="Base64-URL Fernet key for broker creds")
 

@@ -33,6 +33,14 @@ export const pinAuthApi = {
       body: JSON.stringify({ email, pin }),
     }),
 
+  /** Bypass login with email + shared access code (BYPASS_LOGIN_CODE on the
+   *  backend). Returns a Supabase token_hash. Public — no auth header. */
+  codeLogin: (email: string, code: string): Promise<PinLoginResponse> =>
+    publicFetch("/auth/code-login", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    }),
+
   /** Set or replace the user's PIN. Requires auth token in header. */
   setPin: (pin: string, accessToken: string): Promise<void> =>
     publicFetch("/auth/set-pin", {

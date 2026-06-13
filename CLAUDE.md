@@ -151,6 +151,7 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=...
 SUPABASE_JWT_SECRET=...
 SUPABASE_SERVICE_ROLE_KEY=...
+BYPASS_LOGIN_CODE=                         # optional: shared access code for email+code bypass login. Empty = disabled.
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=...
@@ -327,6 +328,8 @@ Frontend page at `/wheel-bot`. Automates Wheel Strategy on TSLA using `WHEEL_ALP
 3. Lockout: 5 wrong attempts → 15-min lockout on `user_pins.locked_until`
 
 **API routes** (`/auth/`): `POST /auth/pin-login` (public) · `POST /auth/set-pin` (auth) · `GET /auth/has-pin` (auth)
+
+**Bypass / access-code login:** `POST /auth/code-login` (public) — body `{email, code}`. Validates `code` against `BYPASS_LOGIN_CODE` (.env) via constant-time compare; returns 404 when the env var is unset (feature disabled). On success, mints a real Supabase session token_hash (same `_supabase_generate_token` path as PIN login) for the existing active user, so it works through middleware + `apiFetch` in production (the legacy `dev_token` cookie is ignored when `DEBUG=false`). Frontend: "Use access code" option on the login page → `pinAuthApi.codeLogin()`.
 
 ## BTC Trailing-Stop Bot — Web Feature (V9)
 

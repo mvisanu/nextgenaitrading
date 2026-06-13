@@ -97,3 +97,12 @@
   - FIX: new migration `v11_unforce_rls` runs `NO FORCE ROW LEVEL SECURITY` on all tables (keeps RLS ENABLED so the Supabase linter stays satisfied and anon/authenticated PostgREST access stays blocked). Each ALTER guarded by `to_regclass()` so a missing table can't abort startup.
 - Verified: `alembic heads` → single head `v11_unforce_rls`; all 38 v10 tables are created by in-chain migrations (v10 itself won't fail on a consistent DB); `migrate_fix.py` + `v11_unforce_rls.py` compile; app imports; `/auth/set-pin` registered; `tests/test_auth.py` 28 passed.
 - NOTE: these are deploy-time fixes — they take effect only after Render rebuilds from this commit. No app/runtime code changed. Not committed/pushed (awaiting user).
+
+## 2026-06-13 (cont.) — bypass/access-code login
+- Added email + shared-code bypass login (replaces the DEBUG-only dev_token bypass, which the backend ignores when DEBUG=false).
+- Backend `POST /auth/code-login` (public) in `app/api/pin_auth.py`: validates `code` against `settings.bypass_login_code` (BYPASS_LOGIN_CODE in .env) via `hmac.compare_digest`; 404 when unset (disabled); on success mints a real Supabase session token_hash via the same `_supabase_generate_token` path as PIN login, for an existing active user only.
+- Config: `bypass_login_code` field in `core/config.py` (default "" = disabled).
+- Frontend: `pinAuthApi.codeLogin()` in `lib/pin-auth-api.ts`; new "Use access code" option + "code" mode on the login page (`app/(auth)/login/page.tsx`) — email + access code → verifyOtp → /dashboard.
+- Why token_hash (not dev_token cookie): a real Supabase session passes the Next.js middleware and apiFetch in production; the dev_token cookie path only works when DEBUG=true.
+- Docs: CLAUDE.md env block + PIN Auth section updated. Verified: backend compiles, /auth/code-login registered, disabled by default; frontend `tsc --noEmit` 0 errors.
+- ACTION REQUIRED: set BYPASS_LOGIN_CODE to a strong secret in backend/.env (local) and in the Render dashboard env (prod). Empty = feature off. (Could not append to backend/.env automatically — permission denied.)

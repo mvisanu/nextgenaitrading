@@ -12,7 +12,7 @@ const IS_DEV =
   process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === "true";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
-type Mode = "choose" | "pin" | "magic-sent";
+type Mode = "choose" | "pin" | "code" | "magic-sent";
 
 // ── 4-digit PIN pad ──────────────────────────────────────────────────────────
 
@@ -91,6 +91,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("choose");
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("    ");
+  const [code, setCode] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -184,6 +185,40 @@ export default function LoginPage() {
     }
   }
 
+  // ── Access-code (bypass) login ──────────────────────────────────────────────
+  async function handleCodeLogin() {
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    const cleanCode = code.trim();
+    if (!cleanCode) {
+      setError("Please enter your access code.");
+      return;
+    }
+    setIsPending(true);
+    setError(null);
+    try {
+      const { token_hash } = await pinAuthApi.codeLogin(trimmed, cleanCode);
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) throw new Error("Supabase not configured.");
+      const { error: sbErr } = await supabase.auth.verifyOtp({
+        token_hash,
+        type: "magiclink",
+      });
+      if (sbErr) throw new Error(sbErr.message);
+      window.location.href = "/dashboard";
+    } catch (err) {
+      const msg = (err as Error).message;
+      setError(msg);
+      toast.error(msg);
+      setCode("");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
   // ── "Magic sent" confirmation screen ──────────────────────────────────────
   if (mode === "magic-sent") {
     return (
@@ -231,7 +266,7 @@ export default function LoginPage() {
           <div className="flex items-center gap-3">
             {mode !== "choose" && (
               <button
-                onClick={() => { setMode("choose"); resetError(); setPin("    "); }}
+                onClick={() => { setMode("choose"); resetError(); setPin("    "); setCode(""); }}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -239,11 +274,17 @@ export default function LoginPage() {
             )}
             <div>
               <h2 className="text-xl font-bold text-foreground">
-                {mode === "pin" ? "Enter your PIN" : "Sign in"}
+                {mode === "pin"
+                  ? "Enter your PIN"
+                  : mode === "code"
+                  ? "Enter access code"
+                  : "Sign in"}
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {mode === "pin"
                   ? "Enter your 4-digit PIN to continue"
+                  : mode === "code"
+                  ? "Email + access code to bypass the magic link"
                   : "Choose how to sign in"}
               </p>
             </div>
@@ -284,6 +325,29 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* ── Access code (code mode only) ─────────────────────────── */}
+          {mode === "code" && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="access-code"
+                className="text-3xs font-bold uppercase tracking-widest text-muted-foreground"
+              >
+                Access Code
+              </label>
+              <input
+                id="access-code"
+                type="password"
+                placeholder="Enter access code"
+                autoComplete="off"
+                disabled={isPending}
+                value={code}
+                onChange={(e) => { setCode(e.target.value); resetError(); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleCodeLogin(); }}
+                className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/60"
+              />
+            </div>
+          )}
+
           {/* ── Error ───────────────────────────────────────────────── */}
           {error && (
             <p
@@ -307,6 +371,19 @@ export default function LoginPage() {
                 <Lock className="h-4 w-4" />
               )}
               Sign in with PIN
+            </button>
+          ) : mode === "code" ? (
+            <button
+              onClick={handleCodeLogin}
+              disabled={isPending || !code.trim()}
+              className="w-full py-2.5 bg-primary text-primary-foreground font-bold text-xs uppercase tracking-widest rounded-sm hover:opacity-90 active:opacity-70 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Lock className="h-4 w-4" />
+              )}
+              Sign in with code
             </button>
           ) : (
             <div className="space-y-2">
@@ -332,6 +409,16 @@ export default function LoginPage() {
               >
                 <Lock className="h-4 w-4" />
                 Enter my PIN
+              </button>
+
+              {/* Access-code (bypass) option */}
+              <button
+                onClick={() => { setMode("code"); resetError(); setCode(""); }}
+                disabled={isPending}
+                className="w-full py-2.5 border border-border/30 text-muted-foreground font-bold text-xs uppercase tracking-widest rounded-sm hover:border-primary/40 hover:text-foreground transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Lock className="h-4 w-4" />
+                Use access code
               </button>
 
               {/* Dev login */}

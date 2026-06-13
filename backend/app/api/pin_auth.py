@@ -12,6 +12,7 @@ Rate limiting: 5 wrong attempts → 15-minute lockout stored in user_pins.
 """
 from __future__ import annotations
 
+import hmac
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -69,6 +70,15 @@ class SetPinRequest(BaseModel):
 
 class HasPinResponse(BaseModel):
     has_pin: bool
+
+
+class CodeLoginRequest(BaseModel):
+    email: str
+    code: str
+
+
+class CodeLoginResponse(BaseModel):
+    token_hash: str
 
 
 # ── Supabase admin helper ─────────────────────────────────────────────────────
@@ -183,6 +193,49 @@ async def pin_login(
 
     token_hash = await _supabase_generate_token(body.email)
     return PinLoginResponse(token_hash=token_hash)
+
+
+@router.post("/code-login", response_model=CodeLoginResponse)
+async def code_login(
+    body: CodeLoginRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CodeLoginResponse:
+    """
+    Bypass login: email + a shared access code from BYPASS_LOGIN_CODE (.env).
+    On success, returns a Supabase token_hash the client exchanges for a
+    session via supabase.auth.verifyOtp() — same as PIN login, but gated on a
+    single shared secret instead of a per-user PIN.
+
+    Disabled (404) unless BYPASS_LOGIN_CODE is configured. Public — no Bearer
+    token required. The shared secret must be kept private; anyone with it can
+    sign in as any existing, active user by email.
+    """
+    configured = settings.bypass_login_code
+    if not configured:
+        # Feature disabled — behave as if the route does not exist.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+    _generic_err = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid email or code.",
+    )
+
+    # Constant-time comparison to avoid leaking the code via timing.
+    if not hmac.compare_digest(body.code.strip(), configured):
+        logger.warning("Bypass code-login failed for email=%s", body.email)
+        raise _generic_err
+
+    # Only allow sign-in for an existing, active user.
+    result = await db.execute(
+        select(User).where(User.email == body.email, User.is_active.is_(True))
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise _generic_err
+
+    logger.info("Bypass code-login success for user_id=%s", user.id)
+    token_hash = await _supabase_generate_token(body.email)
+    return CodeLoginResponse(token_hash=token_hash)
 
 
 @router.post("/set-pin")
