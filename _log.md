@@ -86,3 +86,14 @@
   - entry-priority: autouse fixture clearing shared yfinance info cache (cross-test pollution) — 1 test
 - Test results: v2–v5 499 passed · v6 66 passed · v9 57 passed · root 93 passed. `tests/v7/` does not exist (CLAUDE.md reference is stale)
 - Updated CLAUDE.md Known Bugs section
+
+## 2026-06-13
+- Diagnosed "save PIN does not work" (404 on POST https://nextgenaitrading.onrender.com/auth/set-pin):
+  - Route IS registered in source (`app/api/pin_auth.py` `@router.post("/set-pin")`, prefix `/auth`; included in `main.py:286`) and present on origin/main — confirmed via `app.routes` at runtime. A clean 404 (not 401/500) ⇒ the live Render container is STALE and predates the pin_auth router.
+  - Stale container = failed deploy. `start.sh` uses `set -e` + `alembic upgrade head` before uvicorn, with a `/healthz` healthcheck — any migration failure leaves the previous (pre-pin_auth) container serving ⇒ 404 on new routes (this exact failure mode is noted earlier in this log).
+- Root cause (startup-killer): `migrate_fix.py` rewind was unconditional on `alembic_version == {5bafc0ec3474}`. Now that the merge file `5bafc0ec3474_*.py` exists, a DB sitting at that revision is VALID, but migrate_fix still rewound it to the two pre-merge heads → `alembic upgrade head` re-ran `v8`'s `CREATE TABLE user_pins` against an existing table → migration crash → start.sh exit → stale container → 404.
+  - FIX: added `_merge_file_exists()` guard; rewind now fires only when the merge revision is genuinely unresolvable (file absent). No-op in the current (healthy) state. Verified `_merge_file_exists()` == True.
+- Second bug (would turn the 404 into a 500 once the route is reachable): `v10_enable_rls` ran `FORCE ROW LEVEL SECURITY` on all 38 tables with NO policies. v10's own docstring assumed owner-bypass ("zero impact"), but FORCE removes the owner bypass → the backend's asyncpg owner connection is denied on every query → POST /auth/set-pin 500s.
+  - FIX: new migration `v11_unforce_rls` runs `NO FORCE ROW LEVEL SECURITY` on all tables (keeps RLS ENABLED so the Supabase linter stays satisfied and anon/authenticated PostgREST access stays blocked). Each ALTER guarded by `to_regclass()` so a missing table can't abort startup.
+- Verified: `alembic heads` → single head `v11_unforce_rls`; all 38 v10 tables are created by in-chain migrations (v10 itself won't fail on a consistent DB); `migrate_fix.py` + `v11_unforce_rls.py` compile; app imports; `/auth/set-pin` registered; `tests/test_auth.py` 28 passed.
+- NOTE: these are deploy-time fixes — they take effect only after Render rebuilds from this commit. No app/runtime code changed. Not committed/pushed (awaiting user).

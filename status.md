@@ -1,3 +1,14 @@
+# Status — 2026-06-13
+
+## PIN save 404 — fixed (deploy-time)
+- **Symptom:** `POST nextgenaitrading.onrender.com/auth/set-pin` → 404.
+- **Cause:** the route exists in source + on origin/main (verified in `app.routes`), so a clean 404 means Render is serving a **stale container** from a failed deploy. `start.sh` runs `alembic upgrade head` (with `set -e`) before uvicorn; a migration crash leaves the old, pre-`pin_auth` container live.
+- **Fix 1 — `migrate_fix.py`:** its rewind was unconditional on `alembic_version == {5bafc0ec3474}`. Now that the merge migration file exists, that DB state is valid — but the old code still rewound it, making `alembic upgrade head` re-run `v8 CREATE TABLE user_pins` against an existing table → crash → stale container. Added `_merge_file_exists()` guard so the rewind only fires when the revision is genuinely fileless.
+- **Fix 2 — `alembic/versions/v11_unforce_rls.py`:** `v10_enable_rls` ran `FORCE ROW LEVEL SECURITY` on 38 tables with no policies, which removes the owner bypass the backend relies on → would 500 every authed query (incl. set-pin) once reachable. v11 runs `NO FORCE` (keeps RLS ENABLED for the Supabase linter), guarded by `to_regclass()`.
+- **Takes effect only after Render redeploys from this commit.** No runtime code changed. Verified: single alembic head `v11_unforce_rls`, app imports, `/auth/set-pin` registered, `tests/test_auth.py` 28 passed.
+
+---
+
 # Status — 2026-06-11
 
 ## Working
