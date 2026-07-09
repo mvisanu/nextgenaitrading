@@ -19,13 +19,29 @@ async function publicFetch<T>(path: string, init: RequestInit = {}): Promise<T> 
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `Request failed: ${res.status}`);
+    // FastAPI validation errors put an array of {msg,...} in detail
+    const detail = Array.isArray(body.detail)
+      ? body.detail[0]?.msg ?? `Request failed: ${res.status}`
+      : body.detail;
+    throw new Error(detail ?? `Request failed: ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
+export interface RegisterResponse {
+  email: string;
+}
+
 export const pinAuthApi = {
+  /** Create a new account with email + password. The account is confirmed
+   *  immediately (no email round-trip). Public — no auth header. */
+  register: (email: string, password: string): Promise<RegisterResponse> =>
+    publicFetch("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
   /** Verify email + PIN and get a Supabase token_hash back. Public — no auth header. */
   login: (email: string, pin: string): Promise<PinLoginResponse> =>
     publicFetch("/auth/pin-login", {

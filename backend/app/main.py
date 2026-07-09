@@ -250,6 +250,8 @@ from app.api.btc_bot import router as btc_bot_router
 from app.api.crons import router as crons_router
 # PIN auth
 from app.api.pin_auth import router as pin_auth_router
+# Password auth (email + password register)
+from app.api.password_auth import router as password_auth_router
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -284,6 +286,7 @@ app.include_router(wheel_bot_router, prefix="/api/v1")
 app.include_router(btc_bot_router, prefix="/api/v1")
 app.include_router(crons_router, prefix="/api/v1")
 app.include_router(pin_auth_router)
+app.include_router(password_auth_router)
 
 # Test-only utilities (only mounted in debug mode)
 if settings.debug:

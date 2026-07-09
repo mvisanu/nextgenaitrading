@@ -106,3 +106,15 @@
 - Why token_hash (not dev_token cookie): a real Supabase session passes the Next.js middleware and apiFetch in production; the dev_token cookie path only works when DEBUG=true.
 - Docs: CLAUDE.md env block + PIN Auth section updated. Verified: backend compiles, /auth/code-login registered, disabled by default; frontend `tsc --noEmit` 0 errors.
 - ACTION REQUIRED: set BYPASS_LOGIN_CODE to a strong secret in backend/.env (local) and in the Render dashboard env (prod). Empty = feature off. (Could not append to backend/.env automatically — permission denied.)
+
+## 2026-07-09 — password login (V10)
+- Goal: replace flaky magic-link/PIN login with username+password. DoD: create a new login and sign in with it.
+- Backend: new `app/api/password_auth.py` → `POST /auth/register` (public). Creates a CONFIRMED Supabase user (`email_confirm: true`) via the admin API using the existing SUPABASE_SERVICE_ROLE_KEY — no confirmation email, account usable immediately. Maps GoTrue errors: email_exists/"already" → 409, weak_password → 400, other → 502; 503 when Supabase unconfigured; email trimmed+lowercased; password min 8 (Pydantic validator). Router wired in `main.py`.
+- Frontend:
+  - `lib/pin-auth-api.ts`: added `register()`; publicFetch now unwraps FastAPI validation-error arrays into readable messages.
+  - `/login`: default mode is now `password` (was `choose`) — email+password → `supabase.auth.signInWithPassword`; friendly error for invalid credentials pointing at the fallback options; honors `?callbackUrl=`. Magic link / PIN / access-code demoted to secondary buttons. All success paths use a shared `redirectAfterLogin()`.
+  - `/register`: rewritten to email+password+confirm (zod min 8 + match refine) → `pinAuthApi.register()` → auto `signInWithPassword` → /dashboard.
+  - `/profile` → Security panel: new "Login Password" section (`PasswordSection`) → `supabase.auth.updateUser({ password })` so existing magic-link-era users can add a password after signing in via any fallback.
+- Tests: `backend/tests/test_password_auth.py` (8 passed — ran in an isolated venv since no project venv exists locally). Frontend `npm run build` clean.
+- Docs: CLAUDE.md — Auth Notes updated (password primary), new "Password Auth (V10)" section, PIN Auth marked fallback.
+- No DB migration involved. No env var changes needed (reuses service-role key).

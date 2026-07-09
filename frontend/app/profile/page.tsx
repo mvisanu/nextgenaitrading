@@ -887,6 +887,79 @@ interface SecurityPanelProps {
   setTwoFactor: (v: boolean) => void;
 }
 
+function PasswordSection() {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSetPassword() {
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords don't match.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const { getSupabaseBrowserClient } = await import("@/lib/supabase");
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) throw new Error("Supabase not configured.");
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw new Error(error.message);
+      toast.success("Password saved! You can now sign in with email + password.");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      toast.error(getErrorMessage(err as Error, "Failed to set password."));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3 pb-4 border-b border-border/10">
+      <div>
+        <p className="text-xs font-semibold text-foreground">Login Password</p>
+        <p className="text-2xs text-muted-foreground">
+          Set or change the password used to sign in with your email
+        </p>
+      </div>
+      <Input
+        type="password"
+        placeholder="New password (min 8 characters)"
+        autoComplete="new-password"
+        value={newPassword}
+        disabled={isSaving}
+        onChange={(e) => setNewPassword(e.target.value)}
+        className="bg-surface-lowest border-none text-sm placeholder:text-muted-foreground/60"
+      />
+      <Input
+        type="password"
+        placeholder="Confirm new password"
+        autoComplete="new-password"
+        value={confirmPassword}
+        disabled={isSaving}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        className="bg-surface-lowest border-none text-sm placeholder:text-muted-foreground/60"
+      />
+      <button
+        onClick={handleSetPassword}
+        disabled={isSaving || !newPassword || !confirmPassword}
+        className="w-full py-2 bg-primary text-primary-foreground text-3xs font-bold uppercase tracking-widest rounded-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {isSaving ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <KeyRound className="h-3.5 w-3.5" />
+        )}
+        Save Password
+      </button>
+    </div>
+  );
+}
+
 function SecurityPanel({
   emailNotifications,
   setEmailNotifications,
@@ -903,6 +976,8 @@ function SecurityPanel({
       </h2>
 
       <div className="space-y-5">
+        {/* Login password (Supabase email + password auth) */}
+        <PasswordSection />
         {/* Email Notifications */}
         <div className="flex justify-between items-center">
           <div>

@@ -88,9 +88,10 @@ frontend/
 5. Broker credentials decrypted in-memory at execution time only; never returned in responses
 
 ### Auth Notes
-- **Supabase magic link** — passwordless; `signInWithOtp({ email })` → `/auth/callback`
-- **Login page modes** — `choose` (default) → `pin` or `magic-sent`. `"magic"` mode never exists as a runtime state.
-- **PIN auth** — 4-digit PIN for quick repeat login after initial magic-link.
+- **Password login (primary)** — email + password via `supabase.auth.signInWithPassword()`. Registration: `POST /auth/register` (public, `backend/app/api/password_auth.py`) creates a **confirmed** Supabase user via the admin API (`email_confirm: true`) — no confirmation email, sign-in works immediately. Duplicate email → 409. Existing users set/change a password in **Profile → Security** via `supabase.auth.updateUser({ password })`.
+- **Supabase magic link** (fallback) — passwordless; `signInWithOtp({ email })` → `/auth/callback`
+- **Login page modes** — `password` (default) → `pin`, `code`, or `magic-sent`. `"magic"` mode never exists as a runtime state.
+- **PIN auth** (fallback) — 4-digit PIN for quick repeat login after initial magic-link.
 - **Dev login** — `POST /test/token` (debug only) → `dev_token` cookie; enable with `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true`
 - **JWT lib:** PyJWT 2.12+ (not python-jose); `audience="authenticated"` always verified; `leeway=10s`
 - **Algorithm allow-list:** `ES256`/`RS256`/`HS256` only — `alg=none` and all others rejected
@@ -320,7 +321,18 @@ Frontend page at `/wheel-bot`. Automates Wheel Strategy on TSLA using `WHEEL_ALP
 
 **Scheduler:** `wheel_bot_monitor` every 15 min (market hours only). `wheel_bot_daily_summary` cron at 21:05 UTC Mon–Fri.
 
-## PIN Auth (V8)
+## Password Auth (V10 — primary login)
+
+**Flow:**
+1. Register: `/register` page → email + password + confirm → `POST /auth/register` (backend creates confirmed Supabase user via admin API, no email needed) → frontend `signInWithPassword` → `/dashboard`
+2. Login: `/login` page (default mode `password`) → `supabase.auth.signInWithPassword({email, password})` → redirect to `callbackUrl` or `/dashboard`
+3. Existing users (magic-link/PIN era): sign in with any fallback method → Profile → Security → "Login Password" → `supabase.auth.updateUser({ password })`
+
+**API routes:** `POST /auth/register` (public; 201/409/400/502/503) — `backend/app/api/password_auth.py`. Tests: `backend/tests/test_password_auth.py`.
+
+Password minimum: 8 characters (enforced in Pydantic validator + zod schema). No "forgot password" email flow — recover via magic link / PIN / access code, then set a new password in Profile.
+
+## PIN Auth (V8 — fallback)
 
 **Flow:**
 1. First login: magic link → `/auth/callback` → `/pin-setup`

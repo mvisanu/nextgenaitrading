@@ -7,19 +7,24 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils";
-import { Loader2, Mail, CheckCircle, Activity } from "lucide-react";
+import { Loader2, UserPlus, Activity } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { pinAuthApi } from "@/lib/pin-auth-api";
 
-const registerSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-});
+const registerSchema = z
+  .object({
+    email: z.string().email("Please enter a valid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [sentEmail, setSentEmail] = useState("");
-
   const {
     register,
     handleSubmit,
@@ -35,77 +40,28 @@ export default function RegisterPage() {
     setIsPending(true);
     setRegisterError(null);
     try {
+      // 1. Create the account (backend creates a confirmed Supabase user —
+      //    no confirmation email needed).
+      await pinAuthApi.register(values.email, values.password);
+
+      // 2. Sign in immediately with the new credentials.
       const supabase = getSupabaseBrowserClient();
-      if (!supabase) throw new Error("Supabase not configured. Use Dev Login on the login page.");
-      const { error } = await supabase.auth.signInWithOtp({
-        email: values.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+      if (!supabase) throw new Error("Supabase not configured.");
+      const { error } = await supabase.auth.signInWithPassword({
+        email: values.email.trim().toLowerCase(),
+        password: values.password,
       });
-      if (error) {
-        setRegisterError(error.message);
-        toast.error(error.message);
-      } else {
-        setMagicLinkSent(true);
-        setSentEmail(values.email);
-        toast.success("Magic link sent! Check your email to complete signup.");
-      }
+      if (error) throw new Error(error.message);
+
+      toast.success("Account created! Signing you in…");
+      window.location.href = "/dashboard";
     } catch (err) {
-      const msg = getErrorMessage(
-        err as Error,
-        "Failed to send magic link."
-      );
+      const msg = getErrorMessage(err as Error, "Failed to create account.");
       setRegisterError(msg);
       toast.error(msg);
     } finally {
       setIsPending(false);
     }
-  }
-
-  if (magicLinkSent) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm space-y-8">
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
-              <Activity className="h-6 w-6 text-primary" />
-            </div>
-            <span className="text-xl font-black tracking-tighter text-foreground">NextGen Trading</span>
-            <span className="text-3xs text-primary tracking-widest uppercase">Work Hard, Play Hard</span>
-          </div>
-
-          <div className="bg-surface-low border border-border/10 rounded-sm p-6 space-y-4">
-            <div className="flex flex-col items-center space-y-3">
-              <div className="h-12 w-12 rounded-sm bg-primary/10 flex items-center justify-center">
-                <CheckCircle className="h-7 w-7 text-primary" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground">Check your email</h2>
-              <p className="text-sm text-muted-foreground text-center">
-                We sent a magic link to <strong className="text-foreground">{sentEmail}</strong>
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              Click the link in the email to create your account and sign in. The link expires in 1 hour.
-            </p>
-            <button
-              className="w-full py-2.5 border border-border/20 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-surface-high/50 transition-colors rounded-sm flex items-center justify-center gap-2"
-              onClick={() => {
-                setMagicLinkSent(false);
-                setRegisterError(null);
-              }}
-            >
-              <Mail className="h-4 w-4" />
-              Try a different email
-            </button>
-          </div>
-
-          <p className="text-center text-3xs text-muted-foreground/50 uppercase tracking-widest">
-            Educational software only. Live trading carries real financial risk.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -125,7 +81,7 @@ export default function RegisterPage() {
           <div>
             <h2 className="text-xl font-bold text-foreground">Create account</h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Enter your email to get started with NextGen Trading
+              Pick an email and password — you&apos;ll be signed in right away
             </p>
           </div>
 
@@ -150,6 +106,46 @@ export default function RegisterPage() {
               )}
             </div>
 
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="At least 8 characters"
+                autoComplete="new-password"
+                disabled={isPending}
+                className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/60"
+                {...register("password")}
+              />
+              {errors.password && (
+                <p className="text-3xs text-destructive">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="confirmPassword" className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                placeholder="Re-enter your password"
+                autoComplete="new-password"
+                disabled={isPending}
+                className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/60"
+                {...register("confirmPassword")}
+              />
+              {errors.confirmPassword && (
+                <p className="text-3xs text-destructive">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
+            </div>
+
             {registerError && (
               <p role="alert" className="text-xs text-destructive bg-destructive/5 border border-destructive/20 p-2 rounded-sm">
                 {registerError}
@@ -164,9 +160,9 @@ export default function RegisterPage() {
               {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Mail className="h-4 w-4" />
+                <UserPlus className="h-4 w-4" />
               )}
-              Send magic link
+              Create account
             </button>
           </form>
 

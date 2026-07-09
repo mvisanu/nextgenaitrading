@@ -1,31 +1,18 @@
-# Status — 2026-06-13
+# Status — 2026-07-09
 
-## PIN save 404 — fixed (deploy-time)
-- **Symptom:** `POST nextgenaitrading.onrender.com/auth/set-pin` → 404.
-- **Cause:** the route exists in source + on origin/main (verified in `app.routes`), so a clean 404 means Render is serving a **stale container** from a failed deploy. `start.sh` runs `alembic upgrade head` (with `set -e`) before uvicorn; a migration crash leaves the old, pre-`pin_auth` container live.
-- **Fix 1 — `migrate_fix.py`:** its rewind was unconditional on `alembic_version == {5bafc0ec3474}`. Now that the merge migration file exists, that DB state is valid — but the old code still rewound it, making `alembic upgrade head` re-run `v8 CREATE TABLE user_pins` against an existing table → crash → stale container. Added `_merge_file_exists()` guard so the rewind only fires when the revision is genuinely fileless.
-- **Fix 2 — `alembic/versions/v11_unforce_rls.py`:** `v10_enable_rls` ran `FORCE ROW LEVEL SECURITY` on 38 tables with no policies, which removes the owner bypass the backend relies on → would 500 every authed query (incl. set-pin) once reachable. v11 runs `NO FORCE` (keeps RLS ENABLED for the Supabase linter), guarded by `to_regclass()`.
-- **Takes effect only after Render redeploys from this commit.** No runtime code changed. Verified: single alembic head `v11_unforce_rls`, app imports, `/auth/set-pin` registered, `tests/test_auth.py` 28 passed.
+## Password login (V10) — implemented, primary login method
+- **Why:** magic-link + PIN flow was chronically unreliable on the live site (session/token races on /pin-setup, email dependency). User requested username+password login.
+- **Register:** `/register` page now takes email + password + confirm → `POST /auth/register` (new `backend/app/api/password_auth.py`) → creates a **confirmed** Supabase user via the admin API (`email_confirm: true`) → **no confirmation email at all** → frontend immediately `signInWithPassword` → dashboard.
+- **Login:** `/login` page default mode is now `password` (email + password → `supabase.auth.signInWithPassword`). Magic link, PIN, and access-code remain as secondary options behind the primary form. Honors `callbackUrl`.
+- **Existing accounts** (created via magic link, no password yet): sign in once via PIN / access code / magic link → **Profile → Security → "Login Password"** → sets password via `supabase.auth.updateUser({ password })` (pure client-side; no backend change needed).
+- Duplicate-email registration → 409 with a message pointing at sign-in + Profile password setup (prevents account takeover via re-register).
 
----
+## Verified
+- `backend/tests/test_password_auth.py` — 8 passed (validation, success, duplicate 409, weak-password 400, upstream 502, unconfigured 503).
+- Frontend `npm run build` — clean, all pages compile.
+- Endpoint behavior exercised against a mocked Supabase admin API (201/409/502 paths).
 
-# Status — 2026-06-11
-
-## Working
-- **All backend test suites green**: v2–v5 (499 passed), v6 standalone (66), v9 (57), root auth/gold (93). Baseline at session start was 39 failures across these suites.
-- App imports cleanly (`from app.main import app` OK).
-- All four CLAUDE.md "Known Bugs" fixed (see `_log.md` for details).
-
-## Fixed this session
-- `morning_brief.py`: EMA-200 ZeroDivisionError guard + bias logic (Below EMA-200 now always Bearish).
-- `politician_scraper_service.py`: `_fetch_raw()` raises new `QuiverFetchError` when API down and no cache; returns stale cache with warning otherwise.
-- `copy_trading_service.py`: session creation aborts (API 503) if Quiver unreachable — prevents unseeded session from bulk-copying all historical trades on first poll; seeding failures now re-raise. Options fallback builds OCC symbols via validated `_build_occ_symbol()` (proper date parsing — old code corrupted MM/DD/YYYY expiries — plus regex check).
-- `core/security.py`: internally-minted access/refresh JWTs now include `aud="authenticated"` — previously `decode_token()` could never validate the app's own tokens.
-- Perf/cost (Render 512 MB constraints): `moat_scoring_service` + `theme_scoring_service` now use cached `get_ticker_info()` instead of direct `yf.Ticker().info`; `run_live_scanner` uses one DB session for the whole run (was one per user — pool churn with pool_size=2); `run_idea_generator` merged two sequential sessions into one; `gc.collect()` added to `run_news_scanner` + `prune_old_signals`; deprecated `get_event_loop()` → `get_running_loop()` in `idea_generator_service` + `scanner_service`.
-- Stale tests repaired: auto-buy fixtures missing `target_buy_price`, trailing-bot mocks returning falsy cancel result, theme/moat mocks patching `yf` directly, entry-priority cross-test pollution from shared yfinance info cache (autouse cache-clear fixture added).
-
-## Pending / notes
-- `tests/v7/` does not exist despite CLAUDE.md referencing it — wheel bot has no test suite.
-- 2 pre-existing failures? None — everything green as of this session.
-- `politician-copy-trading/trade_history.db` has uncommitted changes (pre-existing, untouched).
-- Frontend untouched this session (scan found no violations: no `Promise.allSettled` price polling, `dangerouslySetInnerHTML` uses are static/sanitized).
+## Pending
+- Deploy to Render + Vercel (push to main), then live smoke test: create a fresh account with a password and sign in with it.
+- No new DB migration in this change — deploy risk is low.
+- backend/.env is not readable by tooling (permission denied) — no env changes are needed for this feature anyway (uses existing SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY, already required by PIN login).

@@ -12,7 +12,7 @@ const IS_DEV =
   process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === "true";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
-type Mode = "choose" | "pin" | "code" | "magic-sent";
+type Mode = "password" | "pin" | "code" | "magic-sent";
 
 // ── 4-digit PIN pad ──────────────────────────────────────────────────────────
 
@@ -88,8 +88,9 @@ function Brand() {
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<Mode>("choose");
+  const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [pin, setPin] = useState("    ");
   const [code, setCode] = useState("");
   const [isPending, setIsPending] = useState(false);
@@ -97,6 +98,50 @@ export default function LoginPage() {
 
   function resetError() {
     setError(null);
+  }
+
+  function redirectAfterLogin() {
+    const callbackUrl = new URLSearchParams(window.location.search).get("callbackUrl");
+    window.location.href =
+      callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/dashboard";
+  }
+
+  // ── Password login (primary) ────────────────────────────────────────────
+  async function handlePasswordLogin() {
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+    setIsPending(true);
+    setError(null);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (!supabase) throw new Error("Supabase not configured. Use Dev Login instead.");
+      const { error: sbErr } = await supabase.auth.signInWithPassword({
+        email: trimmed,
+        password,
+      });
+      if (sbErr) {
+        if (/invalid login credentials/i.test(sbErr.message)) {
+          throw new Error(
+            "Incorrect email or password. If you haven't set a password yet, sign in with your PIN, access code, or a magic link — then set one in Profile."
+          );
+        }
+        throw new Error(sbErr.message);
+      }
+      redirectAfterLogin();
+    } catch (err) {
+      const msg = (err as Error).message;
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setIsPending(false);
+    }
   }
 
   // ── Dev login ──────────────────────────────────────────────────────────────
@@ -174,7 +219,7 @@ export default function LoginPage() {
         type: "magiclink",
       });
       if (sbErr) throw new Error(sbErr.message);
-      window.location.href = "/dashboard";
+      redirectAfterLogin();
     } catch (err) {
       const msg = (err as Error).message;
       setError(msg);
@@ -208,7 +253,7 @@ export default function LoginPage() {
         type: "magiclink",
       });
       if (sbErr) throw new Error(sbErr.message);
-      window.location.href = "/dashboard";
+      redirectAfterLogin();
     } catch (err) {
       const msg = (err as Error).message;
       setError(msg);
@@ -241,7 +286,7 @@ export default function LoginPage() {
             </p>
             <button
               className="w-full py-2.5 border border-border/20 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-surface-high/50 transition-colors rounded-sm flex items-center justify-center gap-2"
-              onClick={() => { setMode("choose"); resetError(); }}
+              onClick={() => { setMode("password"); resetError(); }}
             >
               <Mail className="h-4 w-4" />
               Try a different email
@@ -264,9 +309,9 @@ export default function LoginPage() {
 
           {/* ── Header ──────────────────────────────────────────────── */}
           <div className="flex items-center gap-3">
-            {mode !== "choose" && (
+            {mode !== "password" && (
               <button
-                onClick={() => { setMode("choose"); resetError(); setPin("    "); setCode(""); }}
+                onClick={() => { setMode("password"); resetError(); setPin("    "); setCode(""); }}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -285,7 +330,7 @@ export default function LoginPage() {
                   ? "Enter your 4-digit PIN to continue"
                   : mode === "code"
                   ? "Email + access code to bypass the magic link"
-                  : "Choose how to sign in"}
+                  : "Sign in with your email and password"}
               </p>
             </div>
           </div>
@@ -308,12 +353,35 @@ export default function LoginPage() {
               onChange={(e) => { setEmail(e.target.value); resetError(); }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  if (mode === "choose") handleMagicLink();
+                  if (mode === "password") handlePasswordLogin();
                 }
               }}
               className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/40"
             />
           </div>
+
+          {/* ── Password field (password mode only) ─────────────────── */}
+          {mode === "password" && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="password"
+                className="text-3xs font-bold uppercase tracking-widest text-muted-foreground"
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Your password"
+                autoComplete="current-password"
+                disabled={isPending}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); resetError(); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handlePasswordLogin(); }}
+                className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/60"
+              />
+            </div>
+          )}
 
           {/* ── PIN pad (PIN mode only) ──────────────────────────────── */}
           {mode === "pin" && (
@@ -387,18 +455,33 @@ export default function LoginPage() {
             </button>
           ) : (
             <div className="space-y-2">
-              {/* Magic link */}
+              {/* Password sign-in (primary) */}
               <button
-                onClick={handleMagicLink}
-                disabled={isPending}
+                onClick={handlePasswordLogin}
+                disabled={isPending || !password}
                 className="w-full py-2.5 bg-primary text-primary-foreground font-bold text-xs uppercase tracking-widest rounded-sm hover:opacity-90 active:opacity-70 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Mail className="h-4 w-4" />
+                  <Lock className="h-4 w-4" />
                 )}
-                Send magic link
+                Sign in
+              </button>
+
+              <p className="text-2xs text-muted-foreground text-center pt-1 pb-1">
+                Forgot your password or never set one? Use another option below,
+                then set a password in Profile.
+              </p>
+
+              {/* Magic link */}
+              <button
+                onClick={handleMagicLink}
+                disabled={isPending}
+                className="w-full py-2.5 border border-border/30 text-muted-foreground font-bold text-xs uppercase tracking-widest rounded-sm hover:border-primary/40 hover:text-foreground transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Mail className="h-4 w-4" />
+                Email me a magic link
               </button>
 
               {/* PIN option */}
