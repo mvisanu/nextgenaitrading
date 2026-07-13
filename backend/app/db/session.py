@@ -7,9 +7,11 @@ unit tests import API modules without the driver present).
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncGenerator
 from typing import Optional
 
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -17,6 +19,8 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Module-level singletons — populated on first call to _get_session_factory().
 _async_engine = None
@@ -76,28 +80,57 @@ def get_engine():
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an AsyncSession and guarantees cleanup.
-    Retries once on asyncpg interface/connection errors (handles Render
-    spin-down where pooled connections become stale before pool_pre_ping
-    can detect them).
+
+    Yields exactly once. The previous version wrapped the ``yield`` in a
+    retry loop, so an OSError raised by the endpoint's own query — thrown back
+    into the generator at the yield point — was caught by the retry handler,
+    which then looped and yielded a *second* time. The asyncgen machinery
+    rejects that with ``RuntimeError: generator didn't stop after athrow()``,
+    which masked every transient database error behind a confusing 500.
+
+    Stale pooled connections (Render spin-down) are already handled by
+    pool_pre_ping, which validates each connection on checkout; the pool is also
+    disposed here when a connection error does occur, so the next request starts
+    clean. An unreachable database becomes a 503 rather than an opaque 500.
+
     Use as: db: AsyncSession = Depends(get_db)
     """
     import asyncpg  # only needed at call time, not import time
+    from sqlalchemy.exc import DisconnectionError
+    from sqlalchemy.exc import InterfaceError as SAInterfaceError
+    from sqlalchemy.exc import OperationalError
 
-    for attempt in range(2):
-        session = _get_session_factory()()
+    # Connection-level failures: the pool cannot reach Postgres at all. Query bugs
+    # (ProgrammingError, IntegrityError, ...) are deliberately NOT in this tuple —
+    # those are real defects and must keep surfacing as 500s.
+    connection_errors = (
+        asyncpg.InterfaceError,
+        asyncpg.TooManyConnectionsError,
+        OperationalError,
+        SAInterfaceError,
+        DisconnectionError,
+        OSError,  # socket.gaierror — DB host does not resolve (e.g. paused project)
+    )
+
+    # The session is created without connecting: SQLAlchemy acquires a connection
+    # lazily on first use. Keep it that way — eagerly connecting here would burn a
+    # slot from the tiny Render pool (2 + 3 overflow) on every request that never
+    # queries, including ones rejected by the auth dependency.
+    session = _get_session_factory()()
+    async with session:
         try:
-            async with session:
-                try:
-                    yield session
-                    return
-                except Exception:
-                    await session.rollback()
-                    raise
-        except (asyncpg.InterfaceError, asyncpg.TooManyConnectionsError, OSError) as exc:
-            if attempt == 0:
-                # First failure — likely a stale pooled connection.
-                # Dispose the pool to force fresh connections, then retry.
-                if _async_engine is not None:
-                    await _async_engine.dispose()
-                continue
-            raise  # Re-raise on second attempt
+            yield session
+        except connection_errors as exc:
+            await session.rollback()
+            # Drop the pool so the next request builds fresh connections rather
+            # than handing out ones pointing at a host that has gone away.
+            if _async_engine is not None:
+                await _async_engine.dispose()
+            logger.error("Database unreachable: %s: %s", type(exc).__name__, exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="The service is temporarily unavailable. Please try again shortly.",
+            ) from exc
+        except Exception:
+            await session.rollback()
+            raise

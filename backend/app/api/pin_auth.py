@@ -94,15 +94,24 @@ async def _supabase_generate_token(email: str) -> str:
             detail="Auth service not configured.",
         )
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
-            f"{settings.supabase_url}/auth/v1/admin/generate_link",
-            json={"type": "magiclink", "email": email},
-            headers={
-                "apikey": settings.supabase_service_role_key,
-                "Authorization": f"Bearer {settings.supabase_service_role_key}",
-            },
-        )
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{settings.supabase_url}/auth/v1/admin/generate_link",
+                json={"type": "magiclink", "email": email},
+                headers={
+                    "apikey": settings.supabase_service_role_key,
+                    "Authorization": f"Bearer {settings.supabase_service_role_key}",
+                },
+            )
+    except httpx.RequestError as exc:
+        # Supabase unreachable (DNS failure, timeout, connection reset) — e.g. the
+        # project is paused. Surface it as a clear 503 rather than an opaque 500.
+        logger.error("Supabase admin API unreachable: %s: %s", type(exc).__name__, exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The sign-in service is temporarily unavailable. Please try again shortly.",
+        ) from exc
 
     if resp.status_code != 200:
         logger.error(

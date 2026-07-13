@@ -69,19 +69,29 @@ async def register(body: RegisterRequest) -> RegisterResponse:
             detail="Auth service not configured.",
         )
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
-            f"{settings.supabase_url}/auth/v1/admin/users",
-            json={
-                "email": body.email,
-                "password": body.password,
-                "email_confirm": True,
-            },
-            headers={
-                "apikey": settings.supabase_service_role_key,
-                "Authorization": f"Bearer {settings.supabase_service_role_key}",
-            },
-        )
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{settings.supabase_url}/auth/v1/admin/users",
+                json={
+                    "email": body.email,
+                    "password": body.password,
+                    "email_confirm": True,
+                },
+                headers={
+                    "apikey": settings.supabase_service_role_key,
+                    "Authorization": f"Bearer {settings.supabase_service_role_key}",
+                },
+            )
+    except httpx.RequestError as exc:
+        # Supabase unreachable (DNS failure, timeout, connection reset) — e.g. the
+        # project is paused. Without this, the transport error escapes as an opaque
+        # 500 and the user is told nothing useful.
+        logger.error("Supabase admin API unreachable: %s: %s", type(exc).__name__, exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The sign-up service is temporarily unavailable. Please try again shortly.",
+        ) from exc
 
     if resp.status_code in (200, 201):
         logger.info("Registered new password user: %s", body.email)

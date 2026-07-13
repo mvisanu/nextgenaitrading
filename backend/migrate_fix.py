@@ -61,9 +61,25 @@ async def _connect():
 
 
 async def fix() -> None:
+    import asyncpg
+
     conn = await _connect()
     try:
-        rows = await conn.fetch("SELECT version_num FROM alembic_version")
+        try:
+            rows = await conn.fetch("SELECT version_num FROM alembic_version")
+        except asyncpg.exceptions.UndefinedTableError:
+            # Fresh database (new Supabase project, local bootstrap, CI): alembic
+            # has never run, so there is no version table and nothing to repair.
+            # 'alembic upgrade head' creates it. Without this guard the query
+            # raised, migrate_fix exited non-zero, and start.sh aborted before
+            # uvicorn — so a brand-new database could never bootstrap at all.
+            print(
+                "[migrate_fix] No alembic_version table — fresh database. "
+                "Nothing to repair; alembic will create it.",
+                flush=True,
+            )
+            return
+
         current = {r["version_num"] for r in rows}
         print(f"[migrate_fix] alembic_version = {current}", flush=True)
 

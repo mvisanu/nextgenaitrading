@@ -1,0 +1,8 @@
+# Shell scripts must keep LF endings. start.sh is the Docker CMD on Render
+# (Linux); a CRLF copy fails there with a cryptic `\r: command not found`.
+*.sh text eol=lf
+
+# Same for anything else the Linux container executes or parses.
+Dockerfile text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf

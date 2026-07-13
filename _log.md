@@ -118,3 +118,22 @@
 - Tests: `backend/tests/test_password_auth.py` (8 passed — ran in an isolated venv since no project venv exists locally). Frontend `npm run build` clean.
 - Docs: CLAUDE.md — Auth Notes updated (password primary), new "Password Auth (V10)" section, PIN Auth marked fallback.
 - No DB migration involved. No env var changes needed (reuses service-role key).
+
+## 2026-07-10 — production outage diagnosis (login/register on Render)
+- Goal: verify login + create-account work on the deployed site. Found production fully down instead.
+- Backend https://nextgenaitrading.onrender.com → 502 on ALL endpoints; `x-render-routing: dynamic-paid-error` (app instance failing on a paid service — crash loop, not plan/routing).
+- Root cause: Supabase project host `mhdeczgappgbazxjnyaf.supabase.co` = **NXDOMAIN** (verified locally + via 8.8.8.8). Free-tier Supabase pauses after ~1wk inactivity and paused projects drop DNS. Backend `start.sh` runs alembic at boot → DB unreachable → container crash-loops → 502. Frontend auth also dead (GoTrue unreachable).
+- Verified NOT the problem: Vercel frontend is live + latest V10 build (password mode, /register 200); bundle points at correct API base (nextgenaitrading.onrender.com) and Supabase ref (decoded anon key: ref=mhdeczgappgbazxjnyaf, iat≈Mar 2026).
+- Could not self-heal: no Render API key locally, no supabase CLI login, Chrome extension not connected → dashboards inaccessible.
+- ACTION REQUIRED (owner): restore/unpause project in Supabase dashboard → Manual Deploy latest commit on Render (`nextgenstock-backend`) → then live smoke test register+login. Consider keep-alive ping or paid Supabase plan to prevent re-pausing.
+
+## 2026-07-13 — Render resilience: fixed the bugs that turned a Supabase outage into a total blackout
+- Confirmed root cause of prod being down is EXTERNAL: Supabase project `mhdeczgappgbazxjnyaf` is NXDOMAIN on A/AAAA/CNAME (checked via Google DoH; `supabase.com` resolves fine). A paused project still shows its URL in the dashboard, so "the dashboard shows the same URL" does not mean it is running. Login/register are impossible until it is restored — password login is browser→Supabase direct, and `/auth/register` calls the Supabase admin API.
+- Then fixed the four real defects in OUR code that the outage exposed (all reproduced + verified in Docker against the same image Render builds):
+  1. `start.sh`: `set -e` + failing `alembic upgrade head` → uvicorn never started → Render 502 on EVERY route incl. the DB-free `/healthz` and `/auth/register`. Now migrations retry (backoff) and the API **always boots**; a dead DB degrades instead of blacking out.
+  2. `migrate_fix.py`: raised `UndefinedTableError` on any DB with no `alembic_version` table → non-zero exit → old `set -e` crash-looped forever. **A brand-new Supabase project could never have booted** — a landmine sitting directly in the recovery path. Now treats a missing version table as a fresh DB.
+  3. `db/session.py::get_db`: yielded twice — the retry loop caught an OSError thrown *into* the generator at the `yield` and yielded again → `RuntimeError: generator didn't stop after athrow()`, masking every transient DB error as a confusing 500. Now yields once; connection errors → clean 503 + pool disposed. Kept the connection lazy (an earlier eager-connect version regressed 2 gold auth-guard tests and would have burned a slot from the 2+3 pool on non-querying requests).
+  4. `password_auth.register` + `pin_auth._supabase_generate_token`: unguarded `httpx` calls → `httpx.ConnectError` escaped as an opaque 500. That is literally what "Create account" returned on the live site. Now a clear 503, CORS headers preserved.
+- Added: `/readyz` readiness probe (503 while DB down; `/healthz` stays liveness-only so Render keeps the service routable — a readiness-style healthCheckPath would fail the deploy and re-create the blackout); background migration self-heal; scheduler deferred while degraded and started on recovery; `.gitattributes` pinning `*.sh` to LF (a Windows CRLF save would break the Linux container with `\r: command not found`).
+- Verified in Docker: degraded (DB+Supabase down) → /healthz 200, /readyz 503, /auth/register 503, /auth/pin-login 503, container healthy, 0 unhandled exceptions. Fresh-DB bootstrap → 38 tables, head `v11_unforce_rls`. Self-heal → DB restored ⇒ migrations applied and /readyz 200 in ~20s with NO redeploy. Healthy → all green. Tests: **723 passing**.
+- Doc gap noted: CLAUDE.md references `backend/tests/v7/`, which does not exist in the repo.
