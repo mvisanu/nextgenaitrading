@@ -1,188 +1,179 @@
 "use client";
 
+/**
+ * /register — email + password + confirm, with live password rules.
+ *
+ * Registration goes browser → Supabase directly via signUp(). It used to
+ * POST to the backend's /auth/register (which minted a pre-confirmed
+ * user), but that made account creation depend on the API being up; a
+ * suspended backend took registration down with it. The backend endpoint
+ * still exists and is untouched — it simply has no UI caller now.
+ *
+ * Both Supabase configurations are handled: when email confirmation is
+ * disabled signUp returns a session and we go straight to the dashboard;
+ * when it's enabled we show the confirm-your-email state in place.
+ */
+
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Link from "next/link";
-import { useState } from "react";
-import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
-import { Loader2, UserPlus, Activity } from "lucide-react";
+import { MailCheck } from "lucide-react";
+
+import { AuthCard, AuthFooterLink } from "@/components/auth/AuthCard";
+import { AuthError } from "@/components/auth/AuthError";
+import {
+  AuthField,
+  PasswordField,
+  SubmitButton,
+} from "@/components/auth/AuthField";
+import {
+  PasswordRules,
+  meetsPasswordRules,
+} from "@/components/auth/PasswordRules";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
-import { pinAuthApi } from "@/lib/pin-auth-api";
+import { mapAuthError } from "@/lib/auth-errors";
+import { hardNavigate } from "@/lib/navigate";
 
 const registerSchema = z
   .object({
     email: z.string().email("Please enter a valid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: z.string().refine(meetsPasswordRules, {
+      message: "Password doesn't meet the rules below",
+    }),
     confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type RegisterValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+  const [formError, setFormError] = useState<string | null>(null);
+  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterFormValues>({
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
+    defaultValues: { email: "", password: "", confirmPassword: "" },
   });
 
-  const [isPending, setIsPending] = useState(false);
-  const [registerError, setRegisterError] = useState<string | null>(null);
+  const passwordValue = watch("password") ?? "";
 
-  async function onSubmit(values: RegisterFormValues) {
-    setIsPending(true);
-    setRegisterError(null);
+  async function onSubmit(values: RegisterValues) {
+    setFormError(null);
+    const email = values.email.trim().toLowerCase();
     try {
-      // 1. Create the account (backend creates a confirmed Supabase user —
-      //    no confirmation email needed).
-      await pinAuthApi.register(values.email, values.password);
-
-      // 2. Sign in immediately with the new credentials.
       const supabase = getSupabaseBrowserClient();
-      if (!supabase) throw new Error("Supabase not configured.");
-      const { error } = await supabase.auth.signInWithPassword({
-        email: values.email.trim().toLowerCase(),
-        password: values.password,
-      });
-      if (error) throw new Error(error.message);
+      if (!supabase) throw new Error("Supabase not configured");
 
-      toast.success("Account created! Signing you in…");
-      window.location.href = "/dashboard";
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: values.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+
+      // Supabase does not error on a duplicate email (that would leak which
+      // addresses are registered). It returns a user with no identities.
+      if (data.user && data.user.identities?.length === 0) {
+        throw new Error("User already registered");
+      }
+
+      if (data.session) {
+        // Email confirmation is disabled — we're already signed in.
+        hardNavigate("/dashboard");
+        return;
+      }
+
+      setConfirmEmail(email);
     } catch (err) {
-      const msg = getErrorMessage(err as Error, "Failed to create account.");
-      setRegisterError(msg);
-      toast.error(msg);
-    } finally {
-      setIsPending(false);
+      setFormError(mapAuthError(err));
     }
   }
 
+  if (confirmEmail) {
+    return (
+      <AuthCard
+        title="Check your email"
+        footer={
+          <AuthFooterLink
+            prompt="Already confirmed?"
+            href="/login"
+            label="Sign in"
+          />
+        }
+      >
+        <div className="flex flex-col items-center space-y-3 py-2">
+          <div className="h-12 w-12 rounded-sm bg-primary/10 flex items-center justify-center">
+            <MailCheck className="h-7 w-7 text-primary" />
+          </div>
+          <p className="text-sm text-muted-foreground text-center">
+            We sent a confirmation link to{" "}
+            <strong className="text-foreground">{confirmEmail}</strong>. Click
+            it to activate your account.
+          </p>
+        </div>
+      </AuthCard>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm space-y-8">
-        {/* Brand */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
-            <Activity className="h-6 w-6 text-primary" />
-          </div>
-          <span className="text-xl font-black tracking-tighter text-foreground">NextGen Trading</span>
-          <span className="text-3xs text-primary tracking-widest uppercase">Work Hard, Play Hard</span>
-        </div>
+    <AuthCard
+      title="Create account"
+      footer={
+        <AuthFooterLink
+          prompt="Already have an account?"
+          href="/login"
+          label="Sign in"
+        />
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <AuthField
+          id="email"
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          autoComplete="email"
+          disabled={isSubmitting}
+          error={errors.email?.message}
+          {...register("email")}
+        />
 
-        {/* Register card */}
-        <div className="bg-surface-low border border-border/10 rounded-sm p-6 space-y-5">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Create account</h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Pick an email and password — you&apos;ll be signed in right away
-            </p>
-          </div>
+        <PasswordField
+          id="password"
+          placeholder="Create a password"
+          autoComplete="new-password"
+          disabled={isSubmitting}
+          error={errors.password?.message}
+          {...register("password")}
+        />
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                disabled={isPending}
-                className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/40"
-                {...register("email")}
-              />
-              {errors.email && (
-                <p className="text-3xs text-destructive">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
+        <PasswordRules value={passwordValue} />
 
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                placeholder="At least 8 characters"
-                autoComplete="new-password"
-                disabled={isPending}
-                className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/60"
-                {...register("password")}
-              />
-              {errors.password && (
-                <p className="text-3xs text-destructive">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
+        <PasswordField
+          id="confirmPassword"
+          label="Confirm password"
+          placeholder="Re-enter your password"
+          autoComplete="new-password"
+          disabled={isSubmitting}
+          error={errors.confirmPassword?.message}
+          {...register("confirmPassword")}
+        />
 
-            <div className="space-y-1.5">
-              <label htmlFor="confirmPassword" className="text-3xs font-bold uppercase tracking-widest text-muted-foreground">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                placeholder="Re-enter your password"
-                autoComplete="new-password"
-                disabled={isPending}
-                className="w-full bg-surface-lowest border-none text-sm p-2.5 rounded-sm focus:ring-1 focus:ring-primary focus:outline-none text-foreground placeholder:text-muted-foreground/60"
-                {...register("confirmPassword")}
-              />
-              {errors.confirmPassword && (
-                <p className="text-3xs text-destructive">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
+        <AuthError message={formError} />
 
-            {registerError && (
-              <p role="alert" className="text-xs text-destructive bg-destructive/5 border border-destructive/20 p-2 rounded-sm">
-                {registerError}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-primary text-primary-foreground font-bold text-xs uppercase tracking-widest rounded-sm hover:opacity-90 active:opacity-70 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
-              disabled={isPending}
-            >
-              {isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <UserPlus className="h-4 w-4" />
-              )}
-              Create account
-            </button>
-          </form>
-
-          <div className="text-center pt-2">
-            <p className="text-xs text-muted-foreground">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="text-primary hover:underline font-semibold"
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </div>
-
-        <p className="text-center text-3xs text-muted-foreground/50 uppercase tracking-widest">
-          Educational software only. Live trading carries real financial risk.
-        </p>
-      </div>
-    </div>
+        <SubmitButton pending={isSubmitting}>Create account</SubmitButton>
+      </form>
+    </AuthCard>
   );
 }
