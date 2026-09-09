@@ -14,20 +14,22 @@
  * Integrated into /opportunities row expansion.
  */
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { ChevronDown, ChevronRight, RefreshCw, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { alertsApi,buyZoneApi,themeScoreApi } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { cn,getErrorMessage } from "@/lib/utils";
+import { watchlistKeys } from "@/lib/watchlist";
+import type { PriceAlertRule } from "@/types";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import { Bell,BellOff,ChevronDown,ChevronRight,RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { BuyZoneCard } from "./BuyZoneCard";
 import { HistoricalOutcomePanel } from "./HistoricalOutcomePanel";
 import { ThemeScoreBadge } from "./ThemeScoreBadge";
-import { buyZoneApi, themeScoreApi, alertsApi } from "@/lib/api";
-import { getErrorMessage, cn } from "@/lib/utils";
-import type { PriceAlertRule } from "@/types";
 
 interface BuyZoneAnalysisPanelProps {
   ticker: string;
@@ -46,6 +48,7 @@ export function BuyZoneAnalysisPanel({
 }: BuyZoneAnalysisPanelProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const {
     data: snapshot,
@@ -84,7 +87,8 @@ export function BuyZoneAnalysisPanel({
       alertsApi.update(alertRule!.id, { enabled }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
-      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.signals(user?.id) });
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.list(user?.id) });
       toast.success("Alert updated");
     },
     onError: (err: Error) => {

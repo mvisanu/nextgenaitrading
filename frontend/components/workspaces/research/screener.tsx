@@ -1,21 +1,25 @@
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { WorkspaceSection as AppShell } from "@/components/layout/WorkspaceSection";
+import { AnalystSummary } from "@/components/screener/AnalystSummary";
 import { ScreenerControls } from "@/components/screener/ScreenerControls";
 import { ScreenerResults } from "@/components/screener/ScreenerResults";
 import { TechnicalAnalysis } from "@/components/screener/TechnicalAnalysis";
-import { AnalystSummary } from "@/components/screener/AnalystSummary";
-import { screenerTvApi, taApi } from "@/lib/api";
-import { RefreshCcw, Clock } from "lucide-react";
+import { screenerTvApi,taApi } from "@/lib/api";
+import { tradingHref } from "@/lib/trading-selection";
+import { useTradingSelection } from "@/lib/use-trading-selection";
 import { cn } from "@/lib/utils";
-import type { AssetUniverse, ScreenerRow, ScreenerRequest, TATimeframe } from "@/types";
+import type { AssetUniverse,ScreenerRequest,ScreenerRow,TATimeframe } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { Clock,RefreshCcw } from "lucide-react";
+import Link from "next/link";
+import { Suspense,useCallback,useState } from "react";
+import { toast } from "sonner";
 
 type ScanTab = "hot" | "trending";
 
 function ScreenerContent() {
+  const [selection, updateSelection] = useTradingSelection();
   const [universe, setUniverse] = useState<AssetUniverse>("stocks");
   const [scanTab, setScanTab] = useState<ScanTab>("hot");
   const [searchParams, setSearchParams] = useState<ScreenerRequest>({
@@ -106,8 +110,8 @@ function ScreenerContent() {
 
   const handleSelect = useCallback((row: ScreenerRow) => {
     setSelectedAsset(row);
-    setTaTimeframe("1D");
-  }, []);
+    updateSelection({ symbol: row.symbol });
+  }, [updateSelection]);
 
   const handleTimeframeChange = useCallback((tf: TATimeframe) => {
     setTaTimeframe(tf);
@@ -208,6 +212,7 @@ function ScreenerContent() {
 
         {/* Right column: TA + summary */}
         <div className="lg:w-[42%] xl:w-[38%] space-y-4 min-w-0">
+          {selectedAsset && <div className="flex gap-4 text-sm"><Link className="underline" href={tradingHref("/dashboard", { ...selection, symbol: selectedAsset.symbol })}>View chart</Link><Link className="underline" href={tradingHref("/trade?view=order", { ...selection, symbol: selectedAsset.symbol })}>Prepare order</Link></div>}
           <TechnicalAnalysis
             result={taQuery.data ?? null}
             onTimeframeChange={handleTimeframeChange}

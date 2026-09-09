@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  Sparkles,
-  Shield,
-  Zap,
-  BrainCircuit,
-  TrendingDown,
-  Activity,
-} from "lucide-react";
 import type { StrategyMode } from "@/types";
+import {
+Activity,
+BrainCircuit,
+Shield,
+Sparkles,
+TrendingDown,
+Zap,
+} from "lucide-react";
+import React,{ useEffect,useState } from "react";
 
 export type TabMode = StrategyMode | "ai-builder";
 
@@ -84,6 +84,7 @@ interface StrategyModeSelectorProps {
   leftSlot?: (mode: TabMode) => React.ReactNode;
   aiBuilderContent?: React.ReactNode;
   defaultMode?: TabMode;
+  onModeChange?: (mode: TabMode) => void;
 }
 
 /**
@@ -96,8 +97,10 @@ export function StrategyModeSelector({
   leftSlot,
   aiBuilderContent,
   defaultMode = "conservative",
+  onModeChange,
 }: StrategyModeSelectorProps) {
   const [activeMode, setActiveMode] = useState<TabMode>(defaultMode);
+  useEffect(() => setActiveMode(defaultMode), [defaultMode]);
 
   const rightContent =
     activeMode === "ai-builder"
@@ -113,7 +116,7 @@ export function StrategyModeSelector({
         <section aria-label="Strategy mode" data-testid="strategy-mode-selector">
           <div className="grid grid-cols-2 gap-2">
             {TABS.map((tab) => (
-              <button key={tab.mode} aria-pressed={activeMode === tab.mode} onClick={() => setActiveMode(tab.mode)} data-testid={`strategy-tab-${tab.mode}`}
+              <button key={tab.mode} aria-pressed={activeMode === tab.mode} onClick={() => { setActiveMode(tab.mode); onModeChange?.(tab.mode); }} data-testid={`strategy-tab-${tab.mode}`}
                 className={`flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring ${activeMode === tab.mode ? "bg-primary/15 text-primary" : "bg-surface-low text-foreground hover:bg-surface-high"}`}>
                 {tab.icon}{tab.label}
               </button>

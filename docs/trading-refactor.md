@@ -33,3 +33,16 @@ Frontend regression tests cover paper long/short accounting, partial/oversized c
 Production build, lint/type checks, and desktop/mobile browser review use local fixtures. Browser review exercises paper fills and journal persistence; no real broker orders are placed.
 
 Final local results: 307 frontend tests in 27 suites and 18 backend execution tests passed; production build and lint passed.
+
+## Usability follow-up
+
+- Research, Overview, Strategies, and Trade carry the selected symbol, chart timeframe, and strategy in links and account-scoped browser preferences. Older `ticker` links still work. Execution mode is deliberately independent: opening an order screen starts in paper mode, and enabling live mode still requires the existing confirmation.
+- Overview and Research now use the same server watchlist. Adding or removing a symbol refreshes both views; query caches include the signed-in account. The old browser watchlist remains intact, with an explicit import action in Research. Import adds symbols to the scanner with alerts enabled and reports partial failures for retry. The alert toggle now sends the backend's required `enabled` field.
+- The chart shows common timeframes and moving averages first. Other indicators, drawings, news, and panel controls are under Chart tools. Preferences persist on this device. Watchlist rows support keyboard selection.
+- The order ticket groups symbol, side, amount, execution mode, broker account, and the review summary. “Preview only” replaces “Dry run” in this workflow. Analysis controls are expandable. Unsupported signal-check timeframes or backtest-only strategies remain visible and require an explicit supported selection; the app does not silently substitute another setup. An uncommitted symbol edit cannot submit against the previous symbol.
+- The journal shows five columns on desktop and stacked entries on phones. Opening an entry exposes all editable details. Filters separate paper, live, preview, and manual/unknown records. Strategy summaries group execution modes separately, exclude previews, and calculate win rate only from entries with recorded realized P&L. CSV export follows the filters and escapes multiline text and spreadsheet formulas.
+- Chart controls, search, watchlist rendering, chart sizing, activity, order setup, paper positions, and journal details now have separate modules. The dashboard decreased from 1,920 to 738 lines; the order screen from 1,054 to 559 lines.
+
+The follow-up uses the existing backend watchlist endpoints and requires no additional database migration. The earlier execution migration and deployment notes above still apply. Browser storage remains device-local, and journal performance reflects recorded results rather than a reconciled broker statement.
+
+Follow-up validation: 321 frontend tests across 33 suites passed (the final alert-contract mock correction was rerun separately); production build, lint/type checks, and desktop/mobile fixture review passed. Browser review exercised watchlist changes, alert toggling, carried stock settings, chart preferences, paper order creation, and journal details. No live broker orders were placed.

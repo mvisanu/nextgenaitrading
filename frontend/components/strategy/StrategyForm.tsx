@@ -1,19 +1,20 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import type { TradingSelection } from "@/lib/trading-selection";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Play, SlidersHorizontal } from "lucide-react";
-import type { StrategyMode, Timeframe } from "@/types";
-import { getModeLabel } from "@/lib/utils";
+import type { StrategyMode,Timeframe } from "@/types";
+import { Loader2,Play,SlidersHorizontal } from "lucide-react";
 
 const schema = z.object({
   symbol: z
@@ -62,7 +63,8 @@ const MODE_DEFAULTS: Record<
 interface StrategyFormProps {
   mode: StrategyMode;
   defaultSymbol?: string;
-  defaultTimeframe?: FormValues["timeframe"];
+  defaultTimeframe?: string;
+  onContextChange?: (patch: Partial<TradingSelection>) => unknown;
   onSubmit: (values: {
     symbol: string;
     timeframe: Timeframe;
@@ -79,6 +81,7 @@ export function StrategyForm({
   defaultSymbol = "",
   defaultTimeframe = "1d",
   onSubmit,
+  onContextChange,
   isLoading = false,
 }: StrategyFormProps) {
   const {
@@ -91,12 +94,15 @@ export function StrategyForm({
     resolver: zodResolver(schema),
     defaultValues: {
       symbol: defaultSymbol,
-      timeframe: defaultTimeframe,
+      timeframe: defaultTimeframe as FormValues["timeframe"],
       dry_run: true,
     },
   });
 
 
+  useEffect(() => { setValue("symbol", defaultSymbol); }, [defaultSymbol, setValue]);
+  useEffect(() => { setValue("timeframe", defaultTimeframe as FormValues["timeframe"]); }, [defaultTimeframe, setValue]);
+  const unsupportedTimeframe = !["1h", "4h", "1d", "1wk", "1mo"].includes(defaultTimeframe);
   const leverageVal = watch("leverage");
   const modeInfo = MODE_DEFAULTS[mode];
   const isOptimizer = mode === "ai-pick" || mode === "buy-low-sell-high";
@@ -169,7 +175,7 @@ export function StrategyForm({
                 type="text"
                 placeholder="AAPL"
                 className="w-full bg-surface-highest border border-border/30 rounded outline-none text-sm font-bold font-mono py-2.5 px-3 focus:border-primary/60 transition-colors text-foreground placeholder:text-muted-foreground/40"
-                {...register("symbol")}
+                {...register("symbol", { onBlur: event => onContextChange?.({ symbol: event.target.value.trim().toUpperCase() }) })}
                 disabled={isLoading}
                 data-testid={`symbol-input-${mode}`}
               />
@@ -186,8 +192,8 @@ export function StrategyForm({
                 Timeframe
               </label>
               <Select
-                defaultValue={defaultTimeframe}
-                onValueChange={(v) => setValue("timeframe", v as FormValues["timeframe"])}
+                value={watch("timeframe")}
+                onValueChange={(v) => { setValue("timeframe", v as FormValues["timeframe"]); onContextChange?.({ timeframe: v as TradingSelection["timeframe"] }); }}
                 disabled={isLoading}
               >
                 <SelectTrigger
@@ -198,6 +204,7 @@ export function StrategyForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {unsupportedTimeframe && <SelectItem value={defaultTimeframe} disabled>{defaultTimeframe} (chart only)</SelectItem>}
                   <SelectItem value="1h">1 Hour (1h)</SelectItem>
                   <SelectItem value="4h">4 Hour (4h)</SelectItem>
                   <SelectItem value="1d">Daily (1d)</SelectItem>
@@ -205,6 +212,7 @@ export function StrategyForm({
                   <SelectItem value="1mo">Monthly (1mo)</SelectItem>
                 </SelectContent>
               </Select>
+              {unsupportedTimeframe && <p className="text-sm text-muted-foreground">Choose an hourly, daily, weekly, or monthly timeframe to run a reference backtest.</p>}
             </div>
           </div>
 

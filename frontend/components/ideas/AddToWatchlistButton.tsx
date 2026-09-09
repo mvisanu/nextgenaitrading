@@ -6,13 +6,15 @@
  * Sovereign Terminal design system applied.
  */
 
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Plus, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { generatedIdeasApi } from "@/lib/api";
-import { getErrorMessage, cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+import { cn,getErrorMessage } from "@/lib/utils";
+import { watchlistKeys } from "@/lib/watchlist";
+import { useMutation,useQueryClient } from "@tanstack/react-query";
+import { Check,Loader2,Plus } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface AddToWatchlistButtonProps {
   ideaId: number;
@@ -28,6 +30,7 @@ export function AddToWatchlistButton({
   className,
 }: AddToWatchlistButtonProps) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [isAdded, setIsAdded] = useState(added_to_watchlist);
 
   const { mutate, isPending } = useMutation({
@@ -38,7 +41,8 @@ export function AddToWatchlistButton({
         `${ticker} added to watchlist. Alert created for buy zone entry.`
       );
       // Refresh both opportunities and generated ideas
-      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.signals(user?.id) });
+      queryClient.invalidateQueries({ queryKey: watchlistKeys.list(user?.id) });
       queryClient.invalidateQueries({ queryKey: ["generated-ideas"] });
     },
     onError: (err: Error) => {

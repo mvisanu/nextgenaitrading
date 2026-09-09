@@ -4,10 +4,9 @@
  *         before live enable, LIVE banner when live mode active.
  */
 
-import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import LiveTradingPage from "@/components/workspaces/trade/order";
+import { render,screen,waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
@@ -157,14 +156,14 @@ describe("LiveTradingPage — paper mode default", () => {
 
   it("execute button shows paper trade label by default", () => {
     render(<LiveTradingPage />);
-    expect(screen.getByRole("button", { name: /Execute Paper Trade/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Place paper order/i })).toBeInTheDocument();
   });
 
   it("Paper mode button is shown in the mode selector", () => {
     render(<LiveTradingPage />);
     expect(screen.getByRole("button", { name: /^Paper$/i })).toBeInTheDocument();
-    expect(screen.getByText("DRY RUN")).toBeInTheDocument();
-    expect(screen.getByText("LIVE")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview only" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Live" })).toBeInTheDocument();
   });
 });
 
@@ -247,7 +246,7 @@ describe("LiveTradingPage — confirmation dialog before live mode", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Execute Live Order/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Submit live order/i })).toBeInTheDocument();
     });
   });
 });

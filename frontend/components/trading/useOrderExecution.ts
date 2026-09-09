@@ -1,9 +1,9 @@
 "use client";
-import { readAccountData, useAccountStorage, writeAccountData, type AccountId } from "@/lib/account-storage";
+import { readAccountData,useAccountStorage,writeAccountData,type AccountId } from "@/lib/account-storage";
 import { liveApi } from "@/lib/api";
 import { ApiError } from "@/lib/http";
-import type { PaperOrder, PaperTrade } from "@/lib/paper-engine";
-import type { BrokerOrder, ExecuteOrderRequest, Timeframe } from "@/types";
+import type { PaperOrder,PaperTrade } from "@/lib/paper-engine";
+import type { BrokerOrder,ExecuteOrderRequest } from "@/types";
 import { useMutation } from "@tanstack/react-query";
 import { useRef } from "react";
 import { z } from "zod";
@@ -27,7 +27,7 @@ type PaperResult = { success: true; trade: PaperTrade } | { success: false; erro
 
 export function useOrderExecution(options: {
   accountId: AccountId; symbol: string; credentialId: number | null; isPaper: boolean; dryRun: boolean;
-  price?: number; timeframe: Timeframe; mode: string; signal?: string | null;
+  price?: number; timeframe: string; mode: string; signal?: string | null;
   confirmationCount?: number | null; strategyRunId?: number;
   executePaperOrder: (order: PaperOrder) => PaperResult;
   onSuccess: (order: ExecutedOrder) => void; onError: (error: Error) => void;

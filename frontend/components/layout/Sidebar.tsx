@@ -1,15 +1,18 @@
 "use client";
 
+import { PRIMARY_NAV,isNavActive } from "@/lib/navigation";
+import { useSidebarPinned } from "@/lib/sidebar";
+import { tradingHref } from "@/lib/trading-selection";
+import { useSavedTradingSelection } from "@/lib/use-trading-selection";
+import { cn } from "@/lib/utils";
+import { Activity,LogOut,Pin,PinOff,Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, LogOut, Pin, PinOff, Settings } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { PRIMARY_NAV, isNavActive } from "@/lib/navigation";
-import { useSidebarPinned } from "@/lib/sidebar";
 import { useAuth } from "./AppShell";
 
 export function Sidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const [selection] = useSavedTradingSelection();
   const { user, logout } = useAuth();
   const { pinned, toggle } = useSidebarPinned();
   const expanded = mobile || pinned;
@@ -22,7 +25,7 @@ export function Sidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNa
       </div>
       <nav aria-label="Main navigation" className="flex-1 space-y-1 px-2 py-4">
         {links.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} onClick={onNavigate} title={label} aria-label={label} aria-current={isNavActive(pathname, href) ? "page" : undefined}
+          <Link key={href} href={href === "/settings" ? href : tradingHref(href, selection)} onClick={onNavigate} title={label} aria-label={label} aria-current={isNavActive(pathname, href) ? "page" : undefined}
             className={cn("flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", isNavActive(pathname, href) ? "bg-surface-high text-primary" : "text-muted-foreground hover:bg-surface-mid hover:text-foreground")}>
             <Icon aria-hidden="true" className="h-5 w-5 shrink-0" />
             {expanded && label}

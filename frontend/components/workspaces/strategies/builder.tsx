@@ -1,24 +1,25 @@
 "use client";
 
-import { summarizeBacktest } from "@/lib/backtest-summary";
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { WorkspaceSection as AppShell } from "@/components/layout/WorkspaceSection";
-import { StrategyModeSelector } from "@/components/strategy/StrategyModeSelector";
-import { StrategyForm } from "@/components/strategy/StrategyForm";
-import { ResultsPanel } from "@/components/strategy/ResultsPanel";
 import { AiStrategyBuilder } from "@/components/strategy/AiStrategyBuilder";
-import { backtestApi, strategyApi } from "@/lib/api";
-import { getQueryClient } from "@/lib/queryClient";
-import type {
-  StrategyMode,
-  BacktestSummary,
-  ChartData,
-  BacktestTrade,
-  VariantBacktestResult,
-} from "@/types";
+import { ResultsPanel } from "@/components/strategy/ResultsPanel";
+import { StrategyForm } from "@/components/strategy/StrategyForm";
 import type { TabMode } from "@/components/strategy/StrategyModeSelector";
+import { StrategyModeSelector } from "@/components/strategy/StrategyModeSelector";
+import { backtestApi,strategyApi } from "@/lib/api";
+import { summarizeBacktest } from "@/lib/backtest-summary";
+import { getQueryClient } from "@/lib/queryClient";
+import { useTradingSelection } from "@/lib/use-trading-selection";
+import type {
+BacktestSummary,
+BacktestTrade,
+ChartData,
+StrategyMode,
+VariantBacktestResult,
+} from "@/types";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface RunResult {
   summary: BacktestSummary;
@@ -30,6 +31,7 @@ interface RunResult {
 }
 
 export default function StrategiesPage() {
+  const [selection, updateSelection] = useTradingSelection();
   const [results, setResults] = useState<Partial<Record<StrategyMode, RunResult>>>({});
 
   const { mutate: runStrategy, isPending: isRunning } = useMutation({
@@ -89,6 +91,8 @@ export default function StrategiesPage() {
           Right (flex-1): children render-prop (results panel)
       */}
       <StrategyModeSelector
+        defaultMode={selection.strategy}
+        onModeChange={mode => { if (mode !== "ai-builder") updateSelection({ strategy: mode }); }}
         aiBuilderContent={<AiStrategyBuilder />}
         leftSlot={(mode: TabMode) => {
           if (mode === "ai-builder") return null;
@@ -97,6 +101,9 @@ export default function StrategiesPage() {
             <StrategyForm
               key={stratMode}
               mode={stratMode}
+              defaultSymbol={selection.symbol}
+              defaultTimeframe={selection.timeframe}
+              onContextChange={updateSelection}
               onSubmit={(values) =>
                 runStrategy({
                   mode: stratMode,

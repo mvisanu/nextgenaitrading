@@ -4,6 +4,7 @@ import { Suspense, type ComponentType } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "./AppShell";
+import { useTradingSelection } from "@/lib/use-trading-selection";
 import { cn } from "@/lib/utils";
 
 export interface WorkspaceView {
@@ -18,6 +19,7 @@ function WorkspaceContent({ title, description, views }: {
   description: string;
   views: WorkspaceView[];
 }) {
+  useTradingSelection();
   const params = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();

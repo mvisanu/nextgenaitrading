@@ -7,20 +7,21 @@
  * Protected route: requires authentication.
  */
 
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Crosshair,
-  Radar,
-  TrendingUp,
-  Eye,
-  AlertTriangle,
-} from "lucide-react";
 import { useAuth } from "@/components/layout/AppShell";
 import { WorkspaceSection as AppShell } from "@/components/layout/WorkspaceSection";
+import { LegacyWatchlistImport } from "@/components/opportunities/LegacyWatchlistImport";
 import { WatchlistTable } from "@/components/opportunities/WatchlistTable";
 import { opportunitiesApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { watchlistKeys } from "@/lib/watchlist";
+import { useQuery } from "@tanstack/react-query";
+import {
+AlertTriangle,
+Crosshair,
+Eye,
+Radar,
+TrendingUp,
+} from "lucide-react";
+import { useMemo } from "react";
 
 // ─── Status summary strip ───────────────────────────────────────────────────
 
@@ -149,7 +150,7 @@ export default function OpportunitiesPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["opportunities"],
+    queryKey: watchlistKeys.signals(user?.id),
     queryFn: opportunitiesApi.list,
     enabled: !!user,
     refetchInterval: 5 * 60_000,
@@ -171,6 +172,7 @@ export default function OpportunitiesPage() {
           <p className="text-sm text-muted-foreground">Live scanner — buy zone signals across your watchlist</p>
         </div>
 
+        <LegacyWatchlistImport />
         {/* Status summary */}
         <StatusStrip rows={opportunities} />
 

@@ -8,7 +8,7 @@
  */
 
 import { z } from "zod";
-import { readAccountData, writeAccountData, useAccountStorage, type AccountId } from "./account-storage";
+import { readAccountData,useAccountStorage,writeAccountData,type AccountId } from "./account-storage";
 import { useAuth } from "./auth-context";
 const STORAGE_KEY = "trade-log";
 
@@ -17,6 +17,7 @@ export interface TradeLogEntry {
   date: string;
   pair: string;
   type: string;
+  strategy?: string;
   timeframe: string;
   position: "Long" | "Short";
   outcome: "win" | "breakeven" | "loss" | "";
@@ -40,7 +41,7 @@ export interface TradeLogEntry {
 
 const nullableNumber = z.number().finite().nullable();
 export const tradeLogSchema = z.array(z.object({
-  id: z.string(), date: z.string(), pair: z.string(), type: z.string(), timeframe: z.string(),
+  strategy: z.string().optional(), id: z.string(), date: z.string(), pair: z.string(), type: z.string(), timeframe: z.string(),
   position: z.enum(["Long", "Short"]), outcome: z.enum(["win", "breakeven", "loss", ""]),
   netPnl: nullableNumber, totalFees: nullableNumber, rFactor: nullableNumber, riskPct: nullableNumber,
   confidence: nullableNumber, rangePct: nullableNumber, limit: nullableNumber, duration: z.string(), preNotes: z.string(),
@@ -82,6 +83,7 @@ export function logLiveTrade(params: {
     date: today,
     pair: params.symbol,
     type: params.paper ? "Paper Order" : params.dryRun ? "Dry Run" : "Live Order",
+    strategy: params.mode,
     timeframe: params.timeframe,
     position: params.closing ? (params.side === "buy" ? "Short" : "Long") : (params.side === "buy" ? "Long" : "Short"),
     outcome: params.realizedPnl == null ? "" : params.realizedPnl > 0 ? "win" : params.realizedPnl < 0 ? "loss" : "breakeven",
@@ -133,6 +135,8 @@ export function logAutoBuyTrade(params: {
     date: today,
     pair: params.ticker,
     type: params.dryRun ? "Auto-Buy Dry Run" : "Auto-Buy",
+    strategy: "Auto-buy",
+    executionMode: params.dryRun ? "dry-run" : "live",
     timeframe: "1d",
     position: "Long",
     outcome: "",

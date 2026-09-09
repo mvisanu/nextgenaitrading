@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";
+import { useCallback,useMemo } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
-import { useAuth } from "./auth-context";
 import { useAccountStorage } from "./account-storage";
+import { watchlistApi } from "./api";
+import { useAuth } from "./auth-context";
+import { getErrorMessage } from "./utils";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,68 +40,61 @@ export const DEFAULT_WATCHLIST: WatchlistData = {
 
 const itemSchema = z.object({ symbol: z.string().min(1), name: z.string(), price: z.number().finite(), change: z.number().finite(), changePct: z.number().finite(), color: z.string() }).transform(item => ({ ...item, price: 0, change: 0, changePct: 0 }));
 export const watchlistSchema = z.object({ indices: z.array(itemSchema), stocks: z.array(itemSchema), crypto: z.array(itemSchema), custom: z.array(itemSchema) });
+export const watchlistKeys = {
+  list: (id: string | number | undefined) => ["account", id, "watchlist"] as const,
+  signals: (id: string | number | undefined) => ["account", id, "opportunities"] as const,
+};
+const EMPTY_WATCHLIST: WatchlistData = { indices: [], stocks: [], crypto: [], custom: [] };
+
 export function useWatchlist() {
   const { user } = useAuth();
-  const [watchlist, setWatchlist] = useAccountStorage(user?.id, "watchlist", watchlistSchema, DEFAULT_WATCHLIST);
-  const updateWatchlist = setWatchlist;
-
-  const addToWatchlist = useCallback((category: WatchlistCategory, sym: string, name?: string) => {
-    setWatchlist((prev) => {
-      const existing = flattenWatchlist(prev);
-      if (existing.some((i) => i.symbol === sym)) return prev;
-      const newItem: WatchlistItem = {
-        symbol: sym,
-        name: name ?? sym,
-        price: 0,
-        change: 0,
-        changePct: 0,
-        color: "#2962ff",
-      };
-      const next = { ...prev, [category]: [...prev[category], newItem] };
-      return next;
-    });
-  }, [setWatchlist]);
-
-  const removeFromWatchlist = useCallback((sym: string) => {
-    setWatchlist((prev) => {
-      const next: WatchlistData = {
-        indices: prev.indices.filter((i) => i.symbol !== sym),
-        stocks: prev.stocks.filter((i) => i.symbol !== sym),
-        crypto: prev.crypto.filter((i) => i.symbol !== sym),
-        custom: prev.custom.filter((i) => i.symbol !== sym),
-      };
-      return next;
-    });
-  }, [setWatchlist]);
-
-  const editWatchlistItem = useCallback((sym: string, updates: Partial<Pick<WatchlistItem, "name" | "symbol">>) => {
-    setWatchlist((prev) => {
-      const next: WatchlistData = { ...prev };
-      for (const cat of ["indices", "stocks", "crypto", "custom"] as WatchlistCategory[]) {
-        next[cat] = prev[cat].map((item) =>
-          item.symbol === sym ? { ...item, ...updates } : item
-        );
+  const client = useQueryClient();
+  const query = useQuery({ queryKey: watchlistKeys.list(user?.id), queryFn: watchlistApi.list, enabled: !!user, refetchInterval: 60_000 });
+  const refresh = useCallback(async () => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: watchlistKeys.list(user?.id) }),
+      client.invalidateQueries({ queryKey: watchlistKeys.signals(user?.id) }),
+    ]);
+  }, [client, user?.id]);
+  const { mutate, isPending } = useMutation({
+    mutationFn: async ({ symbol, remove }: { symbol: string; remove?: boolean }) => {
+      if (!user) throw new Error("Sign in to edit your watchlist");
+      const normalized = symbol.trim().toUpperCase();
+      if (!/^[A-Z0-9^][A-Z0-9.^/-]{0,19}$/.test(normalized)) throw new Error("Enter a valid symbol, such as AAPL or BRK.B");
+      try {
+        if (remove) await watchlistApi.remove(normalized);
+        else await watchlistApi.add(normalized);
+      } catch (error) {
+        // Repeating an already completed add/remove is safe.
+        const status = (error as { status?: number }).status;
+        if (!(remove ? status === 404 : status === 409)) throw error;
       }
-      return next;
-    });
-  }, [setWatchlist]);
-
+    },
+    onSuccess: refresh,
+    onError: (error) => toast.error(getErrorMessage(error, "Watchlist could not be saved. Try again.")),
+  });
+  const watchlist = useMemo(() => {
+    const next: WatchlistData = { indices: [], stocks: [], crypto: [], custom: [] };
+    for (const row of query.data ?? []) {
+      const category = row.ticker.startsWith("^") ? "indices" : /[-/]USD[T]?$/.test(row.ticker) ? "crypto" : "stocks";
+      next[category].push({ symbol: row.ticker, name: row.ticker, price: 0, change: 0, changePct: 0, color: "#2962ff" });
+    }
+    return next;
+  }, [query.data]);
   const allItems = useMemo(() => flattenWatchlist(watchlist), [watchlist]);
-
-  const isInWatchlist = useCallback(
-    (sym: string) => allItems.some((i) => i.symbol === sym),
-    [allItems]
-  );
-
-  return {
-    watchlist,
-    allItems,
-    updateWatchlist,
-    addToWatchlist,
-    removeFromWatchlist,
-    editWatchlistItem,
-    isInWatchlist,
+  const addToWatchlist = useCallback((_category: WatchlistCategory, symbol: string) => mutate({ symbol }), [mutate]);
+  const removeFromWatchlist = useCallback((symbol: string) => mutate({ symbol, remove: true }), [mutate]);
+  return { watchlist, allItems, addToWatchlist, removeFromWatchlist,
+    isInWatchlist: (symbol: string) => allItems.some(item => item.symbol === symbol),
+    isLoading: query.isLoading, error: query.error, refetch: query.refetch,
+    isSaving: isPending,
   };
+}
+
+/** The former device list is kept intact until the user explicitly imports it. */
+export function useLegacyWatchlist() {
+  const { user } = useAuth();
+  return useAccountStorage(user?.id, "watchlist", watchlistSchema, EMPTY_WATCHLIST);
 }
 
 export function flattenWatchlist(data: WatchlistData): WatchlistItem[] {

@@ -7,63 +7,62 @@
  */
 
 import type {
-  UserResponse,
-  UserProfile,
-  UpdateProfileRequest,
-  BrokerCredential,
-  CreateBrokerCredentialRequest,
-  UpdateBrokerCredentialRequest,
-  BrokerTestResult,
-  RunStrategyRequest,
-  StrategyRun,
-  BacktestSummary,
-  BacktestTrade,
-  VariantBacktestResult,
-  ChartData,
-  OptimizationChartData,
-  SignalCheckRequest,
-  SignalCheckResult,
-  ExecuteOrderRequest,
-  BrokerOrder,
-  PositionSnapshot,
-  LiveStatus,
-  Artifact,
-  BuyZoneSnapshot,
-  ThemeScoreResult,
-  PriceAlertRule,
-  CreateAlertRequest,
-  UpdateAlertRequest,
-  WatchlistIdea,
-  CreateIdeaRequest,
-  UpdateIdeaRequest,
-  AutoBuySettings,
-  UpdateAutoBuySettingsRequest,
-  AutoBuyDecisionLog,
-  AutoBuyDryRunResult,
-  OpportunityRow,
-  EstimatedBuyPriceOut,
-  ScanResultOut,
-  GeneratedIdeaOut,
-  // V3 types
-  WatchlistEntry,
-  GeneratedIdeaRow,
-  AddToWatchlistResult,
-  LastScanResult,
-  ScannerStatus,
-  RunNowResult,
-  NewsItem,
-  // Screener + TA types
-  ScreenerRequest,
-  ScreenerResult,
-  ScreenerPreset,
-  ScreenerRow,
-  TARequest,
-  TAResult,
-  TopMoverRow,
-  MorningBriefResponse,
+AddToWatchlistResult,
+Artifact,
+AutoBuyDecisionLog,
+AutoBuyDryRunResult,
+AutoBuySettings,
+BacktestTrade,
+BrokerCredential,
+BrokerOrder,
+BrokerTestResult,
+BuyZoneSnapshot,
+ChartData,
+CreateAlertRequest,
+CreateBrokerCredentialRequest,
+CreateIdeaRequest,
+EstimatedBuyPriceOut,
+ExecuteOrderRequest,
+GeneratedIdeaOut,
+GeneratedIdeaRow,
+LastScanResult,
+LiveStatus,
+MorningBriefResponse,
+NewsItem,
+OpportunityRow,
+OptimizationChartData,
+PositionSnapshot,
+PriceAlertRule,
+RunNowResult,
+RunStrategyRequest,
+ScannerStatus,
+ScanResultOut,
+ScreenerPreset,
+// Screener + TA types
+ScreenerRequest,
+ScreenerResult,
+ScreenerRow,
+SignalCheckRequest,
+SignalCheckResult,
+StrategyRun,
+TARequest,
+TAResult,
+ThemeScoreResult,
+TopMoverRow,
+UpdateAlertRequest,
+UpdateAutoBuySettingsRequest,
+UpdateBrokerCredentialRequest,
+UpdateIdeaRequest,
+UpdateProfileRequest,
+UserProfile,
+UserResponse,
+VariantBacktestResult,
+// V3 types
+WatchlistEntry,
+WatchlistIdea
 } from "@/types";
 
-import { ApiError, decodeResponse, requestJson } from "./http";
+import { ApiError,decodeResponse,requestJson } from "./http";
 import { getSupabaseBrowserClient } from "./supabase";
 
 const BASE_URL =
@@ -422,6 +421,7 @@ export const scannerApi = {
 // ─── V3: Watchlist (user_watchlist table) ─────────────────────────────────────
 
 export const watchlistApi = {
+  list: () => get<WatchlistEntry[]>("/watchlist"),
   add: (ticker: string) =>
     post<WatchlistEntry>("/watchlist", { ticker }),
 
@@ -429,7 +429,7 @@ export const watchlistApi = {
     del<void>(`/watchlist/${encodeURIComponent(ticker)}`),
 
   toggleAlert: (ticker: string, alert_enabled: boolean) =>
-    patch<WatchlistEntry>(`/watchlist/${encodeURIComponent(ticker)}/alert`, { alert_enabled }),
+    patch<WatchlistEntry>(`/watchlist/${encodeURIComponent(ticker)}/alert`, { enabled: alert_enabled }),
 };
 
 // ─── V3: Generated Ideas (DB feed) ────────────────────────────────────────────

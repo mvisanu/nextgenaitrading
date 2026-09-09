@@ -4,10 +4,9 @@
  *         symbol/mode/signal display.
  */
 
-import React from "react";
-import { render, screen } from "@testing-library/react";
 import DashboardPage from "@/app/dashboard/page";
 import type { StrategyRun } from "@/types";
+import { render,screen } from "@testing-library/react";
 
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
@@ -72,6 +71,7 @@ jest.mock("@tanstack/react-query", () => ({
     // Default: loading
     return { data: undefined, isLoading: true, error: null };
   },
+  useMutation: () => ({ mutate: jest.fn(), isPending: false }),
   useQueryClient: () => ({
     invalidateQueries: jest.fn(),
     clear: jest.fn(),
