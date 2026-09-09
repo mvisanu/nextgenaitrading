@@ -40,6 +40,7 @@ export function getModeLabel(mode: string): string {
   const labels: Record<string, string> = {
     conservative: "Conservative",
     aggressive: "Aggressive",
+    squeeze: "BB Squeeze",
     "ai-pick": "AI Pick",
     "buy-low-sell-high": "Buy Low / Sell High",
   };

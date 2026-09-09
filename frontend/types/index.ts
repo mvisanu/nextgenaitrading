@@ -69,7 +69,8 @@ export type StrategyMode =
   | "conservative"
   | "aggressive"
   | "ai-pick"
-  | "buy-low-sell-high";
+  | "buy-low-sell-high"
+  | "squeeze";
 
 export type Timeframe = "5m" | "15m" | "30m" | "1h" | "4h" | "1d" | "1wk" | "1mo";
 
@@ -230,6 +231,7 @@ export interface SignalCheckResult {
 }
 
 export interface ExecuteOrderRequest {
+  client_order_id?: string;
   symbol: string;
   side: "buy" | "sell";
   quantity?: number;
@@ -240,6 +242,9 @@ export interface ExecuteOrderRequest {
 }
 
 export interface BrokerOrder {
+  client_order_id?: string | null;
+  credential_id?: number | null;
+  broker_paper?: boolean;
   id: number;
   symbol: string;
   side: string;

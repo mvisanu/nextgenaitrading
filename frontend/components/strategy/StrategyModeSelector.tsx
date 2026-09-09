@@ -7,6 +7,7 @@ import {
   Zap,
   BrainCircuit,
   TrendingDown,
+  Activity,
 } from "lucide-react";
 import type { StrategyMode } from "@/types";
 
@@ -24,21 +25,21 @@ const TABS: Tab[] = [
   {
     mode: "conservative",
     label: "Conservative",
-    description: "Low volatility, steady growth focus.",
+    description: "Stricter signal confirmation filters.",
     icon: <Shield className="h-4 w-4" />,
     iconColor: "text-primary",
   },
   {
     mode: "aggressive",
     label: "Aggressive",
-    description: "High-frequency momentum chasing.",
+    description: "Momentum signals with trailing stops.",
     icon: <Zap className="h-4 w-4" />,
     iconColor: "text-destructive",
   },
   {
     mode: "ai-pick",
     label: "AI Pick",
-    description: "Model-driven daily rebalancing.",
+    description: "Compare parameter variants by backtest.",
     icon: <BrainCircuit className="h-4 w-4" />,
     iconColor: "text-primary",
   },
@@ -50,9 +51,16 @@ const TABS: Tab[] = [
     iconColor: "text-muted-foreground",
   },
   {
+    mode: "squeeze",
+    label: "BB Squeeze",
+    description: "Bollinger Band compression and breakout.",
+    icon: <Activity className="h-4 w-4" />,
+    iconColor: "text-primary",
+  },
+  {
     mode: "ai-builder",
-    label: "AI Builder",
-    description: "Construct custom logic nodes.",
+    label: "Script templates",
+    description: "Build from strategy templates.",
     icon: <Sparkles className="h-4 w-4" />,
     iconColor: "text-primary",
   },
@@ -102,55 +110,16 @@ export function StrategyModeSelector({
     <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] xl:grid-cols-[380px_1fr] gap-6 items-start">
       {/* ── Left column: strategy list + form ── */}
       <div className="space-y-4">
-        {/* Strategy selector list */}
-        <section
-          className="bg-surface-low rounded-lg overflow-hidden border border-border/20"
-          data-testid="strategy-mode-selector"
-        >
-          <div className="px-4 py-3 border-b border-border/20">
-            <p className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground">
-              Strategy Mode
-            </p>
+        <section aria-label="Strategy mode" data-testid="strategy-mode-selector">
+          <div className="grid grid-cols-2 gap-2">
+            {TABS.map((tab) => (
+              <button key={tab.mode} aria-pressed={activeMode === tab.mode} onClick={() => setActiveMode(tab.mode)} data-testid={`strategy-tab-${tab.mode}`}
+                className={`flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-ring ${activeMode === tab.mode ? "bg-primary/15 text-primary" : "bg-surface-low text-foreground hover:bg-surface-high"}`}>
+                {tab.icon}{tab.label}
+              </button>
+            ))}
           </div>
-          <div className="flex flex-col divide-y divide-border/10">
-            {TABS.map((tab) => {
-              const isActive = activeMode === tab.mode;
-              return (
-                <button
-                  key={tab.mode}
-                  onClick={() => setActiveMode(tab.mode)}
-                  className={[
-                    "flex items-center justify-between px-4 py-3 text-left transition-all border-l-2",
-                    isActive
-                      ? "bg-primary/10 border-primary"
-                      : "border-transparent hover:bg-surface-high hover:border-border/30",
-                  ].join(" ")}
-                  data-testid={`strategy-tab-${tab.mode}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={isActive ? "text-primary" : tab.iconColor}>
-                      {tab.icon}
-                    </span>
-                    <div>
-                      <p
-                        className={`text-sm font-bold ${
-                          isActive ? "text-primary" : "text-foreground"
-                        }`}
-                      >
-                        {tab.label}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
-                        {tab.description}
-                      </p>
-                    </div>
-                  </div>
-                  {isActive && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 ml-2 animate-pulse" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <p className="mt-3 text-sm text-muted-foreground">{TABS.find((tab) => tab.mode === activeMode)?.description}</p>
         </section>
 
         {/* Left column slot — parameters form */}

@@ -76,25 +76,20 @@ describe("StrategyForm — conservative mode", () => {
     expect(screen.getByLabelText(/Leverage/i)).toBeInTheDocument();
   });
 
-  it("dry-run switch is checked by default", () => {
+  it("clearly identifies historical simulation without live execution controls", () => {
     render(<StrategyForm {...defaultProps} />);
-    const dryRunSwitch = screen.getByRole("switch");
-    expect(dryRunSwitch).toBeChecked();
-  });
-
-  it("shows 'simulation' label when dry-run is on", () => {
-    render(<StrategyForm {...defaultProps} />);
-    expect(screen.getByText(/simulation — no real orders/i)).toBeInTheDocument();
+    expect(screen.getByText(/Historical simulation only/)).toBeInTheDocument();
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
   });
 
   it("shows submit button with mode label", () => {
     render(<StrategyForm {...defaultProps} />);
-    expect(screen.getByRole("button", { name: /Run Conservative/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Run Simulation/i })).toBeInTheDocument();
   });
 
   it("shows validation error when symbol is empty on submit", async () => {
     render(<StrategyForm {...defaultProps} />);
-    await userEvent.click(screen.getByRole("button", { name: /Run Conservative/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Run Simulation/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Symbol is required/i)).toBeInTheDocument();
@@ -103,7 +98,7 @@ describe("StrategyForm — conservative mode", () => {
 
   it("does not call onSubmit when symbol is empty", async () => {
     render(<StrategyForm {...defaultProps} />);
-    await userEvent.click(screen.getByRole("button", { name: /Run Conservative/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Run Simulation/i }));
 
     await waitFor(() => {
       expect(defaultProps.onSubmit).not.toHaveBeenCalled();
@@ -114,7 +109,7 @@ describe("StrategyForm — conservative mode", () => {
     render(<StrategyForm {...defaultProps} />);
 
     await userEvent.type(screen.getByLabelText(/Symbol/i), "AAPL");
-    await userEvent.click(screen.getByRole("button", { name: /Run Conservative/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Run Simulation/i }));
 
     await waitFor(() => {
       expect(defaultProps.onSubmit).toHaveBeenCalledWith(
@@ -131,7 +126,7 @@ describe("StrategyForm — conservative mode", () => {
     render(<StrategyForm {...defaultProps} />);
 
     await userEvent.type(screen.getByLabelText(/Symbol/i), "aapl");
-    await userEvent.click(screen.getByRole("button", { name: /Run Conservative/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Run Simulation/i }));
 
     await waitFor(() => {
       expect(defaultProps.onSubmit).toHaveBeenCalledWith(
@@ -148,7 +143,7 @@ describe("StrategyForm — conservative mode", () => {
     await userEvent.clear(leverageInput);
     await userEvent.type(leverageInput, "-1");
 
-    await userEvent.click(screen.getByRole("button", { name: /Run Conservative/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Run Simulation/i }));
 
     await waitFor(() => {
       // Zod: z.number().positive() — should produce an error
@@ -159,7 +154,7 @@ describe("StrategyForm — conservative mode", () => {
   it("shows loading state when isLoading is true", () => {
     render(<StrategyForm {...defaultProps} isLoading />);
     expect(screen.getByRole("button")).toBeDisabled();
-    expect(screen.getByText(/Running strategy/i)).toBeInTheDocument();
+    expect(screen.getByText(/Running\.\.\./i)).toBeInTheDocument();
   });
 });
 
@@ -176,7 +171,7 @@ describe("StrategyForm — aggressive mode", () => {
 
   it("shows button labeled 'Run Aggressive'", () => {
     render(<StrategyForm mode="aggressive" onSubmit={jest.fn()} />);
-    expect(screen.getByRole("button", { name: /Run Aggressive/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Run Simulation/i })).toBeInTheDocument();
   });
 });
 
@@ -193,7 +188,7 @@ describe("StrategyForm — ai-pick mode (optimizer)", () => {
 
   it("shows 'Running optimization' text when isLoading", () => {
     render(<StrategyForm mode="ai-pick" onSubmit={jest.fn()} isLoading />);
-    expect(screen.getByText(/Running optimization/i)).toBeInTheDocument();
+    expect(screen.getByText(/Optimizing\.\.\./i)).toBeInTheDocument();
   });
 });
 
@@ -210,16 +205,6 @@ describe("StrategyForm — buy-low-sell-high mode (optimizer)", () => {
 
   it("shows button labeled 'Run Buy Low / Sell High'", () => {
     render(<StrategyForm mode="buy-low-sell-high" onSubmit={jest.fn()} />);
-    expect(screen.getByRole("button", { name: /Run Buy Low \/ Sell High/i })).toBeInTheDocument();
-  });
-});
-
-describe("StrategyForm — dry-run toggle", () => {
-  it("shows LIVE warning when dry-run is toggled off", async () => {
-    render(<StrategyForm {...defaultProps} />);
-    const dryRunSwitch = screen.getByRole("switch");
-
-    await userEvent.click(dryRunSwitch);
-    expect(screen.getByText(/LIVE — real orders will be submitted/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Run Simulation/i })).toBeInTheDocument();
   });
 });

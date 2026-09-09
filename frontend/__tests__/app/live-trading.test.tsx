@@ -7,7 +7,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import LiveTradingPage from "@/app/live-trading/page";
+import LiveTradingPage from "@/components/workspaces/trade/order";
 
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
@@ -17,8 +17,8 @@ jest.mock("next/navigation", () => ({
 }));
 
 // Mock AppShell + useAuth
-jest.mock("@/components/layout/AppShell", () => ({
-  AppShell: ({ children, title }: any) => (
+jest.mock("@/components/layout/WorkspaceSection", () => ({
+  WorkspaceSection: ({ children, title }: any) => (
     <div>
       <h1>{title}</h1>
       {children}
@@ -35,6 +35,8 @@ jest.mock("@/components/layout/AppShell", () => ({
 jest.mock("@/components/charts/PriceChart", () => ({
   PriceChart: () => <div data-testid="price-chart" />,
 }));
+
+jest.mock("@/components/layout/AppShell", () => ({ useAuth: () => ({ user: { id: 1, email: "test@nextgenstock.io" }, isLoading: false, logout: jest.fn() }) }));
 
 // Mock next/link
 jest.mock("next/link", () => {
@@ -155,14 +157,14 @@ describe("LiveTradingPage — paper mode default", () => {
 
   it("execute button shows paper trade label by default", () => {
     render(<LiveTradingPage />);
-    expect(screen.getByText("Execute Paper Trade")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Execute Paper Trade/i })).toBeInTheDocument();
   });
 
   it("Paper mode button is shown in the mode selector", () => {
     render(<LiveTradingPage />);
-    expect(screen.getByText("Paper")).toBeInTheDocument();
-    expect(screen.getByText("Dry Run")).toBeInTheDocument();
-    expect(screen.getByText("Live")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Paper$/i })).toBeInTheDocument();
+    expect(screen.getByText("DRY RUN")).toBeInTheDocument();
+    expect(screen.getByText("LIVE")).toBeInTheDocument();
   });
 });
 
@@ -245,7 +247,7 @@ describe("LiveTradingPage — confirmation dialog before live mode", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Execute LIVE Order")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Execute Live Order/i })).toBeInTheDocument();
     });
   });
 });

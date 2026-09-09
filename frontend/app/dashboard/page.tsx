@@ -5,10 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sun, Moon, Settings, Bell, ChevronDown, ChevronRight, Search, X, Plus, Trash2, Pencil, Check, TrendingUp, SquareDashed, Eraser, Eye, EyeOff, PanelRightClose, PanelRightOpen, ChevronUp, Crosshair, Lightbulb, BarChart4, Activity, Menu } from "lucide-react";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/components/layout/AppShell";
+import { useAccountStorage } from "@/lib/account-storage";
+import { drawingSchema, emptyDrawings } from "@/lib/drawing-storage";
+import { AppShell, useAuth } from "@/components/layout/AppShell";
 import { PriceChart, type DrawingMode, type ChartClickPoint, type MAOverlay } from "@/components/charts/PriceChart";
 import { detectFVGs, type DrawingData, type TrendLineData, type FVGData, type DrawingPoint } from "@/components/charts/DrawingPrimitives";
 import { MACDChart } from "@/components/charts/MACDChart";
@@ -17,10 +19,10 @@ import { NewsPanel } from "@/components/dashboard/NewsPanel";
 import { computeSMA, computeMACD, computeRSI } from "@/lib/indicators";
 import { liveApi, strategyApi } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
-import { useSidebarPinned } from "@/lib/sidebar";
+
 import { useWatchlist, flattenWatchlist, type WatchlistItem, type WatchlistCategory } from "@/lib/watchlist";
 import { cn } from "@/lib/utils";
-import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+
 import { useMarketStream, getSpread } from "@/lib/market-stream";
 import type { CandleBar } from "@/types";
 
@@ -173,6 +175,7 @@ function LiveClock() {
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function formatPrice(price: number, symbol: string): string {
+  if (!Number.isFinite(price) || price <= 0) return "-";
   if (price < 1) return price.toFixed(4);
   if (price > 10000) return price.toLocaleString(undefined, { maximumFractionDigits: 0 });
   return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -313,7 +316,7 @@ function WatchlistRow({
           <span className="text-xs tabular-nums text-foreground font-medium">{formatPrice(item.price, item.symbol)}</span>
         </div>
         <div className={cn("text-3xs tabular-nums font-medium", positive ? "text-primary" : "text-destructive")}>
-          {positive ? "+" : ""}{item.changePct.toFixed(2)}%
+          {item.price > 0 ? `${positive ? "+" : ""}${item.changePct.toFixed(2)}%` : "-"}
         </div>
       </td>
     </tr>
@@ -461,10 +464,10 @@ function QuotePanel({ item, lastCandle }: { item: WatchlistItem; lastCandle?: Ca
       {/* Change + pct */}
       <div className="flex items-center gap-1.5 mt-0.5">
         <span className={cn("text-xs tabular-nums font-semibold", positive ? "text-primary" : "text-destructive")}>
-          {formatChange(item.change)}
+          {item.price > 0 ? formatChange(item.change) : "-"}
         </span>
         <span className={cn("text-xs tabular-nums", positive ? "text-primary" : "text-destructive")}>
-          {positive ? "+" : ""}{item.changePct.toFixed(2)}%
+          {item.price > 0 ? `${positive ? "+" : ""}${item.changePct.toFixed(2)}%` : "-"}
         </span>
       </div>
 
@@ -790,11 +793,11 @@ function KpiCardsPanel() {
               <TrendingUp className="h-3 w-3" />
               Strategies
             </Link>
-            <Link href="/screener" className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-3xs text-muted-foreground uppercase tracking-widest hover:text-primary hover:bg-surface-mid transition-colors">
+            <Link href="/research?view=screener" className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-3xs text-muted-foreground uppercase tracking-widest hover:text-primary hover:bg-surface-mid transition-colors">
               <BarChart4 className="h-3 w-3" />
               Screener
             </Link>
-            <Link href="/opportunities" className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-3xs text-muted-foreground uppercase tracking-widest hover:text-primary hover:bg-surface-mid transition-colors">
+            <Link href="/research?view=watchlist" className="flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-3xs text-muted-foreground uppercase tracking-widest hover:text-primary hover:bg-surface-mid transition-colors">
               <Crosshair className="h-3 w-3" />
               Opportunities
             </Link>
@@ -846,11 +849,11 @@ function KpiCardsPanel() {
 
 function DashboardContent() {
   const { theme, toggle } = useTheme();
-  const { pinned: sidebarPinned } = useSidebarPinned();
+
   const { user } = useAuth();
   const searchParams = useSearchParams();
 
-  const initialTicker = searchParams.get("ticker")?.toUpperCase().trim() || "BTC-USD";
+  const initialTicker = searchParams.get("ticker")?.toUpperCase().trim() || "AAPL";
   const [symbol, setSymbol] = useState(initialTicker);
   const [interval, setInterval] = useState<IntervalOption>(DEFAULT_INTERVAL);
 
@@ -861,7 +864,7 @@ function DashboardContent() {
   const [showWatchlist, setShowWatchlist] = useState(true);
   const [mobileWatchlistOpen, setMobileWatchlistOpen] = useState(false);
   const [drawingMode, setDrawingMode] = useState<DrawingMode>("none");
-  const [drawings, setDrawings] = useState<DrawingData[]>([]);
+  const [drawings, saveDrawings] = useAccountStorage(user?.id, "drawings", drawingSchema, emptyDrawings);
   const [pendingPoint, setPendingPoint] = useState<DrawingPoint | null>(null);
   const [showFVG, setShowFVG] = useState(false);
   const [showBollinger, setShowBollinger] = useState(false);
@@ -876,7 +879,6 @@ function DashboardContent() {
   const [activePeriod, setActivePeriod] = useState<string | null>(null);
   const [chartScale, setChartScale] = useState<"linear" | "log">("linear");
 
-  const DRAWING_STORAGE_KEY = "ngs-drawings";
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -888,18 +890,6 @@ function DashboardContent() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [drawingMode]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAWING_STORAGE_KEY);
-      if (raw) setDrawings(JSON.parse(raw));
-    } catch {}
-  }, []);
-
-  const saveDrawings = useCallback((d: DrawingData[]) => {
-    setDrawings(d);
-    try { localStorage.setItem(DRAWING_STORAGE_KEY, JSON.stringify(d)); } catch {}
-  }, []);
 
   const handleChartClick = useCallback((point: ChartClickPoint) => {
     if (drawingMode === "trendline") {
@@ -1069,7 +1059,7 @@ function DashboardContent() {
   // Merge live prices into watchlist items for display (does not touch localStorage)
   // Stream data (bid/ask/last) takes priority over REST polling close price.
   const allItems = useMemo(() => {
-    const base = flattenWatchlist(watchlist);
+    const base = flattenWatchlist(watchlist).map((item) => ({ ...item, price: 0, change: 0, changePct: 0 }));
     if (!liveWatchlistPrices && !Object.keys(streamQuotes).length) return base;
     return base.map((item) => {
       const stream = streamQuotes[item.symbol];
@@ -1089,7 +1079,7 @@ function DashboardContent() {
     });
   }, [watchlist, liveWatchlistPrices, streamQuotes]);
 
-  const selectedItem = allItems.find((i) => i.symbol === symbol) ?? allItems[0];
+  const selectedItem = allItems.find((i) => i.symbol === symbol) ?? { symbol, name: symbol, price: 0, change: 0, changePct: 0, color: "" };
 
   const handleSelectSymbol = useCallback((s: string) => {
     setSymbol(s);
@@ -1140,41 +1130,14 @@ function DashboardContent() {
   // ─── JSX ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-lowest">
+    <AppShell title="Overview">
+    <div className="flex h-[calc(100dvh-11rem)] min-h-[480px] overflow-hidden bg-surface-lowest lg:h-[calc(100dvh-5rem)]">
       {/* Terminal animation keyframes */}
       <style dangerouslySetInnerHTML={{ __html: TERMINAL_ANIM_STYLES }} />
 
-      {/* Page title — 1px visible for Playwright */}
-      <h1
-        data-testid="page-title"
-        className="absolute top-0 left-0 w-px h-px overflow-hidden pointer-events-none"
-      >
-        Dashboard
-      </h1>
-
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div className="hidden lg:block lg:fixed lg:inset-y-0 lg:z-40">
-        <Sidebar />
-      </div>
-
-      {/* ── Main content area ───────────────────────────────────────────── */}
-      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-[padding] duration-200 ${sidebarPinned ? "lg:pl-[200px]" : "lg:pl-12"}`}>
-
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* ── Top toolbar (40px) — Sovereign Terminal header ────────────── */}
         <header className="flex h-10 shrink-0 items-center border-b border-border/10 bg-surface-low px-2 gap-1 z-20 overflow-x-auto">
-          {/* Mobile menu hamburger */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden h-7 w-7 shrink-0">
-                <Menu className="h-4 w-4" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[200px] p-0">
-              <Sidebar />
-            </SheetContent>
-          </Sheet>
-
           {/* Symbol search */}
           <SymbolSearch currentSymbol={symbol} onSelect={handleSelectSymbol} watchlistItems={allItems} />
 
@@ -1437,7 +1400,7 @@ function DashboardContent() {
               {/* Blinking LIVE indicator */}
               <span className="flex items-center gap-1 shrink-0">
                 <span className="text-primary animate-pulse text-[10px] leading-none">●</span>
-                <span className="text-3xs text-primary/70 font-bold uppercase tracking-widest">LIVE</span>
+                <span className="text-3xs text-primary/70 font-bold uppercase tracking-widest">Chart</span>
               </span>
 
               <span className="text-primary font-bold text-sm sm:text-[13px] shrink-0 tracking-tight">
@@ -1600,12 +1563,14 @@ function DashboardContent() {
                 <div
                   className="absolute left-0 top-0 h-full"
                   style={{
-                    width: `${(countdown / 30) * 100}%`,
+                    width: "100%",
+                    transformOrigin: "left",
+                    transform: `scaleX(${countdown / 30})`,
                     backgroundColor: countdown <= 3 ? "#f59e0b" : "#44DFA3",
                     boxShadow: countdown <= 3
                       ? "0 0 8px #f59e0baa"
                       : "0 0 8px #44DFA3aa",
-                    transition: "width 1s linear, background-color 0.3s ease, box-shadow 0.3s ease",
+                    transition: "transform 1s linear, background-color 0.3s ease, box-shadow 0.3s ease",
                   }}
                 />
               </div>
@@ -1697,7 +1662,7 @@ function DashboardContent() {
                   <tbody className="tabular-nums">
                     <WatchlistSection
                       title="Indices"
-                      items={watchlist.indices}
+                      items={watchlist.indices.map((item) => allItems.find((live) => live.symbol === item.symbol) ?? item)}
                       selectedSymbol={symbol}
                       isEditing={isEditingWatchlist}
                       onSelect={handleSelectSymbol}
@@ -1706,7 +1671,7 @@ function DashboardContent() {
                     />
                     <WatchlistSection
                       title="Stocks"
-                      items={watchlist.stocks}
+                      items={watchlist.stocks.map((item) => allItems.find((live) => live.symbol === item.symbol) ?? item)}
                       selectedSymbol={symbol}
                       isEditing={isEditingWatchlist}
                       onSelect={handleSelectSymbol}
@@ -1715,7 +1680,7 @@ function DashboardContent() {
                     />
                     <WatchlistSection
                       title="Crypto"
-                      items={watchlist.crypto}
+                      items={watchlist.crypto.map((item) => allItems.find((live) => live.symbol === item.symbol) ?? item)}
                       selectedSymbol={symbol}
                       isEditing={isEditingWatchlist}
                       onSelect={handleSelectSymbol}
@@ -1725,7 +1690,7 @@ function DashboardContent() {
                     {(watchlist.custom.length > 0 || isEditingWatchlist) && (
                       <WatchlistSection
                         title="Custom"
-                        items={watchlist.custom}
+                        items={watchlist.custom.map((item) => allItems.find((live) => live.symbol === item.symbol) ?? item)}
                         selectedSymbol={symbol}
                         isEditing={isEditingWatchlist}
                         onSelect={handleSelectSymbol}
@@ -1753,12 +1718,7 @@ function DashboardContent() {
 
         {/* ── Bottom status bar — Sovereign Terminal footer ─────────────── */}
         <div className="hidden lg:flex shrink-0 items-center h-6 px-3 border-t border-border/10 bg-surface-lowest text-3xs text-muted-foreground uppercase tracking-widest gap-3 z-10">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-1.5 w-1.5 bg-primary shadow-[0_0_6px_theme(colors.primary.DEFAULT)]" />
-            Market Open
-          </span>
-          <span className="text-border/20">|</span>
-          <span>NextGenStock v1.0</span>
+          <span>Chart workspace</span>
           <div className="flex-1" />
           <DashboardUserStatus />
         </div>
@@ -1767,6 +1727,7 @@ function DashboardContent() {
       {/* ── Mobile watchlist sheet ──────────────────────────────────────── */}
       <Sheet open={mobileWatchlistOpen} onOpenChange={setMobileWatchlistOpen}>
         <SheetContent side="right" className="w-[300px] p-0 md:hidden">
+          <SheetTitle className="sr-only">Watchlist</SheetTitle><SheetDescription className="sr-only">Choose a symbol to view its chart</SheetDescription>
           <div className="flex flex-col h-full bg-surface-low">
             <div className="flex items-center px-3 h-8 shrink-0 border-b border-border/10 bg-surface-lowest/60">
               <span className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground flex-1">Watchlist</span>
@@ -1784,23 +1745,23 @@ function DashboardContent() {
               <table className="w-full text-left border-collapse tabular-nums">
                 <tbody>
                   <WatchlistSection
-                    title="Indices" items={watchlist.indices} selectedSymbol={symbol}
+                    title="Indices" items={watchlist.indices.map((item) => allItems.find((live) => live.symbol === item.symbol) ?? item)} selectedSymbol={symbol}
                     isEditing={isEditingWatchlist} onSelect={(s) => { handleSelectSymbol(s); setMobileWatchlistOpen(false); }}
                     onRemove={removeFromWatchlist} onAdd={(sym) => addToWatchlist("indices", sym)}
                   />
                   <WatchlistSection
-                    title="Stocks" items={watchlist.stocks} selectedSymbol={symbol}
+                    title="Stocks" items={watchlist.stocks.map((item) => allItems.find((live) => live.symbol === item.symbol) ?? item)} selectedSymbol={symbol}
                     isEditing={isEditingWatchlist} onSelect={(s) => { handleSelectSymbol(s); setMobileWatchlistOpen(false); }}
                     onRemove={removeFromWatchlist} onAdd={(sym) => addToWatchlist("stocks", sym)}
                   />
                   <WatchlistSection
-                    title="Crypto" items={watchlist.crypto} selectedSymbol={symbol}
+                    title="Crypto" items={watchlist.crypto.map((item) => allItems.find((live) => live.symbol === item.symbol) ?? item)} selectedSymbol={symbol}
                     isEditing={isEditingWatchlist} onSelect={(s) => { handleSelectSymbol(s); setMobileWatchlistOpen(false); }}
                     onRemove={removeFromWatchlist} onAdd={(sym) => addToWatchlist("crypto", sym)}
                   />
                   {(watchlist.custom.length > 0 || isEditingWatchlist) && (
                     <WatchlistSection
-                      title="Custom" items={watchlist.custom} selectedSymbol={symbol}
+                      title="Custom" items={watchlist.custom.map((item) => allItems.find((live) => live.symbol === item.symbol) ?? item)} selectedSymbol={symbol}
                       isEditing={isEditingWatchlist} onSelect={(s) => { handleSelectSymbol(s); setMobileWatchlistOpen(false); }}
                       onRemove={removeFromWatchlist} onAdd={(sym) => addToWatchlist("custom", sym)}
                     />
@@ -1945,8 +1906,8 @@ function DashboardContent() {
       )}
 
       {/* ── Mobile bottom navigation ──────────────────────────────────── */}
-      <MobileBottomNav />
     </div>
+    </AppShell>
   );
 }
 

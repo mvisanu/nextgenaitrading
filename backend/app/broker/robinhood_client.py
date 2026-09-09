@@ -67,6 +67,7 @@ class RobinhoodClient(AbstractBrokerClient):
         order_type: str = "market",
         dry_run: bool = True,
         notional_usd: float | None = None,
+        client_order_id: str | None = None,
     ) -> OrderResult:
         if dry_run:
             return OrderResult(

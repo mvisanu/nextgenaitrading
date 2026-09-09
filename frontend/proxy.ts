@@ -7,6 +7,10 @@ import { createServerClient } from "@supabase/ssr";
  * Unauthenticated access redirects to /login with a callbackUrl query param.
  */
 const PROTECTED_PREFIXES = [
+  "/research",
+  "/trade",
+  "/settings",
+  "/btc-bot",
   "/dashboard",
   "/strategies",
   "/backtests",
@@ -98,7 +102,7 @@ export async function proxy(request: NextRequest) {
     )
   ) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
+    loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 

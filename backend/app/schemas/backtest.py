@@ -13,7 +13,7 @@ BacktestTimeframeEnum = Literal["1h", "4h", "1d", "1wk", "1mo"]
 class BacktestRunRequest(BaseModel):
     symbol: str = Field(description="Valid yfinance ticker")
     timeframe: BacktestTimeframeEnum = Field(default="1d")
-    mode: Literal["conservative", "aggressive", "ai-pick", "buy-low-sell-high"] = Field(
+    mode: Literal["conservative", "aggressive", "ai-pick", "buy-low-sell-high", "squeeze"] = Field(
         description="Strategy mode to backtest"
     )
     leverage: float | None = Field(default=None, ge=0.1, le=10.0)

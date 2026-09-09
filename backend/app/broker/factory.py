@@ -23,7 +23,7 @@ def get_broker_client(
             api_key=api_key,
             secret_key=secret_key,
             paper=use_paper,
-            base_url=credential.base_url or None,
+            base_url=(credential.base_url or None) if paper is None else None,
         )
     elif credential.provider == "robinhood":
         return RobinhoodClient(api_key=api_key, private_key=secret_key)

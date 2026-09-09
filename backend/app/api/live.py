@@ -31,7 +31,7 @@ from app.schemas.live import (
     SqueezeData,
 )
 from app.services import credential_service
-from app.services.execution_service import execute_order
+from app.services.execution_service import execute_order, reconcile_order
 from app.services.market_data import df_to_candles, load_ohlcv_for_strategy
 from app.services.strategy_run_service import run_strategy
 
@@ -101,6 +101,16 @@ async def execute_live_order(
 ) -> OrderOut:
     """Submit a live or dry-run order. Defaults to dry_run=True."""
     return await execute_order(payload, db, current_user)
+
+
+@router.post("/orders/by-client/{client_order_id}/reconcile", response_model=OrderOut)
+async def reconcile_live_order(
+    client_order_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> OrderOut:
+    """Read broker status using the original order ID; never submits a new order."""
+    return await reconcile_order(client_order_id, db, current_user)
 
 
 @router.get("/orders", response_model=list[OrderOut])

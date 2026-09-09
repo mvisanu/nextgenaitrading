@@ -146,7 +146,7 @@ describe("DashboardPage — with data", () => {
 
   it("renders Dashboard title", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Overview")).toBeInTheDocument();
   });
 
   it("renders Runs KPI label in the strip", () => {
@@ -194,7 +194,7 @@ describe("DashboardPage — with data", () => {
     const { getByTitle } = render(<DashboardPage />);
     getByTitle(/show recent runs/i).click();
     expect(await screen.findByText("1d")).toBeInTheDocument();
-    expect(screen.getByText("4h")).toBeInTheDocument();
+    expect(screen.getAllByText("4h").length).toBeGreaterThan(0);
   });
 });
 

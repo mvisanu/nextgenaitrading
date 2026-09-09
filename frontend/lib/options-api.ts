@@ -5,10 +5,9 @@
  * Mirrors the pattern from lib/api.ts — uses apiFetch() with Bearer token.
  */
 
-import { getSupabaseBrowserClient } from "./supabase";
+import { apiFetch } from "./api";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+//localhost:8000";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -150,54 +149,6 @@ export interface PortfolioGreeksOut {
 }
 
 // ─── Auth helper (mirrors lib/api.ts) ────────────────────────────────────────
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  try {
-    const supabase = getSupabaseBrowserClient();
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        return { Authorization: `Bearer ${session.access_token}` };
-      }
-    }
-  } catch {
-    // Supabase session unavailable — fall through to dev-token check
-  }
-  if (typeof document !== "undefined") {
-    const match = document.cookie.match(/(?:^|;\s*)dev_token=([^;]+)/);
-    if (match) return { Authorization: `Bearer ${decodeURIComponent(match[1])}` };
-  }
-  return {};
-}
-
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-      ...(options.headers ?? {}),
-    },
-  });
-  if (res.status === 401 && typeof window !== "undefined") {
-    const onAuth = ["/login", "/register"].some((p) => window.location.pathname.startsWith(p));
-    if (!onAuth) window.location.href = "/login";
-    throw new Error("Session expired.");
-  }
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = (await res.json()) as { detail?: string };
-      detail = body.detail ?? detail;
-    } catch {}
-    throw Object.assign(new Error(detail), { status: res.status });
-  }
-  if (res.status === 204) return {} as T;
-  return res.json() as Promise<T>;
-}
-
-// ─── API functions ────────────────────────────────────────────────────────────
 
 const V4 = "/api/v4/options";
 

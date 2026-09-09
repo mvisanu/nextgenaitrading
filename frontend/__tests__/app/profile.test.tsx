@@ -7,7 +7,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ProfilePage from "@/app/profile/page";
+import ProfilePage from "@/components/workspaces/settings/account";
 import type { BrokerCredential, UserProfile } from "@/types";
 
 // Mock next/navigation
@@ -18,8 +18,8 @@ jest.mock("next/navigation", () => ({
 }));
 
 // Mock AppShell + useAuth
-jest.mock("@/components/layout/AppShell", () => ({
-  AppShell: ({ children, title }: any) => (
+jest.mock("@/components/layout/WorkspaceSection", () => ({
+  WorkspaceSection: ({ children, title }: any) => (
     <div>
       <h1>{title}</h1>
       {children}
@@ -31,6 +31,8 @@ jest.mock("@/components/layout/AppShell", () => ({
     logout: jest.fn(),
   }),
 }));
+
+jest.mock("@/components/layout/AppShell", () => ({ useAuth: () => ({ user: { id: 1, email: "test@nextgenstock.io" }, isLoading: false, logout: jest.fn() }) }));
 
 // Mock next/link
 jest.mock("next/link", () => {
@@ -162,7 +164,7 @@ jest.mock("@tanstack/react-query", () => ({
     if (JSON.stringify(queryKey) === JSON.stringify(["profile"])) {
       return { data: mockProfile, isLoading: false };
     }
-    if (JSON.stringify(queryKey) === JSON.stringify(["broker", "credentials"])) {
+    if (JSON.stringify(queryKey) === JSON.stringify(["account", 1, "broker", "credentials"])) {
       return { data: mockCredentials, isLoading: false };
     }
     return { data: undefined, isLoading: false };
@@ -207,11 +209,12 @@ describe("ProfilePage — rendering", () => {
 
   it("renders User Profile section", () => {
     render(<ProfilePage />);
-    expect(screen.getByText("User Profile")).toBeInTheDocument();
+    expect(screen.getByText("Account Preferences")).toBeInTheDocument();
   });
 
-  it("renders Broker Credentials section", () => {
+  it("renders Broker Credentials section", async () => {
     render(<ProfilePage />);
+    await userEvent.click(screen.getAllByRole("button", { name: /^Credentials$/i })[0]);
     expect(screen.getByText("Broker Credentials")).toBeInTheDocument();
   });
 
@@ -224,13 +227,13 @@ describe("ProfilePage — rendering", () => {
 describe("ProfilePage — masked broker keys", () => {
   it("displays masked API key (****ABCD format)", () => {
     render(<ProfilePage />);
-    expect(screen.getByText("****ABCD")).toBeInTheDocument();
+    expect(screen.getByText("****(encrypted)")).toBeInTheDocument();
   });
 
   it("does NOT show unmasked key in the DOM", () => {
     render(<ProfilePage />);
     // The credential should show masked form
-    const keyDisplay = screen.getByText("****ABCD");
+    const keyDisplay = screen.getByText("****(encrypted)");
     expect(keyDisplay).toBeInTheDocument();
     // Verify it's rendered as monospace (credential detail)
     expect(keyDisplay.className).toContain("mono");
@@ -238,7 +241,7 @@ describe("ProfilePage — masked broker keys", () => {
 
   it("shows Alpaca badge on alpaca credential", () => {
     render(<ProfilePage />);
-    expect(screen.getByText(/Alpaca.*Stocks.*ETFs/)).toBeInTheDocument();
+    expect(screen.getByText("Alpaca")).toBeInTheDocument();
   });
 });
 
@@ -251,23 +254,9 @@ describe("ProfilePage — delete confirmation dialog", () => {
   it("opens delete confirmation when trash icon is clicked", async () => {
     render(<ProfilePage />);
 
-    // Find the delete button (trash icon button)
-    const deleteBtn = screen.getByRole("button", { name: "" }); // icon-only button
-    // More targeted: find the destructive ghost button
-    const allButtons = screen.getAllByRole("button");
-    const trashButton = allButtons.find(
-      (btn) =>
-        btn.querySelector("svg") &&
-        (btn.className.includes("destructive") || btn.className.includes("text-destructive"))
-    );
-
-    if (trashButton) {
-      await userEvent.click(trashButton);
-      await waitFor(() => {
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-        expect(screen.getByText("Delete Credential?")).toBeInTheDocument();
-      });
-    }
+    await userEvent.click(screen.getByRole("button", { name: "Delete My Alpaca Account" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Delete Credential?")).toBeInTheDocument();
   });
 });
 
@@ -275,6 +264,7 @@ describe("ProfilePage — add credential dialog", () => {
   it("opens dialog when 'Add Credential' button is clicked", async () => {
     render(<ProfilePage />);
 
+    await userEvent.click(screen.getAllByRole("button", { name: /^Credentials$/i })[0]);
     await userEvent.click(screen.getByRole("button", { name: /Add Credential/i }));
 
     await waitFor(() => {
@@ -286,6 +276,7 @@ describe("ProfilePage — add credential dialog", () => {
   it("shows Robinhood warning when Robinhood provider is selected", async () => {
     render(<ProfilePage />);
 
+    await userEvent.click(screen.getAllByRole("button", { name: /^Credentials$/i })[0]);
     await userEvent.click(screen.getByRole("button", { name: /Add Credential/i }));
 
     await waitFor(() => {
@@ -310,6 +301,7 @@ describe("ProfilePage — add credential dialog", () => {
 
   it("shows profile_name required error when form is submitted empty", async () => {
     render(<ProfilePage />);
+    await userEvent.click(screen.getAllByRole("button", { name: /^Credentials$/i })[0]);
     await userEvent.click(screen.getByRole("button", { name: /Add Credential/i }));
 
     await waitFor(() => screen.getByRole("dialog"));

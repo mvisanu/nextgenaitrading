@@ -51,6 +51,10 @@ beforeEach(() => {
 
 describe("middleware — unauthenticated access to protected routes", () => {
   const protectedPaths = [
+    "/research",
+    "/trade",
+    "/settings",
+    "/btc-bot",
     "/dashboard",
     "/strategies",
     "/backtests",
@@ -169,4 +173,10 @@ describe("middleware — root path", () => {
 
     expect(res.status).toBe(200);
   });
+});
+
+test("preserves the selected workspace section through login", async () => {
+  const response = await middleware(makeRequest("/strategies?view=history&run=12"));
+  const target = new URL(response.headers.get("location")!);
+  expect(target.searchParams.get("callbackUrl")).toBe("/strategies?view=history&run=12");
 });

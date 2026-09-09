@@ -7,7 +7,10 @@
  *   - /auto-buy (on order_filled / order_submitted decisions)
  */
 
-const STORAGE_KEY = "ngs-trade-log";
+import { z } from "zod";
+import { readAccountData, writeAccountData, useAccountStorage, type AccountId } from "./account-storage";
+import { useAuth } from "./auth-context";
+const STORAGE_KEY = "trade-log";
 
 export interface TradeLogEntry {
   id: string;
@@ -32,48 +35,57 @@ export interface TradeLogEntry {
   amountUsd?: number | null;
   /** Whether this was a dry-run order */
   dryRun?: boolean;
+  executionMode?: "paper" | "dry-run" | "live";
 }
 
-function readLog(): TradeLogEntry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+const nullableNumber = z.number().finite().nullable();
+export const tradeLogSchema = z.array(z.object({
+  id: z.string(), date: z.string(), pair: z.string(), type: z.string(), timeframe: z.string(),
+  position: z.enum(["Long", "Short"]), outcome: z.enum(["win", "breakeven", "loss", ""]),
+  netPnl: nullableNumber, totalFees: nullableNumber, rFactor: nullableNumber, riskPct: nullableNumber,
+  confidence: nullableNumber, rangePct: nullableNumber, limit: nullableNumber, duration: z.string(), preNotes: z.string(),
+  source: z.enum(["manual", "live-trading", "auto-buy"]).optional(), amountUsd: nullableNumber.optional(),
+  dryRun: z.boolean().optional(), executionMode: z.enum(["paper", "dry-run", "live"]).optional(),
+}));
+const EMPTY: TradeLogEntry[] = [];
+export function useTradeLog() {
+  const { user } = useAuth();
+  return useAccountStorage(user?.id, STORAGE_KEY, tradeLogSchema, EMPTY);
 }
-
-function writeLog(entries: TradeLogEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  // Dispatch storage event so the trade-log page picks up the change
-  window.dispatchEvent(new Event("storage"));
-}
+function readLog(accountId: AccountId) { return readAccountData(accountId, STORAGE_KEY, tradeLogSchema, EMPTY); }
+function writeLog(accountId: AccountId, entries: TradeLogEntry[]) { writeAccountData(accountId, STORAGE_KEY, tradeLogSchema, entries); }
 
 /**
  * Append a trade to the log from live trading.
  */
 export function logLiveTrade(params: {
+  accountId: AccountId;
+  id?: string;
   symbol: string;
   side: "buy" | "sell";
   amountUsd: number | null;
   dryRun: boolean;
+  paper?: boolean;
+  closing?: boolean;
+  realizedPnl?: number | null;
   timeframe: string;
   mode: string;
   signal?: string | null;
   confirmationCount?: number | null;
 }) {
-  const entries = readLog();
+  const entries = [...readLog(params.accountId)];
+  if (params.id && entries.some(entry => entry.id === params.id)) return;
   const today = new Date().toISOString().split("T")[0];
 
   entries.push({
-    id: crypto.randomUUID(),
+    id: params.id ?? crypto.randomUUID(),
     date: today,
     pair: params.symbol,
-    type: params.dryRun ? "Dry Run" : "Live Order",
+    type: params.paper ? "Paper Order" : params.dryRun ? "Dry Run" : "Live Order",
     timeframe: params.timeframe,
-    position: params.side === "buy" ? "Long" : "Short",
-    outcome: "",
-    netPnl: null,
+    position: params.closing ? (params.side === "buy" ? "Short" : "Long") : (params.side === "buy" ? "Long" : "Short"),
+    outcome: params.realizedPnl == null ? "" : params.realizedPnl > 0 ? "win" : params.realizedPnl < 0 ? "loss" : "breakeven",
+    netPnl: params.realizedPnl ?? null,
     totalFees: null,
     rFactor: null,
     riskPct: null,
@@ -82,7 +94,7 @@ export function logLiveTrade(params: {
     limit: params.amountUsd,
     duration: "",
     preNotes: [
-      `${params.dryRun ? "[DRY RUN] " : ""}${params.side.toUpperCase()} via Live Trading`,
+      `${params.paper ? "[PAPER] " : params.dryRun ? "[DRY RUN] " : ""}${params.side.toUpperCase()} via Live Trading`,
       `Strategy: ${params.mode}`,
       params.signal ? `Signal: ${params.signal}` : null,
       params.confirmationCount != null ? `Confirmations: ${params.confirmationCount}/8` : null,
@@ -91,16 +103,19 @@ export function logLiveTrade(params: {
       .join(" | "),
     source: "live-trading",
     amountUsd: params.amountUsd,
-    dryRun: params.dryRun,
+    dryRun: params.paper || params.dryRun,
+    executionMode: params.paper ? "paper" : params.dryRun ? "dry-run" : "live",
   });
 
-  writeLog(entries);
+  writeLog(params.accountId, entries);
 }
 
 /**
  * Append a trade to the log from auto-buy decisions.
  */
 export function logAutoBuyTrade(params: {
+  accountId: AccountId;
+  id?: string;
   ticker: string;
   state: string;
   dryRun: boolean;
@@ -109,11 +124,12 @@ export function logAutoBuyTrade(params: {
   currentPrice?: number | null;
   orderAmount?: number | null;
 }) {
-  const entries = readLog();
+  const entries = [...readLog(params.accountId)];
+  if (params.id && entries.some(entry => entry.id === params.id)) return;
   const today = new Date().toISOString().split("T")[0];
 
   entries.push({
-    id: crypto.randomUUID(),
+    id: params.id ?? crypto.randomUUID(),
     date: today,
     pair: params.ticker,
     type: params.dryRun ? "Auto-Buy Dry Run" : "Auto-Buy",
@@ -142,5 +158,5 @@ export function logAutoBuyTrade(params: {
     dryRun: params.dryRun,
   });
 
-  writeLog(entries);
+  writeLog(params.accountId, entries);
 }

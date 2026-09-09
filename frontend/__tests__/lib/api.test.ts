@@ -335,40 +335,17 @@ describe("apiFetch error handling", () => {
 
 // ─── Silent 401 refresh flow ──────────────────────────────────────────────────
 
-describe("401 silent refresh flow", () => {
-  it("attempts refresh then retries original request on 401", async () => {
-    let callCount = 0;
-    globalThis.fetch = jest.fn().mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        // Original request: 401
-        return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) });
-      }
-      if (callCount === 2) {
-        // Refresh: 200
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) });
-      }
-      // Retry of original: 200
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ id: 1 }) });
-    });
-
+describe("expired and absent sessions", () => {
+  it("returns no user without a session and does not call the backend", async () => {
+    globalThis.fetch = jest.fn();
     const { authApi } = await import("@/lib/api");
-    const result = await authApi.me();
-
-    expect(callCount).toBe(3);
-    expect(result).toEqual({ id: 1 });
+    await expect(authApi.me()).resolves.toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
   });
-
-  it("throws 'Session expired' when refresh also fails", async () => {
-    // When refresh fails the code redirects window.location.href = "/login" then
-    // throws. We assert the thrown error; the redirect side-effect is tested manually
-    // (jsdom window.location is non-configurable).
-    globalThis.fetch = jest.fn().mockImplementation(() =>
-      Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) })
-    );
-
-    const { authApi } = await import("@/lib/api");
-
-    await expect(authApi.me()).rejects.toThrow("Session expired");
+  it("rejects authenticated API requests when the backend returns 401", async () => {
+    globalThis.fetch = makeFetchMock([{ status: 401, body: {} }]);
+    const { profileApi } = await import("@/lib/api");
+    await expect(profileApi.get()).rejects.toThrow("Session expired");
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
