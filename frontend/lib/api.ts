@@ -7,62 +7,62 @@
  */
 
 import type {
-  UserResponse,
-  UserProfile,
-  UpdateProfileRequest,
-  BrokerCredential,
-  CreateBrokerCredentialRequest,
-  UpdateBrokerCredentialRequest,
-  BrokerTestResult,
-  RunStrategyRequest,
-  StrategyRun,
-  BacktestSummary,
-  BacktestTrade,
-  VariantBacktestResult,
-  ChartData,
-  OptimizationChartData,
-  SignalCheckRequest,
-  SignalCheckResult,
-  ExecuteOrderRequest,
-  BrokerOrder,
-  PositionSnapshot,
-  LiveStatus,
-  Artifact,
-  BuyZoneSnapshot,
-  ThemeScoreResult,
-  PriceAlertRule,
-  CreateAlertRequest,
-  UpdateAlertRequest,
-  WatchlistIdea,
-  CreateIdeaRequest,
-  UpdateIdeaRequest,
-  AutoBuySettings,
-  UpdateAutoBuySettingsRequest,
-  AutoBuyDecisionLog,
-  AutoBuyDryRunResult,
-  OpportunityRow,
-  EstimatedBuyPriceOut,
-  ScanResultOut,
-  GeneratedIdeaOut,
-  // V3 types
-  WatchlistEntry,
-  GeneratedIdeaRow,
-  AddToWatchlistResult,
-  LastScanResult,
-  ScannerStatus,
-  RunNowResult,
-  NewsItem,
-  // Screener + TA types
-  ScreenerRequest,
-  ScreenerResult,
-  ScreenerPreset,
-  ScreenerRow,
-  TARequest,
-  TAResult,
-  TopMoverRow,
-  MorningBriefResponse,
+AddToWatchlistResult,
+Artifact,
+AutoBuyDecisionLog,
+AutoBuyDryRunResult,
+AutoBuySettings,
+BacktestTrade,
+BrokerCredential,
+BrokerOrder,
+BrokerTestResult,
+BuyZoneSnapshot,
+ChartData,
+CreateAlertRequest,
+CreateBrokerCredentialRequest,
+CreateIdeaRequest,
+EstimatedBuyPriceOut,
+ExecuteOrderRequest,
+GeneratedIdeaOut,
+GeneratedIdeaRow,
+LastScanResult,
+LiveStatus,
+MorningBriefResponse,
+NewsItem,
+OpportunityRow,
+OptimizationChartData,
+PositionSnapshot,
+PriceAlertRule,
+RunNowResult,
+RunStrategyRequest,
+ScannerStatus,
+ScanResultOut,
+ScreenerPreset,
+// Screener + TA types
+ScreenerRequest,
+ScreenerResult,
+ScreenerRow,
+SignalCheckRequest,
+SignalCheckResult,
+StrategyRun,
+TARequest,
+TAResult,
+ThemeScoreResult,
+TopMoverRow,
+UpdateAlertRequest,
+UpdateAutoBuySettingsRequest,
+UpdateBrokerCredentialRequest,
+UpdateIdeaRequest,
+UpdateProfileRequest,
+UserProfile,
+UserResponse,
+VariantBacktestResult,
+// V3 types
+WatchlistEntry,
+WatchlistIdea
 } from "@/types";
 
+import { ApiError,decodeResponse,requestJson } from "./http";
 import { getSupabaseBrowserClient } from "./supabase";
 
 const BASE_URL =
@@ -114,14 +114,12 @@ export async function apiFetch<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const authHeaders = await getAuthHeaders();
+  const headers = new Headers({ "Content-Type": "application/json", ...authHeaders });
+  new Headers(options.headers).forEach((value, key) => headers.set(key, value));
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-      ...(options.headers ?? {}),
-    },
+    headers,
   });
 
   // On 401, clear the session and redirect to login
@@ -145,36 +143,10 @@ export async function apiFetch<T>(
         window.location.href = "/login";
       }
     }
-    throw new Error("Session expired. Please log in again.");
+    throw new ApiError("Session expired. Please log in again.", 401);
   }
 
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = (await res.json()) as {
-        detail?: string;
-        errors?: { field: string; message: string }[];
-      };
-      if (body.errors?.length) {
-        detail = body.errors
-          .map((e) => `${e.field}: ${e.message}`)
-          .join("; ");
-      } else {
-        detail = body.detail ?? detail;
-      }
-    } catch {
-      // Use default detail
-    }
-    const err = Object.assign(new Error(detail), { status: res.status });
-    throw err;
-  }
-
-  // 204 No Content
-  if (res.status === 204) {
-    return {} as T;
-  }
-
-  return res.json() as Promise<T>;
+  return decodeResponse<T>(res);
 }
 
 function post<T>(path: string, body?: unknown): Promise<T> {
@@ -283,11 +255,11 @@ export const brokerApi = {
 
 export const backtestApi = {
   run: (body: RunStrategyRequest) =>
-    post<BacktestSummary>("/backtests/run", body),
+    post<StrategyRun>("/backtests/run", body),
 
   list: (limit = 50) => get<StrategyRun[]>(`/backtests?limit=${limit}`),
 
-  get: (id: number) => get<BacktestSummary>(`/backtests/${id}`),
+  get: (id: number) => get<StrategyRun>(`/backtests/${id}`),
 
   trades: (id: number) => get<BacktestTrade[]>(`/backtests/${id}/trades`),
 
@@ -301,15 +273,15 @@ export const backtestApi = {
 
 export const strategyApi = {
   runAiPick: (body: RunStrategyRequest) =>
-    post<BacktestSummary>("/strategies/ai-pick/run", body),
+    post<StrategyRun>("/strategies/ai-pick/run", body),
 
   runBuyLowSellHigh: (body: RunStrategyRequest) =>
-    post<BacktestSummary>("/strategies/buy-low-sell-high/run", body),
+    post<StrategyRun>("/strategies/buy-low-sell-high/run", body),
 
   listRuns: (limit = 50) =>
     get<StrategyRun[]>(`/strategies/runs?limit=${limit}`),
 
-  getRun: (id: number) => get<BacktestSummary>(`/strategies/runs/${id}`),
+  getRun: (id: number) => get<StrategyRun>(`/strategies/runs/${id}`),
 
   optimizationChart: (id: number) =>
     get<OptimizationChartData>(
@@ -323,6 +295,7 @@ export const liveApi = {
   signalCheck: (body: SignalCheckRequest) =>
     post<SignalCheckResult>("/live/run-signal-check", body),
 
+  reconcile: (clientOrderId: string) => post<BrokerOrder>(`/live/orders/by-client/${encodeURIComponent(clientOrderId)}/reconcile`),
   execute: (body: ExecuteOrderRequest) =>
     post<BrokerOrder>("/live/execute", body),
 
@@ -448,6 +421,7 @@ export const scannerApi = {
 // ─── V3: Watchlist (user_watchlist table) ─────────────────────────────────────
 
 export const watchlistApi = {
+  list: () => get<WatchlistEntry[]>("/watchlist"),
   add: (ticker: string) =>
     post<WatchlistEntry>("/watchlist", { ticker }),
 
@@ -455,7 +429,7 @@ export const watchlistApi = {
     del<void>(`/watchlist/${encodeURIComponent(ticker)}`),
 
   toggleAlert: (ticker: string, alert_enabled: boolean) =>
-    patch<WatchlistEntry>(`/watchlist/${encodeURIComponent(ticker)}/alert`, { alert_enabled }),
+    patch<WatchlistEntry>(`/watchlist/${encodeURIComponent(ticker)}/alert`, { enabled: alert_enabled }),
 };
 
 // ─── V3: Generated Ideas (DB feed) ────────────────────────────────────────────
@@ -482,49 +456,45 @@ export const generatedIdeasApi = {
 
 export const screenerTvApi = {
   screen: (params: ScreenerRequest) =>
-    fetch("/api/tv-screener", {
+    requestJson("/api/tv-screener", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    }).then(r => r.json()) as Promise<ScreenerResult>,
+    }) as Promise<ScreenerResult>,
 
   presets: () =>
-    fetch("/api/tv-screener/presets").then(r => r.json()) as Promise<ScreenerPreset[]>,
+    requestJson("/api/tv-screener/presets") as Promise<ScreenerPreset[]>,
 
   fields: (assetType?: string) =>
-    fetch(`/api/tv-screener/fields${assetType ? `?type=${assetType}` : ""}`).then(r => r.json()) as Promise<string[]>,
+    requestJson(`/api/tv-screener/fields${assetType ? `?type=${assetType}` : ""}`) as Promise<string[]>,
 
   lookup: (symbols: string[]) =>
-    fetch("/api/tv-screener/lookup", {
+    requestJson("/api/tv-screener/lookup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ symbols }),
-    }).then(r => r.json()) as Promise<ScreenerRow[]>,
+    }) as Promise<ScreenerRow[]>,
 };
 
 export const taApi = {
   analyze: (params: TARequest) =>
-    fetch("/api/tv-ta/analyze", {
+    requestJson("/api/tv-ta/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    }).then(r => r.json()) as Promise<TAResult>,
+    }) as Promise<TAResult>,
 
   topGainers: (exchange?: string, timeframe?: string, limit?: number) =>
-    fetch(`/api/tv-ta/top-movers?direction=gainers&exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}&limit=${limit ?? 25}`)
-      .then(r => r.json()) as Promise<TopMoverRow[]>,
+    requestJson(`/api/tv-ta/top-movers?direction=gainers&exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}&limit=${limit ?? 25}`) as Promise<TopMoverRow[]>,
 
   topLosers: (exchange?: string, timeframe?: string, limit?: number) =>
-    fetch(`/api/tv-ta/top-movers?direction=losers&exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}&limit=${limit ?? 25}`)
-      .then(r => r.json()) as Promise<TopMoverRow[]>,
+    requestJson(`/api/tv-ta/top-movers?direction=losers&exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}&limit=${limit ?? 25}`) as Promise<TopMoverRow[]>,
 
   volumeBreakouts: (exchange?: string, timeframe?: string) =>
-    fetch(`/api/tv-ta/volume-breakouts?exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}`)
-      .then(r => r.json()) as Promise<TopMoverRow[]>,
+    requestJson(`/api/tv-ta/volume-breakouts?exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "15m"}`) as Promise<TopMoverRow[]>,
 
   bollingerSqueeze: (exchange?: string, timeframe?: string) =>
-    fetch(`/api/tv-ta/bollinger-squeeze?exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "4h"}`)
-      .then(r => r.json()) as Promise<TopMoverRow[]>,
+    requestJson(`/api/tv-ta/bollinger-squeeze?exchange=${exchange ?? "KUCOIN"}&timeframe=${timeframe ?? "4h"}`) as Promise<TopMoverRow[]>,
 };
 
 // ── News Feed ─────────────────────────────────────────────────────────────────

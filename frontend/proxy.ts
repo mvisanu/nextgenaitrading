@@ -7,6 +7,10 @@ import { createServerClient } from "@supabase/ssr";
  * Unauthenticated access redirects to /login with a callbackUrl query param.
  */
 const PROTECTED_PREFIXES = [
+  "/research",
+  "/trade",
+  "/settings",
+  "/btc-bot",
   "/dashboard",
   "/strategies",
   "/backtests",
@@ -29,13 +33,17 @@ const PROTECTED_PREFIXES = [
   "/copy-trading",
   "/wheel-bot",
   "/crons",
-  "/pin-setup",
 ];
 
 /**
  * Auth routes: authenticated users should be redirected to /dashboard.
+ *
+ * /reset-password is deliberately NOT listed. Arriving from a recovery
+ * link means the user already holds a valid session, so listing it here
+ * would bounce them to /dashboard and make resetting a password
+ * impossible.
  */
-const AUTH_ROUTES = ["/login", "/register"];
+const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -94,7 +102,7 @@ export async function proxy(request: NextRequest) {
     )
   ) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
+    loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 

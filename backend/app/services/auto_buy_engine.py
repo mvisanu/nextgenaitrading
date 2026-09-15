@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import and_, desc, select
+from sqlalchemy import and_, or_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.broker.factory import get_broker_client
@@ -38,7 +38,6 @@ from app.models.idea import WatchlistIdea, WatchlistIdeaTicker
 from app.models.live import BrokerOrder
 from app.models.user import User
 from app.services.credential_service import get_credential
-from app.services.execution_service import _upsert_position_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -120,8 +119,8 @@ async def _check_no_duplicate_order(
             and_(
                 BrokerOrder.user_id == user_id,
                 BrokerOrder.symbol == ticker,
-                BrokerOrder.created_at >= cutoff,
-                BrokerOrder.status.in_(["pending", "filled", "submitted"]),
+                or_(BrokerOrder.created_at >= cutoff, BrokerOrder.status.in_(["submitting", "submission_unknown", "accepted", "new", "pending_new", "partially_filled"])),
+                BrokerOrder.status.notin_(["rejected", "canceled", "expired", "not_implemented", "simulated", "error"]),
             )
         ).limit(1)
     )
@@ -146,13 +145,13 @@ async def _check_daily_risk_budget(
             and_(
                 BrokerOrder.user_id == user_id,
                 BrokerOrder.created_at >= today_start,
-                BrokerOrder.status.in_(["filled", "submitted"]),
+                BrokerOrder.status.notin_(["rejected", "canceled", "expired", "not_implemented", "simulated", "error"]),
             )
         )
     )
     today_orders = list(result.scalars().all())
     today_total = sum(
-        (o.notional_usd or 0.0) + (o.filled_price or 0.0) * (o.filled_quantity or 0.0)
+        o.notional_usd if o.notional_usd is not None else (o.filled_price or 0.0) * (o.filled_quantity or 0.0)
         for o in today_orders
     )
     if today_total >= daily_cap:
@@ -352,54 +351,22 @@ async def evaluate_auto_buy(
                         "paper_mode": settings_row.paper_mode,
                     }
 
-                    cred = await get_credential(credential_id, db, user)
-                    client = get_broker_client(cred, paper=settings_row.paper_mode)
-                    result = client.place_order(
-                        symbol=ticker,
-                        side="buy",
-                        quantity=quantity,
-                        notional_usd=settings_row.max_trade_amount,
-                        order_type="market",
-                        dry_run=False,
-                    )
-                    decision_state = "order_submitted"
+                    from uuid import NAMESPACE_URL, uuid5
+                    from app.schemas.live import ExecuteRequest
+                    from app.services.execution_service import execute_order
+                    result = await execute_order(ExecuteRequest(
+                        symbol=ticker, side="buy", notional_usd=settings_row.max_trade_amount,
+                        credential_id=credential_id, dry_run=False, mode_name="auto_buy",
+                        client_order_id=uuid5(NAMESPACE_URL, f"auto-buy:{user.id}:{credential_id}:{settings_row.paper_mode}:{ticker}:{snap.id}"),
+                    ), db, user, paper_override=settings_row.paper_mode)
                     order_payload["broker_order_id"] = result.broker_order_id
                     order_payload["status"] = result.status
-                    logger.info("Auto-buy order submitted: %s broker_order_id=%s", ticker, result.broker_order_id)
-
-                    # Write BrokerOrder ledger record so the order appears in /live/orders
-                    broker_order = BrokerOrder(
-                        user_id=user.id,
-                        symbol=ticker,
-                        side="buy",
-                        order_type="market",
-                        quantity=round(quantity, 6),
-                        notional_usd=settings_row.max_trade_amount,
-                        broker_order_id=result.broker_order_id,
-                        status=result.status,
-                        filled_price=result.filled_price,
-                        filled_quantity=result.filled_quantity,
-                        mode_name="auto_buy",
-                        dry_run=False,
-                    )
-                    db.add(broker_order)
-                    await db.commit()
-
-                    # Upsert PositionSnapshot so portfolio reflects the new holding
-                    try:
-                        await _upsert_position_snapshot(
-                            db=db,
-                            user_id=user.id,
-                            symbol=ticker,
-                            side="buy",
-                            filled_qty=result.filled_quantity or quantity,
-                            filled_price=result.filled_price or snap.current_price,
-                            mode_name="auto_buy",
-                        )
-                    except Exception as snap_exc:
-                        logger.warning(
-                            "Auto-buy PositionSnapshot upsert failed for %s: %s", ticker, snap_exc
-                        )
+                    order_payload["client_order_id"] = result.client_order_id
+                    if result.status in {"submission_unknown", "submitting", "rejected", "not_implemented"}:
+                        decision_state = "blocked_by_risk"
+                        reason_codes.append(SafeguardResult("order_execution", False, "Order status requires review; no duplicate submitted"))
+                    else:
+                        decision_state = "order_filled" if result.status == "filled" else "order_submitted"
                 except Exception as exc:
                     logger.exception("Auto-buy order failed for %s: %s", ticker, exc)
                     decision_state = "blocked_by_risk"

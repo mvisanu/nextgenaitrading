@@ -7,12 +7,12 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ArtifactsPage from "@/app/artifacts/page";
+import ArtifactsPage from "@/components/workspaces/strategies/saved";
 import type { Artifact } from "@/types";
 
 // Mock AppShell
-jest.mock("@/components/layout/AppShell", () => ({
-  AppShell: ({ children, title }: any) => (
+jest.mock("@/components/layout/WorkspaceSection", () => ({
+  WorkspaceSection: ({ children, title }: any) => (
     <div>
       <h1>{title}</h1>
       {children}
@@ -118,7 +118,7 @@ describe("ArtifactsPage — rendering", () => {
 
   it("shows artifact count in header", () => {
     render(<ArtifactsPage />);
-    expect(screen.getByText(/Pine Script Artifacts \(2\)/)).toBeInTheDocument();
+    expect(screen.getByText("Pine Script Artifacts").parentElement).toHaveTextContent("(2)");
   });
 
   it("renders artifact rows in table", () => {

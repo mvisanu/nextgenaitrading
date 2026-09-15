@@ -61,16 +61,16 @@ jest.mock("@radix-ui/react-tabs", () => {
 import { StrategyModeSelector } from "@/components/strategy/StrategyModeSelector";
 
 describe("StrategyModeSelector", () => {
-  it("renders all 4 mode tabs", () => {
+  it("renders stock strategy choices", () => {
     render(
       <StrategyModeSelector>
         {(mode) => <span>Mode: {mode}</span>}
       </StrategyModeSelector>
     );
-    expect(screen.getByRole("tab", { name: /Conservative/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Aggressive/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /AI Pick/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Buy Low/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Conservative/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Aggressive/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /AI Pick/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Buy Low/i })).toBeInTheDocument();
   });
 
   it("shows conservative content by default", () => {
@@ -98,7 +98,7 @@ describe("StrategyModeSelector", () => {
       </StrategyModeSelector>
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: /Aggressive/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Aggressive/i }));
     expect(screen.getByText("Mode: aggressive")).toBeInTheDocument();
   });
 
@@ -109,7 +109,7 @@ describe("StrategyModeSelector", () => {
       </StrategyModeSelector>
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: /AI Pick/i }));
+    await userEvent.click(screen.getByRole("button", { name: /AI Pick/i }));
     expect(screen.getByText("Mode: ai-pick")).toBeInTheDocument();
   });
 
@@ -120,7 +120,7 @@ describe("StrategyModeSelector", () => {
       </StrategyModeSelector>
     );
 
-    await userEvent.click(screen.getByRole("tab", { name: /Buy Low/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Buy Low/i }));
     expect(screen.getByText("Mode: buy-low-sell-high")).toBeInTheDocument();
   });
 
@@ -130,7 +130,7 @@ describe("StrategyModeSelector", () => {
         {() => null}
       </StrategyModeSelector>
     );
-    expect(screen.getByRole("tab", { name: /Conservative/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("button", { name: /Conservative/i })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("non-default tabs are aria-selected=false by default", () => {
@@ -139,6 +139,12 @@ describe("StrategyModeSelector", () => {
         {() => null}
       </StrategyModeSelector>
     );
-    expect(screen.getByRole("tab", { name: /Aggressive/i })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("button", { name: /Aggressive/i })).toHaveAttribute("aria-pressed", "false");
   });
+});
+
+test("Bollinger Squeeze remains selectable", async () => {
+  render(<StrategyModeSelector>{(mode) => <span>Active: {mode}</span>}</StrategyModeSelector>);
+  await userEvent.click(screen.getByRole("button", { name: /BB Squeeze/i }));
+  expect(screen.getByText("Active: squeeze")).toBeInTheDocument();
 });

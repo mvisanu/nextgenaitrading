@@ -1,13 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { authApi } from "@/lib/api";
-import type { UserResponse } from "@/types";
+import { AuthContext, useAuth } from "@/lib/auth-context";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Menu } from "lucide-react";
@@ -15,21 +16,7 @@ import { MobileBottomNav } from "./MobileBottomNav";
 
 // ─── Auth Context ──────────────────────────────────────────────────────────────
 
-interface AuthContextValue {
-  user: UserResponse | null;
-  isLoading: boolean;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue>({
-  user: null,
-  isLoading: true,
-  logout: async () => {},
-});
-
-export function useAuth(): AuthContextValue {
-  return useContext(AuthContext);
-}
+export { useAuth } from "@/lib/auth-context";
 
 // ─── Providers wrapper (used in root layout) ─────────────────────────────────
 
@@ -47,6 +34,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
     retry: false,
   });
 
+  const previousUser = useRef(user?.id);
+  useEffect(() => {
+    if (previousUser.current !== user?.id) {
+      queryClient.removeQueries({ predicate: query => query.queryKey[0] !== "auth" &&
+        !(query.queryKey[0] === "account" && query.queryKey[1] === user?.id) });
+      previousUser.current = user?.id;
+    }
+  }, [user?.id, queryClient]);
+  useEffect(() => {
+    const client = getSupabaseBrowserClient();
+    if (!client?.auth.onAuthStateChange) return;
+    const { data: { subscription } } = client.auth.onAuthStateChange((event: string) => {
+      if (event === "SIGNED_OUT") {
+        queryClient.setQueryData(["auth", "me"], null);
+        queryClient.removeQueries({ predicate: query => query.queryKey[0] !== "auth" });
+      } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        void queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -59,7 +68,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   return (
     <AuthContext.Provider value={{ user, isLoading, logout }}>
-      {children}
+      <React.Fragment key={user?.id ?? "signed-out"}>{children}</React.Fragment>
     </AuthContext.Provider>
   );
 }
@@ -76,16 +85,17 @@ export function AppShell({ children, title, actions }: AppShellProps) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Redirect to login when auth resolves to "no user"
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace(`/login?callbackUrl=${encodeURIComponent(pathname ?? "/")}`);
+      router.replace(`/login?callbackUrl=${encodeURIComponent((pathname ?? "/") + window.location.search)}`);
     }
   }, [isLoading, user, router, pathname]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       {/* Desktop sidebar — in-flow so it pushes content instead of overlaying */}
       <div className="hidden lg:flex lg:shrink-0 lg:z-40">
         <Sidebar />
@@ -96,7 +106,7 @@ export function AppShell({ children, title, actions }: AppShellProps) {
         {/* Top toolbar — Sovereign style */}
         <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 bg-surface-lowest px-4 border-b border-border/10">
           {/* Mobile menu */}
-          <Sheet>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8 text-muted-foreground hover:text-foreground">
                 <Menu className="h-4 w-4" />
@@ -104,7 +114,9 @@ export function AppShell({ children, title, actions }: AppShellProps) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[220px] p-0 bg-surface-lowest border-r border-border/10">
-              <Sidebar />
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <SheetDescription className="sr-only">Trading workspaces and settings</SheetDescription>
+              <Sidebar mobile onNavigate={() => setMenuOpen(false)} />
             </SheetContent>
           </Sheet>
 
@@ -112,7 +124,7 @@ export function AppShell({ children, title, actions }: AppShellProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 pb-20 lg:pb-4 bg-card">
+        <main className="flex-1 overflow-y-auto p-2 sm:p-3 lg:p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-4 bg-card">
           {isLoading ? (
             <div className="p-4 space-y-3">
               <Skeleton className="h-8 w-48 bg-surface-high" />
@@ -122,24 +134,7 @@ export function AppShell({ children, title, actions }: AppShellProps) {
           ) : user ? children : null}
         </main>
 
-        {/* Global Footer / Market Ticker */}
-        <footer className="hidden lg:flex shrink-0 items-center h-8 px-4 bg-surface-lowest border-t border-border/10 gap-6 overflow-hidden">
-          <div className="flex items-center gap-2 text-2xs">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse-glow" />
-            <span className="uppercase tracking-widest font-bold text-foreground">Market Open</span>
-          </div>
-          <div className="flex-1 flex gap-8 items-center whitespace-nowrap text-2xs tabular-nums text-muted-foreground overflow-hidden">
-            <div className="flex gap-2"><span>EUR/USD</span><span className="text-foreground">1.0824</span><span className="text-destructive">-0.02%</span></div>
-            <div className="flex gap-2"><span>GBP/USD</span><span className="text-foreground">1.2645</span><span className="text-primary">+0.15%</span></div>
-            <div className="flex gap-2"><span>USD/JPY</span><span className="text-foreground">158.42</span><span className="text-destructive">-0.34%</span></div>
-            <div className="flex gap-2"><span>BTC/USD</span><span className="text-foreground">65,432</span><span className="text-primary">+2.45%</span></div>
-            <div className="flex gap-2"><span>ETH/USD</span><span className="text-foreground">3,452</span><span className="text-primary">+1.82%</span></div>
-            <div className="flex gap-2"><span>GOLD</span><span className="text-foreground">2,342</span><span className="text-destructive">-0.05%</span></div>
-          </div>
-          <div className="text-3xs font-mono text-muted-foreground/40 uppercase">
-            v4.2.0 | latency: 12ms
-          </div>
-        </footer>
+
       </div>
 
       {/* Mobile bottom navigation */}

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.strategy import TimeframeEnum
 
@@ -26,6 +27,19 @@ class LiveRunRequest(BaseModel):
 
 
 class ExecuteRequest(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+    client_order_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def valid_order(self):
+        if (self.quantity is None) == (self.notional_usd is None):
+            raise ValueError("Provide exactly one of quantity or notional_usd")
+        if not self.dry_run and self.client_order_id is None:
+            raise ValueError("Live orders require a client_order_id for safe reconciliation")
+        if not self.symbol or len(self.symbol) > 20:
+            raise ValueError("Invalid symbol")
+        return self
+
     symbol: str = Field(description="Ticker to trade")
     side: Literal["buy", "sell"] = Field(description="Order side")
     quantity: float | None = Field(default=None, gt=0, description="Quantity in shares/units")
@@ -44,6 +58,9 @@ class ExecuteRequest(BaseModel):
 
 
 class OrderOut(BaseModel):
+    client_order_id: str | None = None
+    credential_id: int | None = None
+    broker_paper: bool = False
     model_config = ConfigDict(from_attributes=True)
 
     id: int

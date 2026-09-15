@@ -41,6 +41,7 @@ class AlpacaClient(AbstractBrokerClient):
         order_type: str = "market",
         dry_run: bool = True,
         notional_usd: float | None = None,
+        client_order_id: str | None = None,
     ) -> OrderResult:
         if dry_run:
             return OrderResult(
@@ -68,6 +69,7 @@ class AlpacaClient(AbstractBrokerClient):
                 notional=notional_usd,
                 side=order_side,
                 time_in_force=TimeInForce.DAY,
+                client_order_id=client_order_id,
             )
         else:
             req = MarketOrderRequest(
@@ -75,12 +77,20 @@ class AlpacaClient(AbstractBrokerClient):
                 qty=quantity,
                 side=order_side,
                 time_in_force=TimeInForce.DAY,
+                client_order_id=client_order_id,
             )
         order = self.client.submit_order(req)
+        return self._order_result(order)
+
+    def get_order_by_client_id(self, client_order_id: str) -> OrderResult:
+        return self._order_result(self.client.get_order_by_client_id(client_order_id))
+
+    @staticmethod
+    def _order_result(order) -> OrderResult:
         raw = order.model_dump() if hasattr(order, "model_dump") else {}
         return OrderResult(
             broker_order_id=str(order.id),
-            status=str(order.status),
+            status=str(getattr(order.status, "value", order.status)),
             filled_price=float(order.filled_avg_price) if order.filled_avg_price else None,
             filled_quantity=float(order.filled_qty) if order.filled_qty else None,
             raw_response=raw,

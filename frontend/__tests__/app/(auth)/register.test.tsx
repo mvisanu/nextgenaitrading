@@ -1,7 +1,9 @@
 /**
- * Tests for app/(auth)/register/page.tsx
- * Covers: renders form, Zod validation including password-confirm mismatch,
- *         min length validation, onSuccess redirect to /login, onError toast.
+ * Tests for app/(auth)/register/page.tsx (rebuilt auth UI).
+ *
+ * Covers: live password rules, confirm-password matching, the in-place
+ * "check your email" success state, immediate sign-in when confirmation
+ * is disabled, and duplicate-email handling.
  */
 
 import React from "react";
@@ -9,84 +11,90 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import RegisterPage from "@/app/(auth)/register/page";
 
-// Mock next/navigation
-const mockPush = jest.fn();
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
-}));
-
-// Mock next/link
 jest.mock("next/link", () => {
-  const React = require("react");
   return ({ children, href }: any) => <a href={href}>{children}</a>;
 });
 
-// Mock TanStack Query
-const mockMutate = jest.fn();
-let mockOnSuccess: ((data: unknown) => void) | null = null;
-let mockOnError: ((err: Error) => void) | null = null;
+const mockSignUp = jest.fn();
 
-jest.mock("@tanstack/react-query", () => ({
-  useMutation: ({ onSuccess, onError }: any) => {
-    mockOnSuccess = onSuccess;
-    mockOnError = onError;
-    return { mutate: mockMutate, isPending: false };
-  },
+jest.mock("@/lib/supabase", () => ({
+  getSupabaseBrowserClient: () => ({
+    auth: { signUp: (...a: unknown[]) => mockSignUp(...a) },
+  }),
 }));
 
-// Mock sonner toast
-const mockToastSuccess = jest.fn();
-const mockToastError = jest.fn();
-jest.mock("sonner", () => ({
-  toast: {
-    success: (msg: string) => mockToastSuccess(msg),
-    error: (msg: string) => mockToastError(msg),
-  },
-}));
+// jsdom forbids real navigation, so the page routes through lib/navigate.
+const hrefSpy: string[] = [];
 
-// Mock authApi
-jest.mock("@/lib/api", () => ({
-  authApi: {
-    register: jest.fn(),
-  },
+jest.mock("@/lib/navigate", () => ({
+  hardNavigate: (url: string) => hrefSpy.push(url),
 }));
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockPush.mockClear();
-  mockToastSuccess.mockClear();
-  mockToastError.mockClear();
+  hrefSpy.length = 0;
+  // Default: confirmation enabled — user created, no session yet.
+  mockSignUp.mockResolvedValue({
+    data: { user: { identities: [{ id: "1" }] }, session: null },
+    error: null,
+  });
 });
 
+async function fillForm(
+  email: string,
+  password: string,
+  confirm = password
+) {
+  await userEvent.type(screen.getByLabelText(/^email$/i), email);
+  await userEvent.type(screen.getByLabelText(/^password$/i), password);
+  await userEvent.type(screen.getByLabelText(/confirm password/i), confirm);
+}
+
 describe("RegisterPage — rendering", () => {
-  it("renders the create account form", () => {
+  it("renders the create-account form", () => {
     render(<RegisterPage />);
-    expect(screen.getByRole("heading", { name: /Create account/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /create account/i })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Create account/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /create account/i })
+    ).toBeInTheDocument();
   });
 
-  it("renders link back to sign in", () => {
+  it("links back to sign in", () => {
     render(<RegisterPage />);
-    const link = screen.getByRole("link", { name: /sign in/i });
-    expect(link).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute(
+      "href",
+      "/login"
+    );
+  });
+
+  it("shows password rules as a live checklist", () => {
+    render(<RegisterPage />);
+    const list = screen.getByRole("list", { name: /password requirements/i });
+    expect(list).toBeInTheDocument();
+    expect(list).toHaveTextContent(/at least 8 characters/i);
+    expect(list).toHaveTextContent(/one letter/i);
+    expect(list).toHaveTextContent(/one number/i);
   });
 });
 
-describe("RegisterPage — Zod schema validation", () => {
-  it("shows email validation error for invalid email", async () => {
+describe("RegisterPage — validation", () => {
+  it("rejects an invalid email", async () => {
     const { fireEvent } = await import("@testing-library/react");
     render(<RegisterPage />);
 
-    const emailInput = screen.getByLabelText(/^email$/i);
-    fireEvent.change(emailInput, { target: { value: "bad-email" } });
-    await userEvent.type(screen.getByLabelText(/^password$/i), "password123");
-    await userEvent.type(screen.getByLabelText(/confirm password/i), "password123");
-
-    const form = screen.getByRole("button", { name: /Create account/i }).closest("form")!;
-    fireEvent.submit(form);
+    fireEvent.change(screen.getByLabelText(/^email$/i), {
+      target: { value: "bad-email" },
+    });
+    await userEvent.type(screen.getByLabelText(/^password$/i), "password1");
+    await userEvent.type(screen.getByLabelText(/confirm password/i), "password1");
+    fireEvent.submit(
+      screen.getByRole("button", { name: /create account/i }).closest("form")!
+    );
 
     await waitFor(() => {
       expect(
@@ -95,87 +103,100 @@ describe("RegisterPage — Zod schema validation", () => {
     });
   });
 
-  it("shows error when password is too short (< 8 characters)", async () => {
+  it("rejects a password that fails the rules", async () => {
     render(<RegisterPage />);
-
-    await userEvent.type(screen.getByLabelText(/^email$/i), "a@b.com");
-    await userEvent.type(screen.getByLabelText(/^password$/i), "short");
-    await userEvent.type(screen.getByLabelText(/confirm password/i), "short");
-    await userEvent.click(screen.getByRole("button", { name: /Create account/i }));
+    await fillForm("a@b.com", "short");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Password must be at least 8 characters/i)
+        screen.getByText(/Password doesn't meet the rules below/i)
       ).toBeInTheDocument();
     });
+    expect(mockSignUp).not.toHaveBeenCalled();
   });
 
-  it("shows 'Passwords do not match' error when passwords differ", async () => {
+  it("rejects mismatched passwords", async () => {
     render(<RegisterPage />);
-
-    await userEvent.type(screen.getByLabelText(/^email$/i), "a@b.com");
-    await userEvent.type(screen.getByLabelText(/^password$/i), "password123");
-    await userEvent.type(screen.getByLabelText(/confirm password/i), "different456");
-    await userEvent.click(screen.getByRole("button", { name: /Create account/i }));
+    await fillForm("a@b.com", "password1", "different2");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Passwords do not match/i)).toBeInTheDocument();
     });
-  });
-
-  it("does not call mutate when validation fails", async () => {
-    render(<RegisterPage />);
-
-    await userEvent.type(screen.getByLabelText(/^email$/i), "a@b.com");
-    await userEvent.type(screen.getByLabelText(/^password$/i), "password123");
-    await userEvent.type(screen.getByLabelText(/confirm password/i), "mismatch");
-    await userEvent.click(screen.getByRole("button", { name: /Create account/i }));
-
-    await waitFor(() => {
-      expect(mockMutate).not.toHaveBeenCalled();
-    });
-  });
-
-  it("calls mutate with only email and password (not confirm_password)", async () => {
-    render(<RegisterPage />);
-
-    await userEvent.type(screen.getByLabelText(/^email$/i), "user@test.com");
-    await userEvent.type(screen.getByLabelText(/^password$/i), "securepass");
-    await userEvent.type(screen.getByLabelText(/confirm password/i), "securepass");
-    await userEvent.click(screen.getByRole("button", { name: /Create account/i }));
-
-    await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith({
-        email: "user@test.com",
-        password: "securepass",
-      });
-    });
+    expect(mockSignUp).not.toHaveBeenCalled();
   });
 });
 
-describe("RegisterPage — mutation behaviour", () => {
-  it("shows success toast and redirects to /dashboard on success", () => {
+describe("RegisterPage — submission", () => {
+  it("calls signUp with a normalised email and a callback redirect", async () => {
     render(<RegisterPage />);
-    mockOnSuccess?.({});
+    await fillForm(" User@Example.com ", "password1");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
 
-    expect(mockToastSuccess).toHaveBeenCalledWith("Account created! Welcome to NextGenStock.");
-    expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    await waitFor(() => {
+      expect(mockSignUp).toHaveBeenCalledWith({
+        email: "user@example.com",
+        password: "password1",
+        options: { emailRedirectTo: "http://localhost:3000/auth/callback" },
+      });
+    });
   });
 
-  it("shows error toast on registration failure", () => {
+  it("shows the confirm-email state in place, without navigating", async () => {
     render(<RegisterPage />);
-    mockOnError?.(new Error("Email already registered"));
+    await fillForm("user@example.com", "password1");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
 
-    expect(mockToastError).toHaveBeenCalledWith("Email already registered");
+    expect(
+      await screen.findByRole("heading", { name: /check your email/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText(/user@example.com/)).toBeInTheDocument();
+    expect(hrefSpy).toHaveLength(0);
   });
 
-  it("shows fallback message when error.message is empty string (BUG-001 fix)", () => {
-    // FIXED: getErrorMessage() returns the fallback when err.message is falsy,
-    // so an empty-string message correctly shows the fallback text.
+  it("goes straight to the dashboard when a session is returned", async () => {
+    mockSignUp.mockResolvedValue({
+      data: {
+        user: { identities: [{ id: "1" }] },
+        session: { access_token: "t" },
+      },
+      error: null,
+    });
     render(<RegisterPage />);
-    const err = new Error("");
-    err.message = "";
-    mockOnError?.(err);
-    expect(mockToastError).toHaveBeenCalledWith("Registration failed. Please try again.");
+    await fillForm("user@example.com", "password1");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => expect(hrefSpy).toContain("/dashboard"));
+  });
+
+  it("reports a duplicate email even though Supabase returns no error", async () => {
+    // Supabase hides enumeration by returning a user with no identities.
+    mockSignUp.mockResolvedValue({
+      data: { user: { identities: [] }, session: null },
+      error: null,
+    });
+    render(<RegisterPage />);
+    await fillForm("taken@example.com", "password1");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/An account with that email already exists/i)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("maps an unreachable backend to plain language", async () => {
+    mockSignUp.mockRejectedValue(new TypeError("Failed to fetch"));
+    render(<RegisterPage />);
+    await fillForm("user@example.com", "password1");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Can't reach the server\./i)
+      ).toBeInTheDocument();
+    });
   });
 });

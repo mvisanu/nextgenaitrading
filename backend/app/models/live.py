@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -11,6 +11,14 @@ from app.db.base import Base
 
 class BrokerOrder(Base):
     __tablename__ = "broker_orders"
+    __table_args__ = (UniqueConstraint("user_id", "client_order_id", name="uq_order_user_client"),)
+
+    client_order_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    request_fingerprint: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    credential_id: Mapped[Optional[int]] = mapped_column(ForeignKey("broker_credentials.id", ondelete="SET NULL"), nullable=True)
+    broker_paper: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    applied_filled_quantity: Mapped[float] = mapped_column(Float, default=0, server_default="0", nullable=False)
+    applied_filled_notional: Mapped[float] = mapped_column(Float, default=0, server_default="0", nullable=False)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
@@ -40,6 +48,8 @@ class BrokerOrder(Base):
 
 class PositionSnapshot(Base):
     __tablename__ = "position_snapshots"
+    credential_id: Mapped[Optional[int]] = mapped_column(ForeignKey("broker_credentials.id", ondelete="SET NULL"), nullable=True)
+    broker_paper: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(

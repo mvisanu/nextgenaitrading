@@ -60,7 +60,7 @@ export default function ArtifactDetailPage({ params }: PageProps) {
     <AppShell title="Artifact Detail">
       <div className="mb-4">
         <Button variant="ghost" size="sm" asChild className="hover:bg-surface-high/50">
-          <Link href="/artifacts">
+          <Link href="/strategies?view=saved">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Artifacts
           </Link>
@@ -91,7 +91,7 @@ export default function ArtifactDetailPage({ params }: PageProps) {
                 <span>
                   Strategy run:{" "}
                   <Link
-                    href={`/backtests?run=${artifact.strategy_run_id}`}
+                    href={`/backtests/${artifact.strategy_run_id}`}
                     className="text-primary hover:underline"
                   >
                     #{artifact.strategy_run_id}

@@ -20,6 +20,6 @@ class ProfileUpdate(BaseModel):
     display_name: str | None = Field(default=None, description="New display name")
     timezone: str | None = Field(default=None, description="New timezone")
     default_symbol: str | None = Field(default=None, description="New default symbol")
-    default_mode: Literal["conservative", "aggressive", "ai-pick", "buy-low-sell-high"] | None = Field(
+    default_mode: Literal["conservative", "aggressive", "ai-pick", "buy-low-sell-high", "squeeze"] | None = Field(
         default=None, description="New default strategy mode"
     )

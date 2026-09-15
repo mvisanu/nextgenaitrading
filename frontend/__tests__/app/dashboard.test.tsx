@@ -4,10 +4,9 @@
  *         symbol/mode/signal display.
  */
 
-import React from "react";
-import { render, screen } from "@testing-library/react";
 import DashboardPage from "@/app/dashboard/page";
 import type { StrategyRun } from "@/types";
+import { render,screen } from "@testing-library/react";
 
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
@@ -72,6 +71,7 @@ jest.mock("@tanstack/react-query", () => ({
     // Default: loading
     return { data: undefined, isLoading: true, error: null };
   },
+  useMutation: () => ({ mutate: jest.fn(), isPending: false }),
   useQueryClient: () => ({
     invalidateQueries: jest.fn(),
     clear: jest.fn(),
@@ -146,7 +146,7 @@ describe("DashboardPage — with data", () => {
 
   it("renders Dashboard title", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Overview")).toBeInTheDocument();
   });
 
   it("renders Runs KPI label in the strip", () => {
@@ -194,7 +194,7 @@ describe("DashboardPage — with data", () => {
     const { getByTitle } = render(<DashboardPage />);
     getByTitle(/show recent runs/i).click();
     expect(await screen.findByText("1d")).toBeInTheDocument();
-    expect(screen.getByText("4h")).toBeInTheDocument();
+    expect(screen.getAllByText("4h").length).toBeGreaterThan(0);
   });
 });
 

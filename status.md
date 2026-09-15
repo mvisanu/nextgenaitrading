@@ -1,9 +1,54 @@
-# Status — 2026-07-13
+# Status — 2026-07-31
 
-## Production (Render) — backend bugs fixed; still blocked on Supabase
+## Blocker B (Supabase) is RESOLVED. Blocker A (Render) is still open.
 
-### Root cause of the outage (external, NOT a code bug)
-The Supabase project **`mhdeczgappgbazxjnyaf`** does not exist in DNS. Verified via
+### Blocker B — RESOLVED 2026-07-31
+`mhdeczgappgbazxjnyaf.supabase.co` now resolves (Cloudflare) and GoTrue answers.
+Verified live against the project:
+
+| Check | Result |
+|---|---|
+| `GET /auth/v1/health` | 401 (alive; needs apikey) |
+| `GET /auth/v1/settings` | 200 · `disable_signup: false` · **`mailer_autoconfirm: false`** |
+| `POST /auth/v1/signup` | **200** · `confirmation_sent_at` set · no session |
+| Sign in before confirming | 400 `email_not_confirmed` |
+| Sign in, wrong password | 400 `invalid_credentials` |
+| Duplicate signup | 200 with `identities: []` (no error — enumeration guard) |
+
+A throwaway user was created for this test and then deleted via the admin API.
+
+**Open decision — email confirmation.** `mailer_autoconfirm: false` means every new
+account must click an emailed link before it can sign in. Supabase's *built-in* SMTP only
+delivers to project team members and is rate-limited to a couple of messages an hour, so
+if custom SMTP is not configured, real users will never receive the confirmation and
+registration will look broken again. Either:
+1. turn **Confirm email** OFF in Auth → Providers → Email (signup then returns a session
+   and the app goes straight to the dashboard — matches the old pre-confirmed behaviour), or
+2. configure custom SMTP (Resend/SendGrid/Postmark).
+
+The frontend already handles both cases with no code change.
+
+### Blocker A — the Render service is SUSPENDED (still open, re-confirmed 2026-07-31)
+Every path on `nextgenaitrading.onrender.com` returns **503**, including unknown paths
+such as `/health` (which would be a 404 if our app were running). The response carries:
+
+```
+x-render-routing: suspend-by-user
+Server: cloudflare
+```
+
+The request **never reaches FastAPI**. Resume the service in the Render dashboard
+(Settings → Resume), or clear whatever billing/free-tier condition suspended it.
+
+**The browser CORS errors are a symptom of this, not a separate bug.** Render's edge 503
+is a bare HTML page with no `Access-Control-Allow-Origin` header, so the browser reports
+the preflight as a CORS failure. `CORS_ORIGINS` is configured correctly — changing it
+will do nothing. The CORS errors will disappear on their own once the service is running.
+
+Local `main` == `origin/main` (`363754b`), so resuming redeploys the fixed backend below.
+
+### Blocker B — original diagnosis (kept for history; now fixed, see above)
+The Supabase project **`mhdeczgappgbazxjnyaf`** did not exist in DNS. Verified via
 Google's resolver over DoH: **NXDOMAIN on A, AAAA and CNAME**, while `supabase.com`
 resolves normally. A paused project still shows its Project URL in the dashboard, so
 seeing the URL there does **not** mean it is running — the restore has not taken effect.
@@ -59,14 +104,25 @@ Windows CRLF save can't break the Linux container.
 - **Tests: 723 passing** (v2–v6, v9, auth, gold, password-auth).
 
 ## Still required — only you can do these
-1. **Supabase**: the project is not reachable. In the dashboard confirm its *status badge*
-   (Paused / Restoring / Active), not just its URL. If it will not restore, create a new
-   project and update `SUPABASE_URL` / keys on Render + Vercel (`NEXT_PUBLIC_*`) and
-   `DATABASE_URL` on Render. Fresh-DB bootstrap now works, so a new project will come up
-   clean.
-2. **Deploy**: push these commits so Render rebuilds. After deploy, `/healthz` should
-   return **200 `degraded`** instead of 502 even while Supabase is down.
-3. Then the live smoke test (register + password login) can finally run.
+0. **Render**: resume the suspended service (Blocker A). Until this is done, *every*
+   backend route is a 503 from Render's edge and every browser call looks like a CORS
+   error. Verify with: `curl -i https://nextgenaitrading.onrender.com/healthz` — the
+   `x-render-routing: suspend-by-user` header must be gone.
+1. ~~**Supabase**: restore the project.~~ **Done** — verified live 2026-07-31.
+2. **Decide on email confirmation** (see Blocker B above): either turn Confirm email OFF,
+   or configure custom SMTP. Without one of these, confirmation emails will not reach
+   real users and registration will appear broken even though the API returns 200.
+3. **Deploy**: push these commits so Render rebuilds. After deploy, `/healthz` should
+   return **200 `degraded`** instead of 502 even while the DB is down.
+4. Then the full live smoke test (register → confirm → sign in → protected route) can run
+   end to end in the browser.
+
+## Frontend auth rebuild (branch `feat/auth-ui-rebuild`, 2026-07-31)
+`/login` was rebuilt to one primary path (email+password) plus an in-place magic-link
+swap; PIN and access-code UI deleted; `/forgot-password` and `/reset-password` added.
+`/register` now calls `supabase.auth.signUp` directly instead of the backend, so account
+creation no longer depends on Render being up. See
+`docs/superpowers/plans/2026-07-31-auth-ui-rebuild.md`. Six commits, not yet pushed.
 
 ## Notes
 - `CLAUDE.md` documents `backend/tests/v7/` (wheel bot), but that directory does not

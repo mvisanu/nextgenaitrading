@@ -1,27 +1,29 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import type { TradingSelection } from "@/lib/trading-selection";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Switch } from "@/components/ui/switch";
+
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Play, SlidersHorizontal } from "lucide-react";
-import type { StrategyMode, Timeframe } from "@/types";
-import { getModeLabel } from "@/lib/utils";
+import type { StrategyMode,Timeframe } from "@/types";
+import { Loader2,Play,SlidersHorizontal } from "lucide-react";
 
 const schema = z.object({
   symbol: z
     .string()
+    .trim()
     .min(1, "Symbol is required")
     .max(20, "Symbol too long")
     .transform((v) => v.trim().toUpperCase()),
-  timeframe: z.enum(["5m", "15m", "30m", "1h", "4h", "1d", "1wk", "1mo"]),
+  timeframe: z.enum(["1h", "4h", "1d", "1wk", "1mo"]),
   investment_amount: z.preprocess(
     (v) => (v === "" || v === undefined ? undefined : Number(v)),
     z.number().positive("Must be a positive amount").optional()
@@ -39,6 +41,7 @@ const MODE_DEFAULTS: Record<
   StrategyMode,
   { leverage: string; description: string }
 > = {
+  squeeze: { leverage: "2.5", description: "Bollinger Band compression and breakout ? 6/8 confirmations" },
   conservative: {
     leverage: "2.5",
     description: "Leverage 2.5x · 7/8 signal confirmations · HMM regime",
@@ -60,7 +63,8 @@ const MODE_DEFAULTS: Record<
 interface StrategyFormProps {
   mode: StrategyMode;
   defaultSymbol?: string;
-  defaultTimeframe?: Timeframe;
+  defaultTimeframe?: string;
+  onContextChange?: (patch: Partial<TradingSelection>) => unknown;
   onSubmit: (values: {
     symbol: string;
     timeframe: Timeframe;
@@ -77,6 +81,7 @@ export function StrategyForm({
   defaultSymbol = "",
   defaultTimeframe = "1d",
   onSubmit,
+  onContextChange,
   isLoading = false,
 }: StrategyFormProps) {
   const {
@@ -89,12 +94,15 @@ export function StrategyForm({
     resolver: zodResolver(schema),
     defaultValues: {
       symbol: defaultSymbol,
-      timeframe: defaultTimeframe,
+      timeframe: defaultTimeframe as FormValues["timeframe"],
       dry_run: true,
     },
   });
 
-  const dryRun = watch("dry_run");
+
+  useEffect(() => { setValue("symbol", defaultSymbol); }, [defaultSymbol, setValue]);
+  useEffect(() => { setValue("timeframe", defaultTimeframe as FormValues["timeframe"]); }, [defaultTimeframe, setValue]);
+  const unsupportedTimeframe = !["1h", "4h", "1d", "1wk", "1mo"].includes(defaultTimeframe);
   const leverageVal = watch("leverage");
   const modeInfo = MODE_DEFAULTS[mode];
   const isOptimizer = mode === "ai-pick" || mode === "buy-low-sell-high";
@@ -106,7 +114,7 @@ export function StrategyForm({
       mode,
       investment_amount: values.investment_amount,
       leverage: values.leverage,
-      dry_run: values.dry_run,
+      dry_run: true,
     });
   }
 
@@ -167,7 +175,7 @@ export function StrategyForm({
                 type="text"
                 placeholder="AAPL"
                 className="w-full bg-surface-highest border border-border/30 rounded outline-none text-sm font-bold font-mono py-2.5 px-3 focus:border-primary/60 transition-colors text-foreground placeholder:text-muted-foreground/40"
-                {...register("symbol")}
+                {...register("symbol", { onBlur: event => onContextChange?.({ symbol: event.target.value.trim().toUpperCase() }) })}
                 disabled={isLoading}
                 data-testid={`symbol-input-${mode}`}
               />
@@ -184,8 +192,8 @@ export function StrategyForm({
                 Timeframe
               </label>
               <Select
-                defaultValue={defaultTimeframe}
-                onValueChange={(v) => setValue("timeframe", v as Timeframe)}
+                value={watch("timeframe")}
+                onValueChange={(v) => { setValue("timeframe", v as FormValues["timeframe"]); onContextChange?.({ timeframe: v as TradingSelection["timeframe"] }); }}
                 disabled={isLoading}
               >
                 <SelectTrigger
@@ -196,9 +204,7 @@ export function StrategyForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="5m">5 Min (5m)</SelectItem>
-                  <SelectItem value="15m">15 Min (15m)</SelectItem>
-                  <SelectItem value="30m">30 Min (30m)</SelectItem>
+                  {unsupportedTimeframe && <SelectItem value={defaultTimeframe} disabled>{defaultTimeframe} (chart only)</SelectItem>}
                   <SelectItem value="1h">1 Hour (1h)</SelectItem>
                   <SelectItem value="4h">4 Hour (4h)</SelectItem>
                   <SelectItem value="1d">Daily (1d)</SelectItem>
@@ -206,6 +212,7 @@ export function StrategyForm({
                   <SelectItem value="1mo">Monthly (1mo)</SelectItem>
                 </SelectContent>
               </Select>
+              {unsupportedTimeframe && <p className="text-sm text-muted-foreground">Choose an hourly, daily, weekly, or monthly timeframe to run a reference backtest.</p>}
             </div>
           </div>
 
@@ -213,7 +220,7 @@ export function StrategyForm({
           {!isOptimizer && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-3xs uppercase tracking-widest text-muted-foreground font-bold">
+                <label htmlFor={`leverage-${mode}`} className="text-3xs uppercase tracking-widest text-muted-foreground font-bold">
                   Leverage Exposure
                 </label>
                 <span className="text-2xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded tabular-nums">
@@ -223,14 +230,15 @@ export function StrategyForm({
                 </span>
               </div>
               <input
-                type="range"
+                type="number"
                 step="0.1"
                 min="0.1"
                 max="10"
                 defaultValue={modeInfo.leverage === "-" ? "2.5" : modeInfo.leverage}
-                className="w-full h-1 rounded-full appearance-none cursor-pointer accent-primary bg-surface-highest"
+                className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm focus-visible:ring-2 focus-visible:ring-ring"
                 {...register("leverage")}
                 disabled={isLoading}
+                id={`leverage-${mode}`}
                 data-testid={`leverage-${mode}`}
               />
               {errors.leverage && (
@@ -241,24 +249,7 @@ export function StrategyForm({
             </div>
           )}
 
-          {/* Dry Run toggle */}
-          <div className="flex items-center justify-between p-3 bg-surface-mid rounded border border-border/20">
-            <div>
-              <p className="text-sm font-bold text-foreground">Dry Run Mode</p>
-              <p className="text-3xs text-muted-foreground mt-0.5">
-                {dryRun
-                  ? "Execute using virtual liquidity pool"
-                  : "LIVE — real orders will be submitted"}
-              </p>
-            </div>
-            <Switch
-              id={`dry-run-${mode}`}
-              checked={dryRun}
-              onCheckedChange={(v) => setValue("dry_run", v)}
-              disabled={isLoading}
-              data-testid={`dry-run-${mode}`}
-            />
-          </div>
+          <p className="text-sm text-muted-foreground">Historical simulation only. No orders are placed.</p>
         </div>
       </section>
 

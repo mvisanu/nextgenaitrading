@@ -6,39 +6,43 @@
  * Sovereign Terminal design system applied.
  */
 
-import { useState, useRef, useMemo } from "react";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { toast } from "sonner";
-import {
-  Trash2,
-  Bell,
-  BellOff,
-  ChevronDown,
-  ChevronRight,
-  Plus,
-  Loader2,
-  Radar,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+Table,
+TableBody,
+TableCell,
+TableHead,
+TableHeader,
+TableRow,
+} from "@/components/ui/table";
+import { scannerApi,watchlistApi } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { tradingHref } from "@/lib/trading-selection";
+import { useSavedTradingSelection } from "@/lib/use-trading-selection";
+import { cn,getErrorMessage } from "@/lib/utils";
+import { watchlistKeys } from "@/lib/watchlist";
+import type { OpportunityRow } from "@/types";
+import {
+useMutation,
+useQueryClient
+} from "@tanstack/react-query";
+import {
+Bell,
+BellOff,
+ChevronDown,
+ChevronRight,
+Loader2,
+Plus,
+Radar,
+Trash2,
+} from "lucide-react";
+import Link from "next/link";
+import { useMemo,useRef,useState } from "react";
+import { toast } from "sonner";
 import { BuyNowBadge } from "./BuyNowBadge";
 import { EstimatedEntryPanel } from "./EstimatedEntryPanel";
-import { watchlistApi, scannerApi } from "@/lib/api";
-import { cn, getErrorMessage } from "@/lib/utils";
-import type { OpportunityRow } from "@/types";
 
 const usd = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -55,6 +59,11 @@ interface WatchlistTableProps {
 
 export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTableProps) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  function refreshWatchlist() {
+    void queryClient.invalidateQueries({ queryKey: watchlistKeys.list(user?.id) });
+    void queryClient.invalidateQueries({ queryKey: watchlistKeys.signals(user?.id) });
+  }
   const [tickerInput, setTickerInput] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
@@ -69,7 +78,7 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
       setTickerInput("");
       setAddError(null);
       toast.success("Ticker added. Buy zone calculation started.");
-      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      refreshWatchlist();
     },
     onError: (err: Error & { status?: number }) => {
       if (err.status === 409) {
@@ -86,7 +95,7 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
   const { mutate: removeTicker } = useMutation({
     mutationFn: (ticker: string) => watchlistApi.remove(ticker),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      refreshWatchlist();
     },
     onError: (err: Error) => {
       toast.error(getErrorMessage(err, "Failed to remove ticker."));
@@ -98,7 +107,7 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
     mutationFn: ({ ticker, enabled }: { ticker: string; enabled: boolean }) =>
       watchlistApi.toggleAlert(ticker, enabled),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      refreshWatchlist();
     },
     onError: (err: Error) => {
       toast.error(getErrorMessage(err, "Failed to update alert setting."));
@@ -181,7 +190,7 @@ export function WatchlistTable({ rows, isLoading, onRefetch }: WatchlistTablePro
               }}
               placeholder="Add ticker (e.g. AAPL)"
               className="h-8 text-xs font-mono bg-surface-lowest border-none focus:ring-1 focus:ring-primary p-2.5"
-              maxLength={10}
+              maxLength={20}
               aria-label="Add ticker to watchlist"
               aria-invalid={!!addError}
               aria-describedby={addError ? "add-ticker-error" : undefined}
@@ -334,6 +343,8 @@ function WatchlistRow({
   onRemove: () => void;
   onToggleAlert: (enabled: boolean) => void;
 }) {
+  const [selection] = useSavedTradingSelection();
+  const context = { ...selection, symbol: row.ticker };
   const isPending = row.signal_strength == null;
 
   // Distance to zone: positive = price is above zone (red), negative = below (green opportunity)
@@ -367,16 +378,16 @@ function WatchlistRow({
       >
         {/* Expand chevron */}
         <TableCell className="w-8 pr-0 pl-3">
-          {isExpanded ? (
+          <button aria-label={`Details for ${row.ticker}`} aria-expanded={isExpanded} className="min-h-11 min-w-8" onClick={event => { event.stopPropagation(); onToggleExpand(); }}>{isExpanded ? (
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           ) : (
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          )}
+          )}</button>
         </TableCell>
 
         {/* Ticker */}
         <TableCell className="font-mono text-xs font-bold text-foreground">
-          {row.ticker}
+          <Link href={tradingHref("/dashboard", context)} onClick={event => event.stopPropagation()} className="underline underline-offset-4">{row.ticker}</Link>
           {isPending && (
             <span className="ml-1.5 text-3xs text-amber-400/70 italic">calculating…</span>
           )}
@@ -412,8 +423,7 @@ function WatchlistRow({
         {/* Distance */}
         <TableCell className="text-right">
           <span className={cn("text-xs font-mono tabular-nums font-bold", distanceColor)}>
-            {distancePct >= 0 ? "+" : ""}
-            {distancePct.toFixed(1)}%
+            {row.distance_to_zone_pct == null ? "--" : `${distancePct >= 0 ? "+" : ""}${distancePct.toFixed(1)}%`}
           </span>
         </TableCell>
 
@@ -497,6 +507,7 @@ function WatchlistRow({
       {isExpanded && (
         <TableRow className="border-b border-border/10">
           <TableCell colSpan={12} className="p-0">
+            <div className="flex gap-4 p-4 text-sm"><Link className="underline" href={tradingHref("/dashboard", context)}>View chart</Link><Link className="underline" href={tradingHref("/trade?view=order", context)}>Prepare order</Link></div>
             <div className="px-4 py-3 bg-surface-high/20">
               <EstimatedEntryPanel row={row} />
             </div>

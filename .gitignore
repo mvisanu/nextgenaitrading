@@ -60,3 +60,5 @@ tests/test-results/
 *.log
 error.txt
 .worktrees/
+.swarm/
+.claude-flow/
